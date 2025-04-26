@@ -3,12 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import BASE_URL from '../../utils/baseUrl';
+// const BASE_URL = 'https://support.ansar.in/api';
 
 const validateToken = async (token) =>
 {
   try
   {
-    const response = await fetch(`${BASE_URL}/api/validate-token/`, {
+    const response = await fetch(`${ BASE_URL }/api/validate-token/`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${ token }`,

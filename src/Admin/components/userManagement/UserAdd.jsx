@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import
 {
   Modal,
@@ -12,8 +12,9 @@ import
 import axios from "axios";
 import BASE_URL from "../../../utils/baseUrl";
 import { toast } from "react-toastify";
+import CloseIcon from "@mui/icons-material/Close";
 
-const UserAdd = ({ open, handleClose }) =>
+const UserAdd = ({ open, handleClose, onUserAdded }) =>
 {
   const [formData, setFormData] = useState({
     name: "",
@@ -30,6 +31,7 @@ const UserAdd = ({ open, handleClose }) =>
   const roles = ["Department Head", "Tech Support"];
   const [MobileNumberError, setMobileNumberError] = useState("");
   const [staffIdError, setStaffIdError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [formErrors, setFormErrors] = useState({
     name: false,
@@ -40,6 +42,37 @@ const UserAdd = ({ open, handleClose }) =>
     section_for_staff: false,
     mobile_number: false,
   });
+  const modalRef = useRef(); // Reference to the modal container
+  // Detect clicks outside the modal
+  useEffect(() =>
+  {
+    const handleClickOutside = (event) =>
+    {
+      if (modalRef.current && !modalRef.current.contains(event.target))
+      {
+        handleCloseModal(); // Close the modal if clicked outside
+      }
+    };
+
+    if (open)
+    {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else
+    {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    return () =>
+    {
+      document.removeEventListener("mousedown", handleClickOutside); // Cleanup
+    };
+  }, [open, handleClose]);
+
+  // Ensure that clicking inside the modal doesn't trigger closing
+  const handleInsideClick = (event) =>
+  {
+    event.stopPropagation(); // Prevent the event from propagating outside
+  };
 
   useEffect(() =>
   {
@@ -72,6 +105,26 @@ const UserAdd = ({ open, handleClose }) =>
       ...prevData,
       [name]: value,
     }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e) =>
+  {
+    e.preventDefault();
+    setLoading(true);
+    try
+    {
+      await axios.post(`${ BASE_URL }/api/users/create/`, formData);
+      toast.success("User added successfully!");
+      resetForm();
+      handleClose(); // Close modal
+      if (onUserAdded) onUserAdded(); // Refresh user list
+    } catch (error)
+    {
+      console.error("Error adding user:", error);
+      toast.error("Failed to add user. Please try again.");
+    }
+    setLoading(false);
   };
 
   const handleSave = () =>
@@ -233,16 +286,16 @@ const UserAdd = ({ open, handleClose }) =>
       section_for_staff: "",
     });
 
-    setFormErrors({   // Reset all errors
-      name: false,
-      staff_id: false,
-      role: false,
-      department: false,
-      institution: false,
-      section_for_staff: false,
-      mobile_number: false,
-    });
-
+    // setFormErrors({   // Reset all errors
+    //   name: false,
+    //   staff_id: false,
+    //   role: false,
+    //   department: false,
+    //   institution: false,
+    //   section_for_staff: false,
+    //   mobile_number: false,
+    // });
+    setFormErrors({});
     setStaffIdError(""); // Reset staff ID error
     setMobileNumberError("");
   };
@@ -252,29 +305,30 @@ const UserAdd = ({ open, handleClose }) =>
   {
     resetForm(); // Reset form fields
     handleClose(); // Close the modal
+    if (onUserAdded) onUserAdded();
   };
-  const saveData = () =>
+  const validateForm = () =>
   {
     const errors = {
       name: !formData.name,
       staff_id: !formData.staff_id,
       role: !formData.role,
-      department: !formData.department,
-      institution: !formData.institution,
-      section_for_staff: !formData.section_for_staff,
+      department: !formData.department && formData.role !== "Tech Support",
+      institution: !formData.institution && formData.role !== "Tech Support",
+      section_for_staff: !formData.section_for_staff && formData.role === "Tech Support",
       mobile_number: !formData.mobile_number,
     };
-
-    setFormErrors(errors); // Update state to highlight empty fields
-
-    // Check if any field has an error
-    if (Object.values(errors).some((error) => error))
+    setFormErrors(errors);
+    return !Object.values(errors).some(Boolean);
+  };
+  const saveData = async () =>
+  {
+    if (!validateForm())
     {
-      // toast.warning("All fields are required!"); // Show warning message
-      // return; // Stop submission if there are errors
+      toast.warning("All fields are required!");
+      return;
     }
 
-    // If validation passes, proceed with saving
     const requestData = {
       name: formData.name,
       role: formData.role,
@@ -285,20 +339,23 @@ const UserAdd = ({ open, handleClose }) =>
       mobile_number: formData.mobile_number,
     };
 
-    axios
-      .post(`${ BASE_URL }/api/users/create/`, requestData)
-      .then((response) =>
-      {
-        console.log("User added successfully:", response);
-        toast.success("User added successfully!");
-        window.location.reload();
-        handleClose();
-      })
-      .catch((error) =>
-      {
-        console.error("Error adding user:", error.response?.data);
-        toast.error("Error:All fields are required");
-      });
+    try
+    {
+      await axios.post(`${ BASE_URL }/api/users/create/`, requestData);
+      toast.success("User added successfully!");
+      resetForm();
+      handleClose();
+      if (onUserAdded) onUserAdded(); // Refresh user list
+    } catch (error)
+    {
+      console.error("Error adding user:", error.response?.data);
+      const errorData = error.response?.data;
+      const errorMessage =
+        typeof errorData === "string"
+          ? errorData
+          : errorData?.error || errorData?.message || "Something went wrong!";
+      toast.error(`Error: ${ errorMessage }`);
+    }
   };
 
   const customTheme = createTheme({
@@ -323,9 +380,27 @@ const UserAdd = ({ open, handleClose }) =>
 
   return (
     <ThemeProvider theme={customTheme}>
-      <Modal open={open} onClose={handleClose}>
-        <Box sx={style}>
+      <Modal open={open} onClose={handleClose} ref={modalRef}>
+        <Box sx={style} onClick={handleInsideClick}>
           <h5>Add User</h5>
+          {/* Close Icon Button */}
+          
+          <Button
+            onClick={handleCloseModal}
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              minWidth: "auto",
+              padding: "6px",
+              color: "grey.600",
+              "&:hover": {
+                color: "red",
+              },
+            }}
+          >
+            <CloseIcon />
+          </Button>
           <TextField
             fullWidth
             label="Name"

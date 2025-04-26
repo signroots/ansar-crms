@@ -51,11 +51,10 @@ th{
 }
 /* -------- Custom stale for pagination button used in data-tabels [End] ---------- */
 
-.admin-row td {
+/* .admin-row td {
    background-color: #ffeb3b !important;
 }
 /* Add this to your CSS file */
 .admin-req-row td {
     background-color: #ffeb3b !important;
-}
-
+} 

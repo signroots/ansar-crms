@@ -30,6 +30,23 @@ const ComplaintsList = () =>
     // for submit delay reason
     const [showSubmitButton, setShowSubmitButton] = useState(false);
 
+    // Fetch existing complaints
+    const fetchServiceRequests = async () =>
+    {
+        try
+        {
+            const response = await axios.get(`${ BASE_URL }/api/complaints-list/`);
+            setServiceRequests(response.data);
+        } catch (error)
+        {
+            console.error('Error fetching service requests:', error);
+        } finally
+        {
+            setLoading(false);
+        }
+    };
+
+    // handle sse event realtime update 
     useEffect(() =>
     {
         fetchServiceRequests();
@@ -88,20 +105,7 @@ const ComplaintsList = () =>
         }
 
     };
-    const fetchServiceRequests = async () =>
-    {
-        try
-        {
-            const response = await axios.get(`${ BASE_URL }/api/complaints-list/`);
-            setServiceRequests(response.data);
-        } catch (error)
-        {
-            console.error('Error fetching service requests:', error);
-        } finally
-        {
-            setLoading(false);
-        }
-    };
+
     // **Filter Complaints by Search**
     const filteredData = serviceRequests?.length
         ? serviceRequests.filter((request) =>
@@ -339,13 +343,13 @@ const ComplaintsList = () =>
     console.log('service request wd:', serviceRequests);
     console.log('selcted request wd:',);
 
-
     return (
         <div
             className="mt-5 "
             style={{ backgroundColor: "#fcfcfc", minHeight: "80vh", padding: "20px", margin: "auto", fontSize: '13px', }}
         >
             <h6>Complaints</h6>
+
             <small>Live complaints tracking & management.</small>
             <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
 
@@ -404,9 +408,9 @@ const ComplaintsList = () =>
                                 <tr
                                     key={request.id}
                                     className={request.created_by === "Admin" ? "admin-row" : ""}
-                                    // style={{
-                                    //     backgroundColor: request.created_by === "Admin" ? "#ffeb3b" : "white",
-                                    // }}
+                                // style={{
+                                //     backgroundColor: request.created_by === "Admin" ? "#ffeb3b" : "white",
+                                // }}
                                 >
                                     <td>{request.id}</td>
                                     <td
@@ -561,7 +565,7 @@ const ComplaintsList = () =>
                             </div>
 
                             {/* Main Data Table */}
-                            <table className="table table-bordered complaints-table">
+                            <table className="table table-bordered">
                                 <tbody>
                                     <tr>
                                         <th>
@@ -587,11 +591,11 @@ const ComplaintsList = () =>
                                         </th>
                                         <td>
                                             {selectedRequest.status === "Pending" ? (
-                                                <p className="m-0 text-danger">{selectedRequest.status}</p>
+                                                <h6 className="text-danger">{selectedRequest.status}</h6>
                                             ) : selectedRequest.status === "Completed" ? (
-                                                <p className="m-0 text-success">{selectedRequest.status}</p>
+                                                <h6 className="text-success">{selectedRequest.status}</h6>
                                             ) : selectedRequest.status === "Cancelled" ? (
-                                                <p className="m-0 text-secondary">{selectedRequest.status}</p>
+                                                <h6 className="text-secondary">{selectedRequest.status}</h6>
                                             ) : (
                                                 <select
                                                     className={`form-select ${ selectedRequest.status === "In Progress"
@@ -716,6 +720,10 @@ const ComplaintsList = () =>
                         </div>
                     )}
                 </Modal.Body>
+                <style>
+                    {`.modal-content {background: white;}`}
+                </style>
+
             </Modal>
 
 

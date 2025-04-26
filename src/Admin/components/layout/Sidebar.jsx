@@ -4,6 +4,7 @@ import { MdDashboard} from "react-icons/md";
 import { PiWarningCircle } from "react-icons/pi";
 import { TbFileSymlink, TbUserStar } from "react-icons/tb";
 import { Link, useLocation } from "react-router-dom";
+import { MdFeedback } from "react-icons/md";
 
 const Sidebar = ({ isOpen }) => {
   
@@ -121,6 +122,27 @@ const Sidebar = ({ isOpen }) => {
               style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
             />
             {isOpen && <span>Users</span>}
+          </li>
+        </Link>
+        {/* Feedback Item */}
+        <Link to="" style={{ textDecoration: "none" }}>
+          <li
+            className="sidebarItem"
+            style={sidebarItemStyle}
+            onMouseEnter={(e) =>
+            {
+              e.currentTarget.style.color = sidebarItemHoverStyle.color;
+            }}
+            onMouseLeave={(e) =>
+            {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "#9b9b9d";
+            }}
+          >
+            <MdFeedback
+              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
+            />
+            {isOpen && <span>Feedback</span>}
           </li>
         </Link>
 

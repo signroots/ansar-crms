@@ -369,7 +369,7 @@ const RequestsList = () =>
                             return (
                                 <tr
                                     key={request.id}
-                                    className={request.created_by === "Admin" ? "admin-req-row" : ""}
+                                    // className={request.created_by === "Admin" ? "admin-req-row" : ""}
                                 // style={{
                                 //     backgroundColor: request.created_by === "Admin" ? "#ffeb3b" : "white",
                                 // }}
@@ -546,6 +546,30 @@ const RequestsList = () =>
                                     </tr>
                                     <tr>
                                         <td>
+                                            <strong>Program Name:</strong>
+                                        </td>
+                                        <td>
+                                            {selectedRequest.program_name ? selectedRequest.program_name : 'N/A'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Program Date:</strong>
+                                        </td>
+                                        <td>
+                                            {selectedRequest.program_date ? selectedRequest.program_date : 'N/A'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Program Time:</strong>
+                                        </td>
+                                        <td>
+                                            {selectedRequest.program_time ? selectedRequest.program_time : 'N/A'}
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>
                                             <strong>Requested by:</strong>
                                         </td>
                                         <td>
@@ -557,13 +581,13 @@ const RequestsList = () =>
                                         <td>
                                             <strong>Status:</strong>
                                         </td>
-                                        <td>
+                                        <td className="status_table_row">
                                             {selectedRequest.status === "Pending" ? (
-                                                <p className="m-0 text-danger">{selectedRequest.status}</p>
+                                                <h6 className="text-danger">{selectedRequest.status}</h6>
                                             ) : selectedRequest.status === "Completed" ? (
-                                                <p className="m-0 text-success">{selectedRequest.status}</p>
+                                                <h6 className="text-success">{selectedRequest.status}</h6>
                                             ) : selectedRequest.status === "Cancelled" ? (
-                                                <p className="m-0 text-secondary">{selectedRequest.status}</p>
+                                                <h6 className="text-secondary">{selectedRequest.status}</h6>
                                             ) : (
                                                 <select
                                                     className={`form-select ${ selectedRequest.status === "In Progress"
@@ -684,6 +708,9 @@ const RequestsList = () =>
                         </div>
                     )}
                 </Modal.Body>
+                <style>
+                    {`.modal-content {background: white;}`}
+                </style>
 
             </Modal>
 

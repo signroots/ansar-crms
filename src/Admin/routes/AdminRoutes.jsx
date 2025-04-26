@@ -8,6 +8,8 @@
   import AdminProtectedRoute from './AdminProtectedRoute';
   import Complaints from '../pages/Complaints';
   import Requests from '../pages/Requests';
+// import FeedbackList from '../pages/Feedback';
+// import StudentInfoPage from '../pages/StudentInfo';
 
   function AdminRoutes()
   {
@@ -40,7 +42,7 @@
             <AdminProtectedRoute element={<Layout><UserManage /></Layout>} />
           }
         />
-
+       
         <Route
           path="staff-manage"
           element={

@@ -11,6 +11,10 @@ function RequestForm()
     typeOfRequest: '',
     allRequest: '',
     notes: '',
+    program_name: '',
+    program_date: '',
+    program_time: '',
+
   });
   const [typesOfRequest, setTypesOfRequest] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
@@ -48,7 +52,10 @@ function RequestForm()
       staff_id: localStorage.getItem('staff_id'),
       issue_request: formData.allRequest,
       notes: formData.notes,
-      type_of_request: formData.typeOfRequest
+      type_of_request: formData.typeOfRequest,
+      program_name: formData.program_name,
+      program_date: formData.program_date,
+      program_time: formData.program_time,
     };
 
     try
@@ -134,6 +141,43 @@ function RequestForm()
           <MenuItem key={request.id} value={request.id}>{request.name}</MenuItem>
         ))}
       </Select>
+      {/* Conditionally Render Program Fields */}
+                              {formData.allRequest === 3 && (
+                                  <>
+                                      <TextField
+                                          name="program_name"
+                                          label="Program Name"
+                                          value={formData.program_name}
+                                          onChange={handleInputChange}
+                                          fullWidth
+                                          sx={{ marginBottom: 2 }}
+                                      />
+                                      <TextField
+                                          name="program_date"
+                                          label="Program Date"
+                                          type="date"
+                                          value={formData.program_date}
+                                          onChange={handleInputChange}
+                                          fullWidth
+                                          sx={{ marginBottom: 2 }}
+                                          InputLabelProps={{
+                                              shrink: true,
+                                          }}
+                                      />
+                                      <TextField
+                                          name="program_time"
+                                          label="Program Time"
+                                          type="time"
+                                          value={formData.program_time}
+                                          onChange={handleInputChange}
+                                          fullWidth
+                                          sx={{ marginBottom: 2 }}
+                                          InputLabelProps={{
+                                              shrink: true,
+                                          }}
+                                      />
+                                  </>
+                              )}
 
       <TextField
         name="notes"

@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Select, MenuItem, Button, Typography, Box, Modal, ThemeProvider, createTheme,} from '@mui/material';
-import axios from 'axios'; // Import Axios
+import
+    {
+        TextField, Select, MenuItem, Button, FormControl, InputLabel,
+        Typography, Box, Modal, ThemeProvider, createTheme, FormHelperText
+    } from '@mui/material';
+import axios from 'axios';
 import { toast } from "react-toastify";
-import { Article } from '@mui/icons-material';
 import BASE_URL from '../../../utils/baseUrl';
-
+import CloseIcon from "@mui/icons-material/Close";
 
 
 const getAccessToken = () => localStorage.getItem('admin_access_token');
 const getRefreshToken = () => localStorage.getItem('admin_refresh_token');
-// Function to refresh the access token
+
 const refreshToken = async () =>
 {
     try
@@ -17,32 +20,26 @@ const refreshToken = async () =>
         const refresh_token = getRefreshToken();
         if (!refresh_token)
         {
-            console.error("No refresh token found. Redirecting to login...");
             window.location.href = "/admin/login";
             return null;
         }
-
-        console.log("Refreshing access token...");
         const response = await axios.post(`${ BASE_URL }/api/token/refresh/`, { refresh: refresh_token });
 
         if (response.status === 200)
         {
-            const newAccessToken = response.data.access; // Ensure this matches your backend response
+            const newAccessToken = response.data.access;
             localStorage.setItem('admin_access_token', newAccessToken);
-            console.log("Access token refreshed successfully.");
             return newAccessToken;
         }
     } catch (error)
     {
-        console.error("Token refresh failed. Redirecting to login...", error);
         localStorage.removeItem('admin_access_token');
         localStorage.removeItem('admin_refresh_token');
-        window.location.href = "/admin/login"; // Redirect to login if refresh fails
+        window.location.href = "/admin/login";
         return null;
     }
 };
 
-// Function to make authenticated API requests
 const apiRequest = async (method, url, data = null, retry = true) =>
 {
     let access_token = getAccessToken();
@@ -59,30 +56,29 @@ const apiRequest = async (method, url, data = null, retry = true) =>
     {
         if (error.response && error.response.status === 401 && retry)
         {
-            console.warn("Access token expired. Attempting to refresh...");
             access_token = await refreshToken();
             if (access_token)
             {
-                return apiRequest(method, url, data, false); // Retry request once with new token
+                return apiRequest(method, url, data, false);
             }
         }
         throw error;
     }
 };
 
-function CreateComplaints()
+const CreateComplaints = () =>
 {
     const [formData, setFormData] = useState({
         typeOfIssue: '',
         issue: '',
         notes: '',
         staffId: '',
-        // created_by:'',
     });
     const [typesOfIssue, setTypesOfIssue] = useState([]);
     const [issues, setIssues] = useState([]);
-    const [staffIds, setStaffIds] = useState([]); // Store staff ID list
-    const [openModal, setOpenModal] = useState(false);  // For opening modal
+    const [staffIds, setStaffIds] = useState([]);
+    const [openModal, setOpenModal] = useState(false);
+    const [errors, setErrors] = useState({});
 
     useEffect(() =>
     {
@@ -95,10 +91,18 @@ function CreateComplaints()
             .catch(() => setStaffIds([]));
     }, []);
 
+    // Function to close modal and refresh data
+    // const handleCloseModal = () =>
+    // {
+    //     setOpenModal(false);  // Close modal
+    //     fetchUsers();         // Fetch updated users from API
+    // };
+
     const handleTypeOfIssueChange = async (e) =>
     {
         const typeOfIssueId = e.target.value;
         setFormData({ ...formData, typeOfIssue: typeOfIssueId, issue: '' });
+        setErrors({ ...errors, typeOfIssue: '' });
 
         try
         {
@@ -110,7 +114,6 @@ function CreateComplaints()
         }
     };
 
-
     const handleInputChange = (e) =>
     {
         const { name, value } = e.target;
@@ -118,18 +121,34 @@ function CreateComplaints()
             ...prevData,
             [name]: value,
         }));
+        setErrors({ ...errors, [name]: '' });
+    };
+
+    const validateForm = () =>
+    {
+        let newErrors = {};
+        if (!formData.staffId) newErrors.staffId = "Staff ID is required";
+        if (!formData.typeOfIssue) newErrors.typeOfIssue = "Type of complaint is required";
+        if (!formData.issue) newErrors.issue = "Complaint is required";
+        if (!formData.notes) newErrors.notes = "Notes cannot be empty";
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) =>
     {
+        console.log("Submitting complaint...");
         e.preventDefault();
+
+        if (!validateForm()) return;
 
         const payload = {
             staff_id: formData.staffId,
             issue_complaint: formData.issue,
             notes: formData.notes,
             type_of_issue: formData.typeOfIssue,
-            created_by:"Admin"
+            created_by: "Admin"
         };
 
         try
@@ -139,213 +158,150 @@ function CreateComplaints()
             if (response.status === 201)
             {
                 toast.success("Submitted successfully");
-                setFormData({ typeOfIssue: '', issue: '', notes: '', staffId: '' });
+                setFormData({
+                    typeOfRequest: '',
+                    allRequest: '',
+                    notes: '',
+                    staffId: '',
+                    program_name: '',
+                    program_date: '',
+                    program_time: '',
+                });
                 setOpenModal(false);
-            } else
-            {
+            }
+            else
+                {
                 toast.warning("Failed to submit");
             }
-        } catch (error)
+             
+        
+        }catch (error)
         {
-            console.error('Error submitting the request:', error);
-            toast.error("Failed to submit, got an error");
+            console.error("Submission Error:", error.response ? error.response.data : error.message);
+            toast.error(`Error: ${ error.response?.data?.message || "Failed to submit" }`);
         }
     };
 
+    const customTheme = createTheme({
+        palette: {
+            primary: {
+                main: "#877bdc",
+            },
+        },
+    });
 
-  const customTheme = createTheme({
-    palette: {
-      primary: {
-        main: "#877bdc",
-      },
-    },
-  });
-    
     return (
         <ThemeProvider theme={customTheme}>
-            <div>
-                {/* Button to open the modal */}
-                <Button variant="contained" size="sm" color="primary" onClick={() => setOpenModal(true)}>
-                    Add
-                </Button>
+            <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
+                Add
+            </Button>
 
-                {/* Modal for Complaint Form */}
-                <Modal
-                    open={openModal}
-                    onClose={() => setOpenModal(false)}
-                    aria-labelledby="modal-title"
-                    aria-describedby="modal-description"
-                >
-                    <Box sx={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        bgcolor: 'background.paper',
+            <Modal open={openModal} onClose={() => setOpenModal(false)}>
+                <Box
+                    sx={{
+                        position: "absolute",
+                        top: "50%",
+                        left: "50%",
+                        transform: "translate(-50%, -50%)",
+                        bgcolor: "background.paper",
                         boxShadow: 24,
                         p: 4,
-                        width: 600,
+                        width: 500,
                         borderRadius: 2,
-                        height: 'auto',
-                    }}>
-                        <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
-                            Complaints
-                        </Typography>
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 2,
+                    }}
+                    
+                >
+                    <CloseIcon
+                        onClick={() => setOpenModal(false)}
+                        sx={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            cursor: "pointer",
+                            color: "grey.600",
+                            "&:hover": {
+                                color: "red",
+                            },
+                        }}
+                    />
+                    <Typography variant="h6">New Complaints</Typography>
 
-                        {/* Staff ID Dropdown */}
+                    <FormControl fullWidth error={!!errors.staffId}>
+                        <InputLabel>Select Staff</InputLabel>
                         <Select
-                            fullWidth
+                            name="staffId"
                             value={formData.staffId}
                             onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
                             displayEmpty
-                            sx={{
-                                marginBottom: 2,
-                                bgcolor: "#f5f5f5", // Light background
-                                borderRadius: 1, // Rounded corners
-                                "& .MuiSelect-select": { padding: "12px" }, // Padding inside dropdown
-                                "&:hover": { bgcolor: "#e0e0e0" }, // Hover effect
-                            }}
-                            MenuProps={{
-                                PaperProps: {
-                                    sx: {
-                                        bgcolor: "#fff", // White background for dropdown
-                                        borderRadius: 1,
-                                        boxShadow: 3, // Soft shadow
-                                        maxHeight: 300, // Limit height
-                                        overflowY: "auto", // Scroll if many items
-                                    },
-                                },
-                            }}
+                            sx={{ marginBottom: 2 }}
                         >
-                            <MenuItem value="" disabled>Select Staff ID</MenuItem>
-                            {staffIds.map((id) => (
-                                <MenuItem
-                                    key={id}
-                                    value={id}
-                                    sx={{
-                                        fontSize: "14px",
-                                        padding: "10px",
-                                        "&:hover": { bgcolor: "#f0f0f0" } // Light hover effect
-                                    }}
-                                >
-                                    {id}
-                                </MenuItem>
+                        <MenuItem value="" disabled>Select Staff ID</MenuItem>
+                            {staffIds.map((staff) => (
+                            <MenuItem key={staff.id} value={staff.id}>
+                            {staff.id}
+                            </MenuItem>
                             ))}
-                        </Select>
+                            </Select>
+                        <FormHelperText>{errors.staffId}</FormHelperText>
+                    </FormControl>
+
+                    <FormControl fullWidth error={!!errors.typeOfIssue}>
+                        <InputLabel>Select Type of Complaint</InputLabel>
                         <Select
+                            name="typeOfIssue"
                             value={formData.typeOfIssue}
                             onChange={handleTypeOfIssueChange}
-                            fullWidth
-                            displayEmpty
-                            sx={{
-                                marginBottom: 2,
-                                bgcolor: "#f9f9f9", // Light background for better visibility
-                                borderRadius: 1, // Smooth rounded corners
-                                "& .MuiSelect-select": {
-                                    padding: "12px", // Adds padding inside dropdown
-                                    fontSize: "14px",
-                                },
-                                "&:hover": {
-                                    bgcolor: "#f0f0f0", // Subtle hover effect
-                                },
-                            }}
-                            MenuProps={{
-                                PaperProps: {
-                                    sx: {
-                                        bgcolor: "#f9f9f9",
-                                        borderRadius: 1, // Rounded edges for dropdown
-                                        boxShadow: 3, // Soft shadow effect
-                                        maxHeight: 250, // Restrict height to make it compact
-                                        overflowY: "auto", // Adds scrolling for large lists
-                                    },
-                                },
-                            }}
                         >
-                            <MenuItem value="" disabled hidden>
-                                Select Type of Complaint
-                            </MenuItem>
                             {typesOfIssue.map((type) => (
-                                <MenuItem
-                                    key={type.id}
-                                    value={type.id}
-                                    sx={{
-                                        fontSize: "14px",
-                                        padding: "10px",
-                                        "&:hover": { bgcolor: "#f9f9f9" }, // Subtle hover effect
-                                    }}
-                                >
-                                    {type.name}
-                                </MenuItem>
+                                <MenuItem key={type.id} value={type.id}>{type.name}</MenuItem>
                             ))}
                         </Select>
+                        <FormHelperText>{errors.typeOfIssue}</FormHelperText>
+                    </FormControl>
 
+                    <FormControl fullWidth error={!!errors.issue}>
+                        <InputLabel>Select Complaint</InputLabel>
                         <Select
+                            name="issue"
                             value={formData.issue}
-                            onChange={(e) => setFormData({ ...formData, issue: e.target.value })}
-                            fullWidth
-                            displayEmpty
+                            onChange={handleInputChange}
                             disabled={!formData.typeOfIssue}
-                            sx={{
-                                marginBottom: 2,
-                                bgcolor: formData.typeOfIssue ? "#f9f9f9" : "#e0e0e0", // Light gray when disabled
-                                borderRadius: 1,
-                                "& .MuiSelect-select": {
-                                    padding: "12px",
-                                    fontSize: "14px",
-                                },
-                                "&:hover": {
-                                    bgcolor: formData.typeOfIssue ? "#f0f0f0" : "#e0e0e0",
-                                },
-                            }}
-                            MenuProps={{
-                                PaperProps: {
-                                    sx: {
-                                        bgcolor: "#fff",
-                                        borderRadius: 1,
-                                        boxShadow: 3,
-                                        maxHeight: 250,
-                                        overflowY: "auto",
-                                    },
-                                },
-                            }}
                         >
-                            <MenuItem value="" disabled hidden>
-                                Select Complaint
-                            </MenuItem>
                             {issues.map((issue) => (
-                                <MenuItem
-                                    key={issue.id}
-                                    value={issue.id}
-                                    sx={{
-                                        fontSize: "14px",
-                                        padding: "10px",
-                                        "&:hover": { bgcolor: "#fff" },
-                                    }}
-                                >
-                                    {issue.name}
-                                </MenuItem>
+                                <MenuItem key={issue.id} value={issue.id}>{issue.name}</MenuItem>
                             ))}
                         </Select>
+                        <FormHelperText>{errors.issue}</FormHelperText>
+                    </FormControl>
 
-                        <TextField
-                            name="notes"
-                            value={formData.notes}
-                            onChange={handleInputChange}
-                            label="Notes (optional)"
-                            multiline
-                            fullWidth
-                            rows={3}
-                            sx={{ marginBottom: 2 }}
-                        />
+                    <TextField
+                        name="notes"
+                        label="Notes"
+                        value={formData.notes}
+                        onChange={handleInputChange}
+                        multiline
+                        rows={3}
+                        fullWidth
+                        error={!!errors.notes}
+                        helperText={errors.notes}
+                    />
 
-                        <Button variant="contained" color="primary" onClick={handleSubmit} fullWidth>
-                            Submit
-                        </Button>
-                    </Box>
-                </Modal>
-            </div>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        onClick={handleSubmit}
+                        // disabled={!formData.staffId || !formData.typeOfIssue || !formData.issue || !formData.notes}
+                    >
+                        Submit
+                    </Button>
+                </Box>
+            </Modal>
         </ThemeProvider>
     );
-}
+};
 
 export default CreateComplaints;

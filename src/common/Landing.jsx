@@ -12,7 +12,7 @@ function Landing()
     >
       {/* Heading Section */}
       <div className="text-center mb-5">
-        <h1 className="display-3 text-white mb-3" style={{ fontWeight: '400' }}>
+        <h1 className="display-3 text-white mb-3" style={{ fontWeight: '00' }}>
           Welcome to Ansar
         </h1>
         <p className="lead text-white-50 mb-1 fs-6">

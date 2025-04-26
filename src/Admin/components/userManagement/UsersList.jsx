@@ -8,6 +8,7 @@ import UserAdd from "./UserAdd";
 import BASE_URL from "../../../utils/baseUrl";
 import { toast } from "react-toastify";
 import UserEdit from "./UserEdit";
+import { FaCopy } from "react-icons/fa";
 
 const UsersList = () => {
   const [customersData, setCustomersData] = useState([]);
@@ -18,7 +19,26 @@ const UsersList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(6);
   const [error, setError] = useState(null);
-
+  const fetchUsers = () =>
+  {
+    axios
+      .get(`${ BASE_URL }/api/users/`)
+      .then((response) =>
+      {
+        setCustomersData(response.data);
+        setError(null);
+      })
+      .catch((error) =>
+      {
+        console.error("Error fetching users:", error);
+        setError("Failed to fetch users. Please try again.");
+      });
+  };
+  // ✅ Call fetchUsers on component mount
+  useEffect(() =>
+  {
+    fetchUsers();
+  }, []);
   // Fetch users from the backend
   useEffect(() => {
     axios
@@ -34,7 +54,18 @@ const UsersList = () => {
         setError("Failed to fetch users. Please try again.");
       });
   }, []);
-
+  const handleCopy = async (text) =>
+  {
+    try
+    {
+      await navigator.clipboard.writeText(text);
+      toast.success("Mobile number copied!");
+    } catch (err)
+    {
+      toast.error("Failed to copy! Please try again.");
+      console.error("Clipboard error:", err);
+    }
+  };
   // Delete users from the backend
   const handleDeleteUser = (userId) => {
   if (window.confirm("Are you sure you want to delete this user?")) {
@@ -143,7 +174,15 @@ const UsersList = () => {
                   <td>{customer.role} </td>
                   <td><b>{customer.institution ? customer.institution.name : null}</b> { "  " } {customer.department ? customer.department.name : "N/A"}</td>
                   <td>{customer.section_for_staff ? customer.section_for_staff : "N/A"}</td>
-                  <td>{customer.mobile_number}</td>
+                  <td>
+                    {customer.mobile_number}
+                    <FaCopy
+                      style={{ cursor: "pointer", marginLeft: "10px", color: "#007bff" }}
+                      title="Copy Mobile Number"
+                      onClick={() => handleCopy(customer.mobile_number)}
+                    />
+                  </td>
+
                   <td>
                     <MdDelete
                       size={20}
@@ -196,11 +235,14 @@ const UsersList = () => {
         </ButtonGroup>
       </div>
 
-      <UserAdd open={showModal} handleClose={() => setShowModal(false)} />
+      <UserAdd open={showModal} handleClose={() => setShowModal(false)} onUserAdded={fetchUsers} />
+      
       <UserEdit
         open={showEditModal}
         handleClose={handleCloseEditModal}
         userId={selectedUserId}
+        onUpdate={fetchUsers}
+      
       />
     </div>
   );
