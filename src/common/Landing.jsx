@@ -32,7 +32,7 @@ function Landing()
 
         <Link
           to="/user/user-login"
-          className="btn btn-outline-light btn-lg w-50 mt-5"
+          className="btn btn-outline-light btn-lg w-30 mt-5"
           style={{
             borderRadius: '50px', // Rounded corners
           }}
