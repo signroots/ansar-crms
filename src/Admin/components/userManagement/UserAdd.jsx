@@ -28,7 +28,7 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
 
   const [departments, setDepartments] = useState([]);
   const [institutions, setInstitutions] = useState([]);
-  const roles = ["Department Head", "Tech Support"];
+  const roles = ["Staff", "Tech Support","Teacher"];
   const [MobileNumberError, setMobileNumberError] = useState("");
   const [staffIdError, setStaffIdError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -89,14 +89,14 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
     {
       // Fetch departments for the selected institution
       axios
-        .get(`${ BASE_URL }/api/departments/${ formData.institution }/`)
+        .get(`${ BASE_URL }/api/departments/${ formData.institution }/?data=${ formData.role }`)
         .then((response) => setDepartments(response.data))
         .catch((error) => console.error("Error fetching departments:", error));
     } else
     {
       setDepartments([]);
     }
-  }, [formData.institution]);
+  }, [formData.institution,formData.role]);
 
   const handleChange = (e) =>
   {
@@ -157,8 +157,8 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
       ...formData,
       role: selectedRole,
       // If role is 'Tech Support', set institution and department to null
-      institution: selectedRole === "Tech Support" ? "" : formData.institution,
-      department: selectedRole === "Tech Support" ? "" : formData.department,
+      institution: selectedRole === "Staff" ? "" : formData.institution,
+      department: selectedRole === "Staff" ? "" : formData.department,
       section_for_staff: selectedRole === "Tech Support" ? formData.section_for_staff : "",
     });
   };
@@ -208,7 +208,6 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
       }
     }
   };
-
   const checkStaffIdExists = async (staffId) =>
   {
     try
@@ -227,49 +226,39 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
       console.error("Error checking Staff ID:", error);
     }
   };
+
   const handleStaffIdChange = (e) =>
   {
     const { name, value } = e.target;
 
-    // Restrict first two characters to be alphabetic
     if (name === "staff_id")
     {
-      // Ensure the first two characters are alphabetic
+      // First character must be a letter
       if (value.length === 1 && !/^[A-Za-z]$/.test(value))
       {
-        // setStaffIdError("The first two characters must be alphabetic letters.");
-        return; // Block input if the first character is not a letter
-      }
-      // Restrict first character to be a letter
-      if (value.length === 1 && /^[0-9]$/.test(value))
-      {
-        setStaffIdError("The first two characters must be alphabetic letters.");
-        return; // Block input if the first character is a number
+        setStaffIdError("The first character must be an alphabet letter.");
+        return;
       }
 
-      if (value.length === 2 && !/^[A-Za-z]{2}$/.test(value))
-      {
-        setStaffIdError("The first two characters must be alphabetic letters.");
-        return; // Block input if the first two characters are not letters
-      }
-      // Ensure characters after the first two are numeric only
-      if (value.length > 2 && !/^[A-Za-z]{2}[0-9]*$/.test(value))
+      // After first character, allow numbers only
+      if (value.length > 1 && !/^[A-Za-z][0-9]*$/.test(value))
       {
         return;
       }
 
+      // Restrict maximum length (example: 6 characters total)
       if (value.length > 6)
       {
         return;
       }
-      else
-      {
-        setStaffIdError(""); // Clear error when valid
-      }
+
+      setStaffIdError(""); // Clear error when valid
+
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
+
       checkStaffIdExists(value);
     }
   };
@@ -380,8 +369,8 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
 
   return (
     <ThemeProvider theme={customTheme}>
-      <Modal open={open} onClose={handleClose} ref={modalRef}>
-        <Box sx={style} onClick={handleInsideClick}>
+      <Modal open={open} onClose={handleClose}>
+        <Box sx={style}>
           <h5>Add User</h5>
           {/* Close Icon Button */}
           
@@ -422,14 +411,14 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
             className="mb-3"
             error={
               formErrors.staff_id || // Highlight red if the field is empty
-              (formData.staff_id.length > 0 && !/^[A-Za-z]{2}[A-Za-z0-9]*$/.test(formData.staff_id)) ||
+              (formData.staff_id.length > 0 && !/^[A-Za-z]{1}[A-Za-z0-9]*$/.test(formData.staff_id)) ||
               !!staffIdError // Check if the staffIdError state has an error message
             }
             helperText={
               formErrors.staff_id
                 ? "This field is required"
-                : formData.staff_id.length > 0 && !/^[A-Za-z]{2}[A-Za-z0-9]*$/.test(formData.staff_id)
-                  ? "Staff ID must start with first 2 alphabetic letters"
+                : formData.staff_id.length > 0 && !/^[A-Za-z]{1}[A-Za-z0-9]*$/.test(formData.staff_id)
+                  ? "Staff ID must start with first letter is alphabetic"
                   : staffIdError // Show error if Staff ID already exists
             }
           />
@@ -452,7 +441,7 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
               </MenuItem>
             ))}
           </TextField>
-          {(formData.role === "Department Head" || formData.role === "Staff") && (
+          {(formData.role === "Staff") &&(
             <>
               <TextField
                 fullWidth
@@ -491,6 +480,49 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
                   </MenuItem>
                 ))}
               </TextField>
+            </>
+          )}
+          {(formData.role === "Teacher") && (
+            <>
+              <TextField
+                fullWidth
+                select
+                label="Institution"
+                name="institution"
+                value={formData.institution}
+                onChange={handleChange}
+                variant="outlined"
+                className="mb-3"
+                error={formErrors.institution} // Highlight red if error
+                helperText={formErrors.institution ? "This field is required" : ""}
+              >
+                {institutions.map((inst) => (
+                  <MenuItem key={inst.id} value={inst.id}>
+                    {inst.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                fullWidth
+                select
+                label="Department"
+                name="department"
+                value={formData.department}
+                onChange={handleChange}
+                variant="outlined"
+                className="mb-3"
+                error={formErrors.department} // Highlight red if error
+                helperText={formErrors.department ? "This field is required" : ""}
+                disabled={!formData.institution}
+              >
+                {departments.map((dept) => (
+                  <MenuItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            
             </>
           )}
           {formData.role === "Tech Support" && (

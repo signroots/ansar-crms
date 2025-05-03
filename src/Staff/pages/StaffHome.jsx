@@ -250,9 +250,12 @@ function StaffHome()
 
     }}>
       <Typography align="left" variant="subtitle2" className='fw-semibold mb-3' gutterBottom>
-        Complaints & Requests
+        {selectedTask
+          ? selectedTask.issue_complaint
+            ? 'Complaint'
+            : 'Request'
+          : 'Complaints & Requests'}
       </Typography>
-
 
       <>
         {selectedTask ? (
