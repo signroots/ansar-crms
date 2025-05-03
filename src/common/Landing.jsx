@@ -55,7 +55,7 @@ function Landing()
 
       {/* Footer Section */}
       <footer className="mt-5 text-center text-white-50">
-        <small>© 2024 signrOots. All rights reserved.</small>
+        <small>© 2025. Powered by signrOots.</small>
       </footer>
     </div>
   );
