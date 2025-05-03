@@ -27,7 +27,7 @@ function Landing()
           src="https://icons.veryicon.com/png/o/miscellaneous/two-color-icon-library/user-286.png"
           className="img-fluid mb-4"
           alt="User Icon"
-          style={{ maxWidth: '200px' }}
+          style={{ maxWidth: '100px' }}
         />
 
         <Link
