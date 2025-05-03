@@ -241,18 +241,21 @@ function Home()
         sx={{
           position: 'fixed',  // Change to fixed to ensure it stays in the bottom-right corner
           bottom: 65,
-          right: 19,          // Adjust the right margin if needed
+          right: 19,
+          backgroundColor: 'transparent', // No background color by default// Adjust the right margin if needed
         }}
         icon={<Add />}
       >
         <SpeedDialAction
           icon={<AssignmentLate />}
           tooltipTitle="Complaints"
+          tooltipOpen 
           onClick={() => navigate('/user/user-complaints')}
         />
         <SpeedDialAction
           icon={<Article />}
           tooltipTitle="Requests"
+          tooltipOpen
           onClick={() => navigate('/user/user-requests')}
         />
       </SpeedDial>

@@ -46,7 +46,7 @@ function Auth() {
 
       const user = response.data;
 
-      if (user.role === "Department Head" || user.role === "Staff")
+      if (user.role === "Department Head" || user.role === "Staff" || user.role === "Teacher")
       {
         localStorage.setItem("user_access_token", response.data.access_token);
         localStorage.setItem("staff_id", response.data.staff_id);

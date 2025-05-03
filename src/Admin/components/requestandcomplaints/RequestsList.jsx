@@ -296,6 +296,10 @@ const RequestsList = () =>
         }
     };
 
+    const handleCloseModal = () =>
+    {
+        setShowModal(false); // or however you're controlling modal visibility
+    };
 
 
     // handle close table modal
@@ -363,18 +367,12 @@ const RequestsList = () =>
                             <th>View</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {currentRows.map((request) =>
-                        {
-                            return (
-                                <tr
-                                    key={request.id}
-                                    // className={request.created_by === "Admin" ? "admin-req-row" : ""}
-                                // style={{
-                                //     backgroundColor: request.created_by === "Admin" ? "#ffeb3b" : "white",
-                                // }}
-                                >
-                                    <td>{request.id}</td>
+                        <tbody>
+                            {currentRows.map((request, index) => (
+                                <tr key={request.id}>
+                                    {/* Serial Number for Pagination */}
+                                    <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
+
                                     <td
                                         style={{
                                             padding: '0',
@@ -385,50 +383,53 @@ const RequestsList = () =>
                                             whiteSpace: 'nowrap',
                                         }}
                                     >
+                                        
                                         <span style={{ fontWeight: 'bold' }}>
                                             {new Date(request.date).toLocaleDateString('en-GB', {
                                                 day: '2-digit',
                                                 month: 'short',
                                                 year: 'numeric',
                                             })}
-                                        </span>{' '}
-                                        -{' '}
+                                        </span>{" "}
+                                        -{" "}
                                         <span style={{ color: 'black' }}>
                                             {new Date(request.date).toLocaleTimeString('en-GB', {
                                                 hour: '2-digit',
                                                 minute: '2-digit',
                                                 hour12: true,
                                             })}
-                                        </span>
-                                        {' '}
+                                        </span>{" "}
                                         <small className="badge text-bg-success">
                                             {request && !request.is_viewed ? 'new' : null}
                                         </small>
                                     </td>
 
-
-                                    <td
-
-                                    >
-                                        <b>{request.institution ? request.institution.name : null}</b> {" - "} {request.department ? request.department.name : null}
+                                    <td>
+                                        <b>{request.institution ? request.institution.name : null}</b>{" - "}
+                                        {request.department ? request.department.name : null}
                                     </td>
+
                                     <td>{request.issue_request ? request.issue_request.name : 'N/A'}</td>
+
                                     <td>
                                         <span
                                             className={`badge fixed-width-badge ${ request.status === 'Completed'
-                                                ? 'bg-success'
-                                                : request.status === 'Pending'
-                                                    ? 'bg-danger'
-                                                    : request.status === 'In Progress'
-                                                        ? 'bg-primary'
-                                                        : request.status === 'Waiting'
-                                                            ? 'bg-warning' : 'bg-secondary'
+                                                    ? 'bg-success'
+                                                    : request.status === 'Pending'
+                                                        ? 'bg-danger'
+                                                        : request.status === 'In Progress'
+                                                            ? 'bg-primary'
+                                                            : request.status === 'Waiting'
+                                                                ? 'bg-warning'
+                                                                : 'bg-secondary'
                                                 }`}
                                         >
                                             {request.status}
                                         </span>
                                     </td>
+
                                     <td>{request.resolved_by ? request.resolved_by.name : 'N/A'}</td>
+
                                     <td>
                                         {request.resolved_date ? (
                                             <>
@@ -438,8 +439,8 @@ const RequestsList = () =>
                                                         month: 'short',
                                                         year: 'numeric',
                                                     })}
-                                                </span>{' '}
-                                                -{' '}
+                                                </span>{" "}
+                                                -{" "}
                                                 <span style={{ color: 'black' }}>
                                                     {new Date(request.resolved_date).toLocaleTimeString('en-GB', {
                                                         hour: '2-digit',
@@ -449,27 +450,31 @@ const RequestsList = () =>
                                                 </span>
                                             </>
                                         ) : (
-                                            <span style={{ color: 'gray' }}>{''}</span> // Replace "N/A" with "null" if required
+                                            <span style={{ color: 'gray' }}>{''}</span>
                                         )}
                                     </td>
-                                    <td style={{ cursor: 'pointer' }} onClick={() =>
-                                    {
-                                        if (!request.is_viewed)
+
+                                    <td
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() =>
                                         {
-                                            markAsViewed(request.id);
+                                            if (!request.is_viewed)
+                                            {
+                                                markAsViewed(request.id);
+                                                fetchServiceRequests();
+                                            }
+                                            handleRowClick(request);
                                             fetchServiceRequests();
-                                        }
-                                        handleRowClick(request);
-                                        fetchServiceRequests();
-                                    }}>
+                                        }}
+                                        
+                                    >
+                              
                                         <FaRegEye />
-
                                     </td>
-
                                 </tr>
-                            );
-                        })}
-                    </tbody>
+                            ))}
+                            
+                        </tbody>
 
                 </Table>
             )}
@@ -504,7 +509,24 @@ const RequestsList = () =>
             </div>
 
             <Modal show={showTableModal} onHide={handleCloseTableModal} centered size="lg">
+                {/* Modal Header with custom hover style */}
+                <Modal.Header closeButton className="custom-close-header">
+                </Modal.Header>
+
                 <Modal.Body>
+                    {/* Modal content here */}
+                </Modal.Body>
+
+                {/* Custom hover style */}
+                <style>
+                    {`
+            .custom-close-header .btn-close:hover {
+                filter: brightness(0) saturate(100%) invert(19%) sepia(92%) saturate(6371%) hue-rotate(357deg) brightness(97%) contrast(107%);
+            }
+        `}
+                </style>
+                <Modal.Body>
+                   
                     {selectedRequest && (
                         <div className="p-3">
                             {/* Header: ID and Date */}

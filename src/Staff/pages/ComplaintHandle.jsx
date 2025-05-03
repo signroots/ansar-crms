@@ -27,12 +27,17 @@ function ComplaintHandle()
 {
     const [serviceRequests, setServiceRequests] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [completedNote, setCompletedNote] = useState('');
+    const [remarks, setRemarks] = useState("");
+    const [remarksSubmitted, setRemarksSubmitted] = useState(false);
 
     const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null });
 
     // Manage an array of delay reasons
     const [delayReasons, setDelayReasons] = useState([]);
     const [newDelayReason, setNewDelayReason] = useState("");
+    const [completedReasons, setCompletedReasons] = useState([]);
+    const [newCompletedReason, setNewCompletedReason] = useState("");
     // for submit delay reason
     const [showSubmitButton, setShowSubmitButton] = useState(false);
 
@@ -44,8 +49,18 @@ function ComplaintHandle()
         // Show button only if new input
         setShowSubmitButton(value.trim().length > 0);
     };
+    // Handle completed_reason value/submit button 
+    const handleCompletedReasonChange = (e) =>
+    {
+        const value = e.target.value || "";
+        setNewCompletedReason(value);
+        setShowSubmitButton(value.trim().length > 0);
+    };
 
-
+    // const handleCompletedNoteChange = (event) =>
+    // {
+    //     setCompletedNote(event.target.value);
+    // };
 
     // For update delay reason on selectedTask
     useEffect(() =>
@@ -61,8 +76,55 @@ function ComplaintHandle()
             }
         }
     }, [selectedTask]);
+    useEffect(() =>
+    {
+        if (selectedTask?.completed_note)
+        {
+            console.log("Raw completed_note:", selectedTask.completed_note);
 
+            try
+            {
+                let notes = [];
 
+                // Handle completed_note if it's a string
+                if (typeof selectedTask.completed_note === 'string')
+                {
+                    try
+                    {
+                        // Fix single quotes and handle 'None' values in case it's a Python-style JSON
+                        const fixed = selectedTask.completed_note
+                            .replace(/'/g, '"')              // Convert single quotes to double quotes
+                            .replace(/None/g, 'null');       // Handle 'None' to null replacement
+                        notes = JSON.parse(fixed);         // Parse the string into an array
+                    } catch (e)
+                    {
+                        console.error("JSON parse error for completed_note:", e);
+                        // If parsing fails, fallback to empty array or handle in a way that fits your use case
+                        notes = [];
+                    }
+                }
+                // If it's already an array, directly use it
+                else if (Array.isArray(selectedTask.completed_note))
+                {
+                    notes = selectedTask.completed_note;
+                }
+                // If it's some other format, handle it gracefully
+                else
+                {
+                    console.warn("Unexpected completed_note format:", selectedTask.completed_note);
+                    notes = [];
+                }
+
+                // Set the notes (completedReasons) state
+                setCompletedReasons(notes);
+
+            } catch (error)
+            {
+                console.error("Error handling completed_note:", error);
+                setCompletedReasons([]); // Ensure we always reset to an empty array on error
+            }
+        }
+    }, [selectedTask]); // Ensure this runs when selectedTask changes
 
     useEffect(() =>
     {
@@ -106,6 +168,7 @@ function ComplaintHandle()
             await axios.patch(`${ BASE_URL }/api/complaint/${ selectedTask.id }/update-status/`, {
                 status: newStatus,
                 staff_id: staffId,
+                remark:remarks
             });
 
             // Update the state with the new status
@@ -134,19 +197,19 @@ function ComplaintHandle()
     {
         const newStatus = event.target.value;
 
-        if (newStatus === "In Progress" || newStatus === "Completed" || newStatus === "Waiting")
+        if (newStatus === "In Progress")
         {
-            // Show confirmation dialog for "in progress" and "completed"
+            // Show a dialog only after remark is entered
+            setSelectedTask({ ...selectedTask, status: newStatus }); // Just set UI status
+        } else
+        {
             setConfirmDialog({
                 open: true,
                 action: () => handleStatusChange(newStatus),
             });
-        } else
-        {
-            // Update status directly for other values
-            handleStatusChange(newStatus);
         }
     };
+
 
     const handleDialogClose = (confirm) =>
     {
@@ -186,6 +249,51 @@ function ComplaintHandle()
         } catch (error)
         {
             console.error('Error submitting delay reason:', error);
+        }   
+    };
+    const handleNoteSubmit = async () =>
+    {
+        const staffId = localStorage.getItem('staff_id');
+        try
+        {
+            const response = await axios.patch(`${ BASE_URL }/api/complaint/${ selectedTask.id }/update-completed-reason/`, {
+                staff_id: staffId,
+                completed_note: newCompletedReason
+            });
+
+            const updateddata = response.data;
+
+            // Parse the updated completed_note correctly
+            let parsedNotes = [];
+
+            if (typeof updateddata.completed_note === 'string')
+            {
+                try
+                {
+                    const fixed = updateddata.completed_note.replace(/'/g, '"');
+                    parsedNotes = JSON.parse(fixed);
+                } catch (e)
+                {
+                    console.error("Error parsing updated completed_note:", e);
+                }
+            } else if (Array.isArray(updateddata.completed_note))
+            {
+                parsedNotes = updateddata.completed_note;
+            }
+
+            // ✅ Update both selectedTask and UI state with parsed notes
+            setSelectedTask((prev) => ({
+                ...prev,
+                completed_note: parsedNotes,
+            }));
+            setCompletedReasons(updateddata.completed_note);
+
+            setNewCompletedReason("");
+            setShowSubmitButton(false);
+            toast.success("Notes updated successfully");
+        } catch (error)
+        {
+            console.error('Error submitting completed reason:', error);
         }
     };
 
@@ -193,6 +301,7 @@ function ComplaintHandle()
     {
         setSelectedTask(null);
         setNewDelayReason('')
+        setNewCompletedReason('')
 
     };
 
@@ -268,6 +377,11 @@ function ComplaintHandle()
                         <Typography variant="subtitle2" className='text-muted'>{selectedTask?.department?.name || 'N/A'}</Typography>
                     </Box>
 
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1.5 }}>
+                        <Typography variant="subtitle2" className='fw-semibold'>Remark</Typography>
+                        <Typography variant="subtitle2" className='text-muted'>{selectedTask?.remark || 'N/A'}</Typography>
+                    </Box>
+
                     {/* Type of Issue */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 1.5 }}>
                         <Typography variant="subtitle2" className='fw-semibold'>Complaint</Typography>
@@ -301,7 +415,10 @@ function ComplaintHandle()
                         </Box>
                     </Box>
 
-                    <Typography variant="subtitle2" className='fw-semibold' sx={{ textAlign: 'start', marginBottom: 0.5 }}>Status</Typography>
+                    <Typography variant="subtitle2" className="fw-semibold" sx={{ textAlign: 'start', marginBottom: 0.5 }}>
+                        Status
+                    </Typography>
+
                     {selectedTask.status === "Pending" ? (
                         <Button variant="contained" onClick={handleButtonClick}>Attend</Button>
                     ) : selectedTask.status === "Waiting" ? (
@@ -310,17 +427,67 @@ function ComplaintHandle()
                             <MenuItem value="Completed">Completed</MenuItem>
                         </Select>
                     ) : selectedTask.status === "In Progress" ? (
-                        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
-                            <MenuItem disabled hidden value="In Progress">In Progress</MenuItem>
-                            <MenuItem value="Waiting">Waiting</MenuItem>
-                            <MenuItem value="Completed">Completed</MenuItem>
+                        <>
+                            <Select
+                                value={selectedTask.status}
+                                onChange={handleDropdownChange}
+                                fullWidth
+                            >
+                                <MenuItem disabled hidden value="In Progress">
+                                    In Progress
+                                </MenuItem>
+                                <MenuItem value="Waiting">Waiting</MenuItem>
+                                <MenuItem value="Completed">Completed</MenuItem>
+                            </Select>
+
+                            {/* Only show if not submitted */}
+                            {!remarksSubmitted && (
+                                <>
+                                    <TextField
+                                        label="Remark"
+                                        multiline
+                                        minRows={3}
+                                        value={remarks}
+                                        onChange={(e) => setRemarks(e.target.value)}
+                                        fullWidth
+                                        sx={{ mt: 2 }}
+                                    />
+
+                                    <Button
+                                        variant="contained"
+                                        sx={{ mt: 2 }}
+                                        onClick={() =>
+                                        {
+                                            if (remarks.trim() === "")
+                                            {
+                                                alert("Please enter a remark before proceeding.");
+                                                return;
+                                            }
+                                            setConfirmDialog({
+                                                open: true,
+                                                action: async () =>
+                                                {
+                                                    await handleStatusChange("In Progress");
+                                                    setRemarks(""); // Clear the input
+                                                    setRemarksSubmitted(true); // Hide remark field and button
+                                                }
+                                            });
+                                        }}
+                                    >
+                                        Confirm In Progress
+                                    </Button>
+                                </>
+                            )}
+                        </>
+                    ) : selectedTask.status === "Completed" ? (
+                        <Select value={selectedTask.status} onChange={handleDropdownChange} disabled fullWidth>
+                            <MenuItem disabled value="Completed">Completed</MenuItem>
                         </Select>
-                    ) : selectedTask.status === "Completed" ? (<Select value={selectedTask.status} onChange={handleDropdownChange} disabled fullWidth>
-                        <MenuItem disabled value="Completed">Completed</MenuItem>
-                    </Select>) : (<Select value={selectedTask.status} onChange={handleDropdownChange} disabled fullWidth>
-                        <MenuItem disabled value="Cancelled">Cancelled</MenuItem>
-                    </Select>)
-                    }
+                    ) : (
+                        <Select value={selectedTask.status} onChange={handleDropdownChange} disabled fullWidth>
+                            <MenuItem disabled value="Cancelled">Cancelled</MenuItem>
+                        </Select>
+                    )}
 
                     {/* Confirmation Dialog */}
                     <Dialog open={confirmDialog.open} onClose={() => handleDialogClose(false)}>
@@ -394,7 +561,64 @@ function ComplaintHandle()
                             Submit Delay Reason
                         </Button>
                     )}
+                    {/* Show Delay Reason Section Only When Status is 'waiting' */}
+                    {selectedTask?.status === 'Completed' && (
+                        <Box sx={{ marginBottom: 2 }}>
+                            <Typography variant="subtitle2" className='fw-semibold' sx={{ textAlign: 'start', marginBottom: 0.5, marginTop: 1.5 }}>
+                                Completed Note
+                            </Typography>
+                            <div className="mb-3">
+                                <div className="border p-2"
+                                    style={{
+                                        maxHeight: "200px",
+                                        overflowY: "auto",
+                                        border: "1px solid #ddd",
+                                        borderRadius: "4px",
+                                        padding: "5px",
+                                    }}
+                                >
+                                    {Array.isArray(completedReasons) && completedReasons.length > 0 ? (
+                                        completedReasons.map((remarks, index) => (
+                                            <div
+                                                key={index}
+                                                className="d-flex justify-content-between align-items-center border-bottom py-2 w-100"
+                                            >
+                                                <Typography variant="subtitle2">
+                                                    {remarks.completed_note}
+                                                </Typography>
+                                                <div >
+                                                    <small className="text-muted">
+                                                        {new Date(remarks.created_at).toLocaleString("en-GB", {
+                                                            day: "numeric",
+                                                            month: "short",
+                                                            year: "numeric",
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                            hour12: true,
+                                                        }).replace(",", "")}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <small className="text-muted">No Completed notes available.</small>
+                                    )}
+                                </div>
+                            </div>
+                            <TextField
+                                value={newCompletedReason}
+                                onChange={handleCompletedReasonChange}
+                                fullWidth
+                                placeholder="Enter completed reason"
+                            />
 
+                        </Box>
+                    )}
+                    {selectedTask?.status === 'Completed' && showSubmitButton && (
+                        <Button variant="contained" color="primary" onClick={handleNoteSubmit} sx={{ marginTop: 0 }}>
+                            Submit Completed Note
+                        </Button>
+                    )}
 
                     {/* Contact */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, marginTop: 3 }}>

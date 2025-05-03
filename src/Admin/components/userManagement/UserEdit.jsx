@@ -40,7 +40,7 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
   const [institutions, setInstitutions] = useState([]);
   const [MobileNumberError, setMobileNumberError] = useState("");
 
-  const roles = ["Department Head", "Tech Support"];
+  const roles = ["Staff", "Tech Support"];
 
   // ✅ Function to fetch users and update state
   const fetchUsers = async () =>
@@ -184,8 +184,8 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
     setFormData({
       ...formData,
       role: selectedRole,
-      institution: selectedRole === "Department Head" ? "" : formData.institution,
-      department: selectedRole === "Department Head" ? "" : formData.department,
+      institution: selectedRole === "Staff" ? "" : formData.institution,
+      department: selectedRole === "Staff" ? "" : formData.department,
       section_for_staff: selectedRole === "Tech Support" ? "" : "",
     });
   };
@@ -196,9 +196,9 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
     // Validate the form data
     const errors = {
       name: !formData.name,
-      department: !formData.department && formData.role !== "Department Head",
+      department: !formData.department && formData.role !== "Staff",
       mobile_number: !formData.mobile_number,
-      institution: !formData.institution && formData.role !== "Department Head",
+      institution: !formData.institution && formData.role !== "Staff",
       staff_id: !formData.staff_id,
       role: !formData.role,
       section_for_staff: formData.role === "Tech Support" && !formData.section_for_staff,
@@ -218,8 +218,8 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
       role: formData.role,
       staff_id: formData.staff_id,
       mobile_number: formData.mobile_number,
-      department_id: formData.role === "Department Head" ? formData.department : null,
-      institution_id: formData.role === "Department Head" ? formData.institution : null,
+      department_id: formData.role === "Staff" ? formData.department : null,
+      institution_id: formData.role === "Staff" ? formData.institution : null,
       section_for_staff: formData.role === "Tech Support" ? formData.section_for_staff : null,
     };
 

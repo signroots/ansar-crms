@@ -210,6 +210,19 @@ function CreateRequests()
                         borderRadius: 2,
                         height: 'auto',
                     }}>
+                        <CloseIcon
+                                                onClick={() => setOpenModal(false)}
+                                                sx={{
+                                                    position: "absolute",
+                                                    top: 8,
+                                                    right: 8,
+                                                    cursor: "pointer",
+                                                    color: "grey.600",
+                                                    "&:hover": {
+                                                        color: "red",
+                                                    },
+                                                }}
+                                            />
                         <Typography id="modal-title" variant="h6" component="h2" gutterBottom>
                             Requests
                         </Typography>

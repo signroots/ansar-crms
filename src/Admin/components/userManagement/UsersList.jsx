@@ -19,6 +19,8 @@ const UsersList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage] = useState(6);
   const [error, setError] = useState(null);
+
+
   const fetchUsers = () =>
   {
     axios
@@ -34,6 +36,7 @@ const UsersList = () => {
         setError("Failed to fetch users. Please try again.");
       });
   };
+
   // ✅ Call fetchUsers on component mount
   useEffect(() =>
   {
@@ -101,18 +104,29 @@ const UsersList = () => {
   );
 
   // Pagination logic
-  const indexOfLastRow = currentPage * rowsPerPage;
-  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const pageSize = 10; // <- this sets your 10 rows per page
+  const indexOfLastRow = currentPage * pageSize;
+  const indexOfFirstRow = indexOfLastRow - pageSize;
   const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
-  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const totalPages = Math.ceil(filteredData.length / pageSize);
 
-  // Change page handler
-  const handlePageChange = (pageNumber) => {
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    }
+  // // Change page handler
+  // const handlePageChange = (pageNumber) => {
+  //   if (pageNumber > 0 && pageNumber <= totalPages) {
+  //     setCurrentPage(pageNumber);
+  //   }
+  // };
+  const handlePageChange = (page) =>
+  {
+    if (page < 1 || page > totalPages) return;
+
+
+    setCurrentPage(page);
+
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = page * pageSize;
+
   };
-
 
   return (
     <div className="mt-5" style={{ backgroundColor: "#fcfcfc", minHeight: "80vh", padding: "20px", margin: "auto", fontSize: '13px', }}>
@@ -168,7 +182,7 @@ const UsersList = () => {
             ) : (
               currentRows.map((customer, index) => (
                 <tr key={customer.id}>
-                  <td>{index + 1}</td>
+                  <td>{(currentPage - 1) * pageSize + index + 1}</td>
                   <td>{customer.name}</td>
                   <td>{customer.staff_id}</td>
                   <td>{customer.role} </td>
@@ -205,6 +219,7 @@ const UsersList = () => {
       </div>
 
       {/* Pagination */}
+      
       <div className="d-flex justify-content-end align-items-center mt-3">
         <ButtonGroup>
           <button
@@ -218,7 +233,7 @@ const UsersList = () => {
           {[...Array(totalPages)].map((_, index) => (
             <button
               key={index + 1}
-              className={`btn btn-sm custom-pagination-btn ${currentPage === index + 1 ? "active" : ""}`}
+              className={`btn btn-sm custom-pagination-btn ${ currentPage === index + 1 ? "active" : "" }`}
               onClick={() => handlePageChange(index + 1)}
             >
               {index + 1}
