@@ -21,27 +21,41 @@ const UsersList = () => {
   const [error, setError] = useState(null);
 const [totalCount, setTotalCount] = useState(0);
 const [pageSize, setPageSize] = useState(10);
+const [roleFilter, setRoleFilter] = useState("");
 // const pageSize = 10; // ✅ move here
 const totalPages = Math.ceil(totalCount / pageSize);
 const fetchUsers = (page = 1, size = pageSize) => {
   const token = localStorage.getItem("access_token");
 
-  axios.get(`${BASE_URL}/api/users/?page=${page}&page_size=${size}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-  .then((response) => {
-    setCustomersData(response.data.results);
-    setTotalCount(response.data.count);
-  })
-  .catch((error) => {
-    console.error("Error fetching users:", error);
-  });
+  let url = `${BASE_URL}/api/users/?page=${page}&page_size=${size}`;
+
+  // 🔍 Search
+  if (search) {
+    url += `&search=${search}`;
+  }
+
+  // 🎯 Role Filter
+  if (roleFilter) {
+    url += `&role=${roleFilter}`;
+  }
+
+  axios
+    .get(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    .then((response) => {
+      setCustomersData(response.data.results);
+      setTotalCount(response.data.count);
+    })
+    .catch((error) => {
+      console.error("Error fetching users:", error);
+    });
 };
 useEffect(() => {
   fetchUsers(currentPage, pageSize);
-}, [currentPage, pageSize]);
+}, [currentPage, pageSize, search, roleFilter]);
   // Fetch users from the backend
   // useEffect(() => {
   //   axios
@@ -154,31 +168,65 @@ useEffect(() => {
       <small>Create & Manage users</small>
       {error && <Alert variant="danger">{error}</Alert>}
       
-      <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
-        <FormControl
-          type="text"
-          placeholder="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+<div className="d-flex justify-content-between align-items-center mb-3 mt-4">
 
-          style={{ width: '250px', boxShadow: 'none', fontSize: '15px' }}
+  <div className="d-flex gap-2">
 
-        />
-        <button
-          className="btn btn-sm"
-          style={{
-            backgroundColor: "#877bdc",
-            color: "white",
-            display: "flex",
-            alignItems: "center",
-            padding: "5px 10px",
-          }}
-          onClick={() => setShowModal(true)}
-        >
-          <IoAddOutline style={{ fontSize: "18px", color: "white" }} />
-          User
-        </button>
-      </div>
+    {/* Search */}
+    <FormControl
+      type="text"
+      placeholder="Search"
+      value={search}
+      onChange={(e) => {
+        setSearch(e.target.value);
+        setCurrentPage(1);
+      }}
+      style={{
+        width: "250px",
+        boxShadow: "none",
+        fontSize: "15px",
+      }}
+    />
+
+    {/* Role Filter */}
+    <FormControl
+      as="select"
+      value={roleFilter}
+      onChange={(e) => {
+        setRoleFilter(e.target.value);
+        setCurrentPage(1);
+      }}
+      style={{
+        width: "180px",
+        fontSize: "15px",
+      }}
+    >
+      <option value="">All Roles</option>
+      <option value="Admin">Admin</option>
+      <option value="Staff">Staff</option>
+       <option value="Teacher">Teacher</option>
+      <option value="Tech Support">Tech Support</option>
+    </FormControl>
+
+  </div>
+
+  {/* Add User Button */}
+  <button
+    className="btn btn-sm"
+    style={{
+      backgroundColor: "#877bdc",
+      color: "white",
+      display: "flex",
+      alignItems: "center",
+      padding: "5px 10px",
+    }}
+    onClick={() => setShowModal(true)}
+  >
+    <IoAddOutline style={{ fontSize: "18px", color: "white" }} />
+    User
+  </button>
+
+</div>
 
       <div style={{ overflowX: "auto" ,fontSize: "13px",}}>
         <Table responsive bordered hover>
