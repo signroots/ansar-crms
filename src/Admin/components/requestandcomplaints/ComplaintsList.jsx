@@ -52,6 +52,24 @@ const ComplaintsList = () => {
         setLoading(false);
     }
 };
+const styles = {
+    labelCell: {
+        width: "38%",
+        padding: "14px",
+        fontWeight: "600",
+        border: "1px solid #dee2e6",
+        backgroundColor: "#f8f9fa",
+        verticalAlign: "top",
+    },
+
+    valueCell: {
+        width: "62%",
+        padding: "14px",
+        border: "1px solid #dee2e6",
+        backgroundColor: "#fff",
+        color: "#495057",
+    },
+};
 useEffect(() => {
     fetchServiceRequests();
 }, [currentPage, rowsPerPage]);
@@ -326,132 +344,295 @@ useEffect(() => {
                         </Button>
                     </Modal.Footer> */}
                 {/* </Modal> */}
-                <Modal show={showDetails} onHide={() => setShowDetails(false)} size="lg">
-                    <Modal.Header closeButton>
-                        <Modal.Title>Complaint Details</Modal.Title>
-                    </Modal.Header>
-                    <Modal.Body className="bg-white">
-                        {selectedRequest && (
-                            <div className="p-2">
+ <Modal
+    show={showDetails}
+    onHide={() => setShowDetails(false)}
+    size="lg"
+    centered
+>
+    <Modal.Header closeButton className="border-0 pb-0">
+        <Modal.Title className="fw-bold">
+            Complaint Details
+        </Modal.Title>
+    </Modal.Header>
 
-                                {/* Header strip */}
-                                <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                                    <div>
-                                        <h6 className="mb-0 fw-bold">Complaint Details</h6>
-                                        <small className="text-muted">
-                                            {selectedRequest.complaint_id}
-                                        </small>
-                                    </div>
+    <Modal.Body className="px-4 pb-4">
+        {selectedRequest && (
+            <div
+                style={{
+                    border: "1px solid #dee2e6",
+                    borderRadius: "6px",
+                    overflow: "hidden",
+                }}
+            >
+                <table
+                    className="w-100"
+                    style={{
+                        borderCollapse: "collapse",
+                    }}
+                >
+                    <tbody>
 
+                        {/* Complaint ID */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Complaint ID
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.complaint_id || "N/A"}
+                            </td>
+                        </tr>
+
+                        {/* Department & Institution */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Department & Institution
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.department?.name || "N/A"} -{" "}
+                                {selectedRequest.institution?.name || "N/A"}
+                            </td>
+                        </tr>
+
+                        {/* Complainted By */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Complainted By
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                <div className="fw-semibold">
+                                    {selectedRequest.complainted_by?.name || "N/A"}
+                                </div>
+
+                                <div
+                                    style={{
+                                        fontSize: "13px",
+                                        color: "#6c757d",
+                                        marginTop: "4px",
+                                    }}
+                                >
+                                    📞{" "}
+                                    {selectedRequest.complainted_by?.mobile_number || "N/A"}
+                                </div>
+                            </td>
+                        </tr>
+
+                        {/* Complaint */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Complaint
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.issue_complaint?.name || "N/A"}
+                            </td>
+                        </tr>
+
+                        {/* Type of Issue */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Type of Issue
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.type_of_issue?.name || "N/A"}
+                            </td>
+                        </tr>
+
+                        {/* Maintenance Sub Location */}
+                        {selectedRequest.type_of_issue?.name === "Maintenance" && (
+                            <tr>
+                                <td style={styles.labelCell}>
+                                    Maintenance Sub Location
+                                </td>
+
+                                <td style={styles.valueCell}>
+                                    {selectedRequest.Maintenance_sub_loc?.name || "N/A"}
+                                </td>
+                            </tr>
+                        )}
+
+                        {/* Category */}
+                        {selectedRequest.type_of_issue?.name === "Maintenance" && (
+                            <tr>
+                                <td style={styles.labelCell}>
+                                    Category
+                                </td>
+
+                                <td style={styles.valueCell}>
+                                    {selectedRequest.category || "N/A"}
+                                </td>
+                            </tr>
+                        )}
+
+                        {/* Priority */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Priority
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.priority ? (
                                     <span
-                                        className={`px-3 py-1 rounded-pill text-white small ${selectedRequest.status === "Completed"
-                                            ? "bg-success"
-                                            : selectedRequest.status === "Pending"
+                                        className={`badge ${
+                                            selectedRequest.priority === "Emergency"
                                                 ? "bg-danger"
-                                                : selectedRequest.status === "In Progress"
-                                                    ? "bg-primary"
-                                                    : "bg-secondary"
-                                            }`}
+                                                : selectedRequest.priority === "Medium"
+                                                ? "bg-warning text-dark"
+                                                : "bg-success"
+                                        }`}
+                                    >
+                                        {selectedRequest.priority}
+                                    </span>
+                                ) : (
+                                    "N/A"
+                                )}
+                            </td>
+                        </tr>
+
+                        {/* Status */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Status
+                            </td>
+
+                            <td style={styles.valueCell}>
+                                {selectedRequest.status ? (
+                                    <span
+                                        style={{
+                                            color:
+                                                selectedRequest.status === "Completed"
+                                                    ? "green"
+                                                    : selectedRequest.status === "Pending"
+                                                    ? "red"
+                                                    : "#0d6efd",
+                                            fontWeight: "600",
+                                        }}
                                     >
                                         {selectedRequest.status}
                                     </span>
-                                </div>
+                                ) : (
+                                    "N/A"
+                                )}
+                            </td>
+                        </tr>
 
-                                {/* GRID */}
-                                <div className="row g-4">
+                        {/* Created Date */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Created Date & Time
+                            </td>
 
-                                    {/* LEFT COLUMN */}
-                                    <div className="col-md-6">
+                            <td style={styles.valueCell}>
+                                {selectedRequest.date
+                                    ? new Date(selectedRequest.date).toLocaleString()
+                                    : "N/A"}
+                            </td>
+                        </tr>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Date Created</div>
-                                            <div className="fw-semibold">
-                                                {new Date(selectedRequest.date).toLocaleString()}
-                                            </div>
-                                        </div>
+                        {/* Attend Date */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Attend Date & Time
+                            </td>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Institution</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.institution?.name || "N/A"}
-                                            </div>
-                                        </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.attend_date
+                                    ? new Date(
+                                          selectedRequest.attend_date
+                                      ).toLocaleString()
+                                    : "N/A"}
+                            </td>
+                        </tr>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Department</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.department?.name || "N/A"}
-                                            </div>
-                                        </div>
+                        {/* Attended By */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Attended By
+                            </td>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Type</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.type_of_issue?.name || "N/A"}
-                                            </div>
-                                        </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.resolved_by?.name || "N/A"}
+                            </td>
+                        </tr>
 
-                                    </div>
+                        {/* Resolved Date */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Resolved Date & Time
+                            </td>
 
-                                    {/* RIGHT COLUMN */}
-                                    <div className="col-md-6">
+                            <td style={styles.valueCell}>
+                                {selectedRequest.resolved_date
+                                    ? new Date(
+                                          selectedRequest.resolved_date
+                                      ).toLocaleString()
+                                    : "N/A"}
+                            </td>
+                        </tr>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Issue</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.issue_complaint?.name}
-                                            </div>
-                                        </div>
+                        {/* Delay Reason */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Delay Reason
+                            </td>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Resolved By</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.resolved_by?.name || "N/A"}
-                                            </div>
-                                        </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.delay_reason || "N/A"}
+                            </td>
+                        </tr>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Resolved Date</div>
-                                            <div className="fw-semibold">
-                                                {selectedRequest.resolved_date
-                                                    ? new Date(selectedRequest.resolved_date).toLocaleString()
-                                                    : "N/A"}
-                                            </div>
-                                        </div>
+                        {/* Remark */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Remark
+                            </td>
 
-                                    </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.remark || "N/A"}
+                            </td>
+                        </tr>
 
-                                    {/* FULL WIDTH SECTIONS */}
-                                    <div className="col-12">
-                                        <hr />
+                        {/* Notes */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Notes
+                            </td>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Notes</div>
-                                            <div className="p-2 bg-light rounded">
-                                                {selectedRequest.notes || "No notes"}
-                                            </div>
-                                        </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.notes || "N/A"}
+                            </td>
+                        </tr>
 
-                                        <div className="mb-3">
-                                            <div className="text-muted small">Completed Note</div>
-                                            <div className="p-2 bg-light rounded">
-                                                {selectedRequest.completed_note || "N/A"}
-                                            </div>
-                                        </div>
+                        {/* Completed Note */}
+                        <tr>
+                            <td style={styles.labelCell}>
+                                Completed Note
+                            </td>
 
-                                    </div>
+                            <td style={styles.valueCell}>
+                                {selectedRequest.completed_note || "N/A"}
+                            </td>
+                        </tr>
 
-                                </div>
-                            </div>
-                        )}
-                    </Modal.Body>
+                    </tbody>
+                </table>
+            </div>
+        )}
+    </Modal.Body>
 
-                    <Modal.Footer>
-                        <Button variant="secondary" onClick={() => setShowDetails(false)}>
-                            Close
-                        </Button>
-                    </Modal.Footer>
-                </Modal>
+    <Modal.Footer className="border-0 pt-0">
+        <Button
+            variant="secondary"
+            onClick={() => setShowDetails(false)}
+        >
+            Close
+        </Button>
+    </Modal.Footer>
+</Modal>
                 {/* Pagination Controls */}
            <div className="d-flex justify-content-between align-items-center mt-3">
 

@@ -41,7 +41,7 @@ const CreateComplaints = () => {
     category: "",
     location: "",
     subLocation: "",
-    description: "",
+    notes: "",
     phoneNumber: "",
     priority: "",
   });
@@ -207,7 +207,7 @@ if (userRole !== "Tech Support") {
       category: "",
       location: "",
       subLocation: "",
-      description: "",
+      notes: "",
       phoneNumber: "",
       priority: "",
     });
@@ -225,7 +225,7 @@ if (userRole !== "Tech Support") {
       category: formData.category,
       location: formData.location,
       sub_location: formData.subLocation,
-      description: formData.description,
+      notes: formData.notes,
       phone_number: formData.phoneNumber,
       priority: formData.priority,
       issue_complaint:formData.issue
@@ -474,14 +474,14 @@ if (userRole !== "Tech Support") {
             <Grid item xs={12}>
     <TextField
       label="Notes"
-      name="note"
+      name="notes"
       fullWidth
       multiline
       rows={3}
-      value={formData.note || ""}
+      value={formData.notes || ""}
       onChange={handleChange}
-      error={!!errors.note}
-      helperText={errors.note}
+      error={!!errors.notes}
+      helperText={errors.notes}
     />
   </Grid>
       
