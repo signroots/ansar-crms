@@ -34,29 +34,40 @@ function Home()
   const steps = ['Pending', 'In Progress', 'Waiting', 'Completed'];
   const navigate = useNavigate();
 
-  useEffect(() =>
-  {
-    const staff_id = localStorage.getItem('staff_id');
+useEffect(() => {
+  const staff_id = localStorage.getItem("staff_id");
+  const token = localStorage.getItem("access_token");
 
-    if (!staff_id)
-    {
-      console.error('Staff ID is not found in localStorage');
-      return;
-    }
+  if (!staff_id) {
+    console.error("Staff ID is not found in localStorage");
+    return;
+  }
 
-    // Fetch Requests
-    axios
-      .get(`${ BASE_URL }/api/sumbitted-request/list/`, { params: { staff_id } })
-      .then((response) => setRequests(response.data))
-      .catch((error) => console.error('Error fetching requests:', error));
+  if (!token) {
+    console.error("Access token is missing. Please login again.");
+    return;
+  }
 
-    // Fetch Complaints
-    axios
-      .get(`${ BASE_URL }/api/sumbitted-complaint/list/`, { params: { staff_id } })
-      .then((response) => setComplaints(response.data))
-      .catch((error) => console.error('Error fetching complaints:', error));
-  }, []);
+  const config = {
+    params: { staff_id },
+    headers: {
+      Authorization: `Bearer ${token}`, // ✅ THIS IS THE MAIN FIX
+    },
+  };
 
+  // ✅ Fetch Requests (FIXED URL + TOKEN)
+  axios
+    .get(`${BASE_URL}/api/sumbitted-request/list/`, config)
+    .then((response) => setRequests(response.data))
+    .catch((error) => console.error("Error fetching requests:", error));
+
+  // ✅ Fetch Complaints (FIXED URL + TOKEN)
+  axios
+    .get(`${BASE_URL}/api/sumbitted-complaint/list/`, config)
+    .then((response) => setComplaints(response.data))
+    .catch((error) => console.error("Error fetching complaints:", error));
+
+}, []);
   useEffect(() =>
   {
     // Update delayReason when selectedItem changes and has a delay_reason

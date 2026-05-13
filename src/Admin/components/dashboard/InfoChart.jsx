@@ -1,94 +1,154 @@
-import React, { useState, useEffect } from 'react';
-import { Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-import BASE_URL from '../../../utils/baseUrl';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import { Bar } from "react-chartjs-2";
 
-const infoChart = () =>
-{
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-  const [chartData, setChartData] = useState({});
+import BASE_URL from "../../../utils/baseUrl";
 
-  // Fetch monthly complaints and requests data
-  useEffect(() =>
-  {
-    const fetchChartData = async () =>
-    {
-      try
-      {
-        const response = await fetch(`${ BASE_URL }/api/monthly-complaints-requests/`);
-        const data = await response.json();
-        setChartData(data);  // Set the fetched data to state
-      } catch (error)
-      {
-        console.error("Error fetching chart data:", error);
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Tooltip,
+  Legend
+);
+
+function InfoChart({ type }) {
+
+  const [chartData, setChartData] =
+    useState({});
+
+  useEffect(() => {
+    fetchData();
+  }, [type]);
+
+  const fetchData = async () => {
+
+    try {
+
+      const response = await axios.get(
+        `${BASE_URL}/api/pie_chart_monthly-complaints-requests/`
+      );
+
+      if (type === "complaints") {
+
+        setChartData(
+          response.data.complaints_status_wise
+        );
+
+      } else {
+
+        setChartData(
+          response.data.requests_status_wise
+        );
       }
-    };
 
-    fetchChartData();
-  }, []);
+    } catch (error) {
 
-  // Static month names (X-axis labels)
+      console.log(error);
+
+    }
+  };
+
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
-  // Prepare data for the chart
-  const data = {
-    labels: months, // Static month names
-    datasets: [
-      {
-        label: "Complaints",
-        data: chartData.complaints || [],
-        backgroundColor: '#45afd7',
-        borderColor: '#0075a1',
-        borderWidth: 1,
-      },
-      {
-        label: "Requests",
-        data: chartData.requests || [],
-        backgroundColor: '#f4b400',
-        borderColor: '#c48800',
-        borderWidth: 1,
-      },
-    ],
-  };
+  const totalCounts = months.map((month) => {
 
-  const options = {
-    responsive: true,
-    plugins: {
-      title: {
-        display: true,
-        text: 'Monthly Complaints vs Requests',
-      },
-      tooltip: {
-        enabled: true,
-      },
-    },
-    scales: {
-      y: {
-        beginAtZero: true,
-      },
-    },
-  };
+    const monthData = chartData[month];
+
+    if (!monthData) return 0;
+
+    return Object.values(monthData)
+      .reduce((a, b) => a + b, 0);
+
+  });
+
+  const completedCounts = months.map(
+    (month) => {
+      return chartData[month]?.Completed || 0;
+    }
+  );
 
   return (
+
     <div
       style={{
-        width: '100%',
-        margin: '0 auto',
-        height: '100%',
-        borderRadius: '1rem',
-        backgroundColor: 'white',
-        padding: '20px',
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      }}    >
-      <h5 style={{ textAlign: 'left', color: 'black' }}>{new Date().getFullYear()} Statics</h5>
-      <Bar data={data} options={options} height={88} />
+        background: "#fff",
+        borderRadius: "15px",
+        padding: "20px",
+        boxShadow:
+          "0 2px 10px rgba(0,0,0,0.08)",
+      }}
+    >
+
+      <h2 style={{ marginBottom: "20px" }}>
+
+        {type === "complaints"
+          ? "Complaints"
+          : "Requests"}
+
+      </h2>
+
+      <div style={{ height: "350px" }}>
+
+        <Bar
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+          }}
+
+          data={{
+            labels: months,
+
+            datasets: [
+              {
+                label: "Count",
+
+                data: totalCounts,
+
+                backgroundColor:
+                  type === "complaints"
+                    ? "#2196f3"
+                    : "#f4d03f",
+              },
+
+              {
+                label: "Completed",
+
+                data: completedCounts,
+
+                backgroundColor: "#4caf50",
+              },
+            ],
+          }}
+        />
+
+      </div>
+
     </div>
   );
-};
+}
 
-export default infoChart;
+export default InfoChart;

@@ -1,307 +1,504 @@
-import React, { useState, useEffect } from 'react';
-import
-    {
-        TextField, Select, MenuItem, Button, FormControl, InputLabel,
-        Typography, Box, Modal, ThemeProvider, createTheme, FormHelperText
-    } from '@mui/material';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import {
+  TextField,
+  Select,
+  MenuItem,
+  Button,
+  FormControl,
+  InputLabel,
+  Typography,
+  Box,
+  Modal,
+  ThemeProvider,
+  createTheme,
+  FormHelperText,
+  Grid,
+} from "@mui/material";
+import axios from "axios";
 import { toast } from "react-toastify";
-import BASE_URL from '../../../utils/baseUrl';
+import BASE_URL from "../../../utils/baseUrl";
 import CloseIcon from "@mui/icons-material/Close";
 
+// ================= API =================
+const getAccessToken = () => localStorage.getItem("access_token");
 
-const getAccessToken = () => localStorage.getItem('admin_access_token');
-const getRefreshToken = () => localStorage.getItem('admin_refresh_token');
-
-const refreshToken = async () =>
-{
-    try
-    {
-        const refresh_token = getRefreshToken();
-        if (!refresh_token)
-        {
-            window.location.href = "/admin/login";
-            return null;
-        }
-        const response = await axios.post(`${ BASE_URL }/api/token/refresh/`, { refresh: refresh_token });
-
-        if (response.status === 200)
-        {
-            const newAccessToken = response.data.access;
-            localStorage.setItem('admin_access_token', newAccessToken);
-            return newAccessToken;
-        }
-    } catch (error)
-    {
-        localStorage.removeItem('admin_access_token');
-        localStorage.removeItem('admin_refresh_token');
-        window.location.href = "/admin/login";
-        return null;
-    }
+const apiRequest = async (method, url, data = null) => {
+  const token = getAccessToken();
+  return axios({
+    method,
+    url: `${BASE_URL}${url}`,
+    data,
+    headers: { Authorization: `Bearer ${token}` },
+  });
 };
 
-const apiRequest = async (method, url, data = null, retry = true) =>
-{
-    let access_token = getAccessToken();
-    try
-    {
-        const response = await axios({
-            method,
-            url: `${ BASE_URL }${ url }`,
-            data,
-            headers: { Authorization: `Bearer ${ access_token }` },
-        });
-        return response;
-    } catch (error)
-    {
-        if (error.response && error.response.status === 401 && retry)
-        {
-            access_token = await refreshToken();
-            if (access_token)
-            {
-                return apiRequest(method, url, data, false);
-            }
-        }
-        throw error;
-    }
+// ================= COMPONENT =================
+const CreateComplaints = () => {
+  const [formData, setFormData] = useState({
+    staffId: "",
+    complaintType: "",
+    issue: "", 
+    category: "",
+    location: "",
+    subLocation: "",
+    description: "",
+    phoneNumber: "",
+    priority: "",
+  });
+const [userRole, setUserRole] = useState("");
+  const [staffIds, setStaffIds] = useState([]);
+  const [openModal, setOpenModal] = useState(false);
+  const [errors, setErrors] = useState({});
+const [issueTypes, setIssueTypes] = useState([]);
+const [issues, setIssues] = useState([]);
+const [institutions, setInstitutions] = useState([]);
+const [complaints, setComplaints] = useState([]);
+
+const fetchComplaints = async () => {
+  const res = await apiRequest("GET", "/api/complaints-list/");
+  setComplaints(res.data || []);
 };
 
-const CreateComplaints = () =>
-{
-    const [formData, setFormData] = useState({
-        typeOfIssue: '',
-        issue: '',
-        notes: '',
-        staffId: '',
+
+const [subLocations, setSubLocations] = useState([]);
+  useEffect(() => {
+    apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead")
+      .then((res) => setStaffIds(res.data.staff_ids || []))
+      .catch(() => setStaffIds([]));
+  }, []);
+useEffect(() => {
+  apiRequest("GET", "/api/institutions/")
+    .then((res) => setInstitutions(res.data || []))
+    .catch(() => setInstitutions([]));
+}, []);
+  // ================= HANDLER =================
+const handleChange = async (e) => {
+  const { name, value } = e.target;
+
+  // ✅ STAFF → autofill phone
+  if (name === "staffId") {
+    const selectedStaff = staffIds.find((s) => s.id === value);
+
+    setFormData({
+      ...formData,
+      staffId: value,
+      phoneNumber: selectedStaff?.phone || "",
     });
-    const [typesOfIssue, setTypesOfIssue] = useState([]);
-    const [issues, setIssues] = useState([]);
-    const [staffIds, setStaffIds] = useState([]);
-    const [openModal, setOpenModal] = useState(false);
-    const [errors, setErrors] = useState({});
+  }
 
-    useEffect(() =>
-    {
-        apiRequest("GET", "/api/types-of-issue/")
-            .then((response) => setTypesOfIssue(response.data))
-            .catch(() => setTypesOfIssue([]));
+  // ✅ TYPE → load issues
+  else if (name === "complaintType") {
+    const selectedType = issueTypes.find((t) => t.id === value);
 
-        apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead")
-            .then((response) => setStaffIds(response.data.staff_ids || []))
-            .catch(() => setStaffIds([]));
-    }, []);
-
-    // Function to close modal and refresh data
-    // const handleCloseModal = () =>
-    // {
-    //     setOpenModal(false);  // Close modal
-    //     fetchUsers();         // Fetch updated users from API
-    // };
-
-    const handleTypeOfIssueChange = async (e) =>
-    {
-        const typeOfIssueId = e.target.value;
-        setFormData({ ...formData, typeOfIssue: typeOfIssueId, issue: '' });
-        setErrors({ ...errors, typeOfIssue: '' });
-
-        try
-        {
-            const response = await apiRequest("GET", `/api/issues/${ typeOfIssueId }/`);
-            setIssues(response.data);
-        } catch
-        {
-            setIssues([]);
-        }
-    };
-
-    const handleInputChange = (e) =>
-    {
-        const { name, value } = e.target;
-        setFormData((prevData) => ({
-            ...prevData,
-            [name]: value,
-        }));
-        setErrors({ ...errors, [name]: '' });
-    };
-
-    const validateForm = () =>
-    {
-        let newErrors = {};
-        if (!formData.staffId) newErrors.staffId = "Staff ID is required";
-        if (!formData.typeOfIssue) newErrors.typeOfIssue = "Type of complaint is required";
-        if (!formData.issue) newErrors.issue = "Complaint is required";
-        if (!formData.notes) newErrors.notes = "Notes cannot be empty";
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async (e) =>
-    {
-        console.log("Submitting complaint...");
-        e.preventDefault();
-
-        if (!validateForm()) return;
-
-        const payload = {
-            staff_id: formData.staffId,
-            issue_complaint: formData.issue,
-            notes: formData.notes,
-            type_of_issue: formData.typeOfIssue,
-            created_by: "Admin"
-        };
-
-        try
-        {
-            const response = await apiRequest("POST", "/api/complaints/submit/", payload);
-
-            if (response.status === 201)
-            {
-                toast.success("Submitted successfully");
-                setFormData({
-                    typeOfRequest: '',
-                    allRequest: '',
-                    notes: '',
-                    staffId: '',
-                    program_name: '',
-                    program_date: '',
-                    program_time: '',
-                });
-                setOpenModal(false);
-            }
-            else
-                {
-                toast.warning("Failed to submit");
-            }
-             
-        
-        }catch (error)
-        {
-            console.error("Submission Error:", error.response ? error.response.data : error.message);
-            toast.error(`Error: ${ error.response?.data?.message || "Failed to submit" }`);
-        }
-    };
-
-    const customTheme = createTheme({
-        palette: {
-            primary: {
-                main: "#877bdc",
-            },
-        },
+    setFormData({
+      ...formData,
+      complaintType: value,
+      complaintTypeName: selectedType?.name || "",
+      issue: "",
     });
 
-    return (
-        <ThemeProvider theme={customTheme}>
-            <Button variant="contained" color="primary" onClick={() => setOpenModal(true)}>
-                Add
-            </Button>
+    try {
+      // const res = await apiRequest("GET", `/api/issues/${value}/`);
+      // setIssues(res.data || []);
+    } catch {
+      setIssues([]);
+    }
+  }
 
-            <Modal open={openModal} onClose={() => setOpenModal(false)}>
-                <Box
-                    sx={{
-                        position: "absolute",
-                        top: "50%",
-                        left: "50%",
-                        transform: "translate(-50%, -50%)",
-                        bgcolor: "background.paper",
-                        boxShadow: 24,
-                        p: 4,
-                        width: 500,
-                        borderRadius: 2,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 2,
-                    }}
-                    
+  // ✅ LOCATION → load sublocations 🔥🔥🔥
+  else if (name === "location") {
+    setFormData({
+      ...formData,
+      location: value,
+      subLocation: "", // reset sublocation
+    });
+
+    try {
+      const res = await apiRequest("GET", `/api/sublocation/${value}/`);
+      setSubLocations(res.data || []);
+    } catch {
+      setSubLocations([]);
+    }
+  }
+
+  // ✅ DEFAULT
+  else {
+    setFormData({ ...formData, [name]: value });
+  }
+
+  setErrors({ ...errors, [name]: "" });
+};
+useEffect(() => {
+  apiRequest("GET", "/api/types-of-issue/")
+    .then((res) => {
+      setIssueTypes(res.data || []);
+    })
+    .catch(() => setIssueTypes([]));
+}, []);
+useEffect(() => {
+  const role = localStorage.getItem("user_role") || localStorage.getItem("role");
+  setUserRole(role);
+}, []);
+useEffect(() => {
+  apiRequest("GET", "/api/institutions/")
+    .then((res) => {
+      setInstitutions(res.data || []);
+    })
+    .catch(() => setInstitutions([]));
+}, []);
+useEffect(() => {
+  const storedTypeId = localStorage.getItem("type_of_issue_id");
+  const storedTypeName = localStorage.getItem("type_of_issue");
+
+  if (userRole === "Tech Support" && storedTypeId) {
+    setFormData((prev) => ({
+      ...prev,
+      complaintType: storedTypeId,
+      complaintTypeName: storedTypeName,
+    }));
+  }
+}, [userRole]);
+useEffect(() => {
+  if (!formData.complaintType) return;
+
+  const fetchIssues = async () => {
+    try {
+      const res = await apiRequest(
+        "GET",
+        `/api/issues/${formData.complaintType}/`
+      );
+      setIssues(res.data || []);
+    } catch (err) {
+      console.error("Issue fetch error:", err);
+      setIssues([]);
+    }
+  };
+
+  fetchIssues();
+}, [formData.complaintType]);
+  // ================= VALIDATION =================
+ const validateForm = () => {
+  let err = {};
+
+  if (!formData.staffId) err.staffId = "Staff ID is required";
+  if (!formData.complaintType) err.complaintType = "Required";
+  if (!formData.phoneNumber) err.phoneNumber = "Required";
+if (userRole !== "Tech Support") {
+  if (!formData.complaintType) err.complaintType = "Required";
+}
+  if (formData.complaintTypeName === "Maintenance") {
+    // if (!formData.category) err.category = "Required";
+    if (!formData.location) err.location = "Required";
+    if (!formData.subLocation) err.subLocation = "Required";
+    if (!formData.priority) err.priority = "Required"; // ✅ moved here
+  }
+
+  setErrors(err);
+  return Object.keys(err).length === 0;
+};
+
+  const resetForm = () => {
+    setFormData({
+      staffId: "",
+      complaint_type:
+    userRole === "Tech Support"
+      ? localStorage.getItem("type_of_issue_id")
+      : formData.complaintType,
+      category: "",
+      location: "",
+      subLocation: "",
+      description: "",
+      phoneNumber: "",
+      priority: "",
+    });
+
+    setErrors({});
+  };
+  // ================= SUBMIT =================
+  const handleSubmit = async () => {
+    console.log("Submit clicked");
+    if (!validateForm()) return;
+
+    const payload = {
+      staff_id: formData.staffId,
+      complaint_type: formData.complaintType,
+      category: formData.category,
+      location: formData.location,
+      sub_location: formData.subLocation,
+      description: formData.description,
+      phone_number: formData.phoneNumber,
+      priority: formData.priority,
+      issue_complaint:formData.issue
+      // created_by: formData.created_by
+    };
+    console.log("Payload ready");
+    try {
+  await apiRequest("POST", "/api/complaints/submit/", payload);
+
+  toast.success("Complaint submitted successfully");
+
+  setOpenModal(false);   // ✅ now this will execute
+  resetForm();           // ✅ good practice
+
+} catch (error) {
+  console.error(error);  // ✅ always log error
+  toast.error("Submission failed");
+}
+  };
+  useEffect(() => {
+  fetchComplaints();
+}, []);
+
+  // ================= THEME =================
+  const theme = createTheme({
+    palette: {
+      primary: { main: "#6c63ff" },
+    },
+  });
+
+  // ================= UI =================
+  return (
+    <ThemeProvider theme={theme}>
+      <Button
+  variant="contained"
+  onClick={() => {
+    resetForm();
+    setOpenModal(true);
+  }}
+  sx={{
+    background: "linear-gradient(90deg, #3f6ad8, #5a8dee)",
+    color: "#fff",
+    fontWeight: 600,
+    padding: "8px 18px",
+    borderRadius: "6px",
+    textTransform: "none",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+    "&:hover": {
+      background: "linear-gradient(90deg, #355ec9, #4a7de0)",
+    }
+  }}
+>
+  CREATE COMPLAINT
+</Button>
+
+      <Modal
+        open={openModal}
+        onClose={() => {
+          setOpenModal(false);
+          resetForm();
+        }}
+      >
+        <Box
+          sx={{
+            width: 650,
+            bgcolor: "#fff",
+            p: 4,
+            mx: "auto",
+            mt: "5%",
+            borderRadius: 3,
+            boxShadow: 24,
+            position: "relative",
+          }}
+        >
+          <CloseIcon
+            onClick={() => {
+              setOpenModal(false);
+              resetForm();
+            }}
+            sx={{
+              position: "absolute",
+              right: 12,
+              top: 12,
+              cursor: "pointer",
+            }}
+          />
+
+          <Typography variant="h6" mb={3} fontWeight="bold">
+            Create Complaint
+          </Typography>
+
+          <Grid container spacing={2}>
+            {/* STAFF */}
+            <Grid item xs={12}>
+              <FormControl fullWidth error={!!errors.staffId}>
+                <InputLabel>Staff ID</InputLabel>
+                <Select
+                  name="staffId"
+                  value={formData.staffId}
+                  onChange={handleChange}
                 >
-                    <CloseIcon
-                        onClick={() => setOpenModal(false)}
-                        sx={{
-                            position: "absolute",
-                            top: 8,
-                            right: 8,
-                            cursor: "pointer",
-                            color: "grey.600",
-                            "&:hover": {
-                                color: "red",
-                            },
-                        }}
-                    />
-                    <Typography variant="h6">New Complaints</Typography>
+                  {staffIds.map((s) => (
+                    <MenuItem key={s.id} value={s.id}>
+                      {s.id}
+                    </MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>{errors.staffId}</FormHelperText>
+              </FormControl>
+            </Grid>
 
-                    <FormControl fullWidth error={!!errors.staffId}>
-                        <InputLabel>Select Staff</InputLabel>
-                        <Select
-                            name="staffId"
-                            value={formData.staffId}
-                            onChange={(e) => setFormData({ ...formData, staffId: e.target.value })}
-                            displayEmpty
-                            sx={{ marginBottom: 2 }}
-                        >
-                        <MenuItem value="" disabled>Select Staff ID</MenuItem>
-                            {staffIds.map((staff) => (
-                            <MenuItem key={staff.id} value={staff.id}>
-                            {staff.id}
-                            </MenuItem>
-                            ))}
-                            </Select>
-                        <FormHelperText>{errors.staffId}</FormHelperText>
-                    </FormControl>
-
-                    <FormControl fullWidth error={!!errors.typeOfIssue}>
-                        <InputLabel>Select Type of Complaint</InputLabel>
-                        <Select
-                            name="typeOfIssue"
-                            value={formData.typeOfIssue}
-                            onChange={handleTypeOfIssueChange}
-                        >
-                            {typesOfIssue.map((type) => (
-                                <MenuItem key={type.id} value={type.id}>{type.name}</MenuItem>
-                            ))}
-                        </Select>
-                        <FormHelperText>{errors.typeOfIssue}</FormHelperText>
-                    </FormControl>
-
-                    <FormControl fullWidth error={!!errors.issue}>
-                        <InputLabel>Select Complaint</InputLabel>
-                        <Select
-                            name="issue"
-                            value={formData.issue}
-                            onChange={handleInputChange}
-                            disabled={!formData.typeOfIssue}
-                        >
-                            {issues.map((issue) => (
-                                <MenuItem key={issue.id} value={issue.id}>{issue.name}</MenuItem>
-                            ))}
-                        </Select>
-                        <FormHelperText>{errors.issue}</FormHelperText>
-                    </FormControl>
-
-                    <TextField
-                        name="notes"
-                        label="Notes"
-                        value={formData.notes}
-                        onChange={handleInputChange}
-                        multiline
-                        rows={3}
-                        fullWidth
-                        error={!!errors.notes}
-                        helperText={errors.notes}
-                    />
-
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        onClick={handleSubmit}
-                        // disabled={!formData.staffId || !formData.typeOfIssue || !formData.issue || !formData.notes}
+            {/* TYPE */}
+            {userRole !== "Tech Support" && (
+  <Grid item xs={12}>
+    <FormControl fullWidth error={!!errors.complaintType}>
+      <InputLabel>Type of Complaint</InputLabel>
+      <Select
+        name="complaintType"
+        value={formData.complaintType}
+        onChange={handleChange}
+      >
+        {issueTypes.map((type) => (
+          <MenuItem key={type.id} value={type.id}>
+            {type.name}
+          </MenuItem>
+        ))}
+      </Select>
+      <FormHelperText>{errors.complaintType}</FormHelperText>
+    </FormControl>
+  </Grid>
+)}
+<Grid item xs={12}>
+  <FormControl fullWidth>
+    <InputLabel>Category</InputLabel>
+    <Select
+      name="issue"
+      value={formData.issue || ""}
+      onChange={handleChange}
+    >
+      {issues.map((item) => (
+        <MenuItem key={item.id} value={item.id}>
+          {item.name}
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+</Grid>
+<Grid item xs={12}>
+              <FormControl fullWidth error={!!errors.priority}>
+                <InputLabel>Priority</InputLabel>
+                <Select
+                  name="priority"
+                  value={formData.priority}
+                  onChange={handleChange}
+                >
+                  <MenuItem value="Low">Low</MenuItem>
+                  <MenuItem value="Medium">Medium</MenuItem>
+                  <MenuItem value="Emergency">Emergency</MenuItem>
+                </Select>
+                <FormHelperText>{errors.priority}</FormHelperText>
+              </FormControl>
+            </Grid>
+            {/* CONDITIONAL FIELDS */}
+            {formData.complaintTypeName === "Maintenance" && (
+              <>
+              
+                {/* <Grid item xs={12}>
+                  <FormControl fullWidth error={!!errors.category}>
+                    <InputLabel>Category</InputLabel>
+                    <Select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
                     >
-                        Submit
-                    </Button>
-                </Box>
-            </Modal>
-        </ThemeProvider>
-    );
+                      <MenuItem value="Civil Repairs">Civil Repairs</MenuItem>
+                      <MenuItem value="Cleaning">Cleaning</MenuItem>
+                      <MenuItem value="Others">Others</MenuItem>
+                    </Select>
+                    <FormHelperText>{errors.category}</FormHelperText>
+                  </FormControl>
+                </Grid> */}
+
+     <Grid item xs={6}>
+  <FormControl fullWidth error={!!errors.location}>
+    <InputLabel>Location</InputLabel>
+    <Select
+      name="location"
+      value={formData.location}
+      onChange={handleChange}
+    >
+      {institutions.map((inst) => (
+        <MenuItem key={inst.id} value={inst.id}>
+          {inst.name}
+        </MenuItem>
+      ))}
+    </Select>
+    <FormHelperText>{errors.location}</FormHelperText>
+  </FormControl>
+</Grid>
+<Grid item xs={6}>
+  <FormControl fullWidth error={!!errors.subLocation}>
+    <InputLabel>Sub Location</InputLabel>
+    <Select
+      name="subLocation"
+      value={formData.subLocation}
+      onChange={handleChange}
+    >
+      {subLocations.map((sub) => (
+        <MenuItem key={sub.id} value={sub.id}>
+          {sub.name}
+        </MenuItem>
+      ))}
+    </Select>
+    <FormHelperText>{errors.subLocation}</FormHelperText>
+  </FormControl>
+</Grid>
+                {/* <Grid item xs={12}>
+                  <TextField
+                    label="Description"
+                    name="description"
+                    multiline
+                    rows={3}
+                    fullWidth
+                    value={formData.description}
+                    onChange={handleChange}
+                  />
+                </Grid> */}
+                      {/* PRIORITY */}
+            
+              </>
+            )}
+
+            {/* PHONE */}
+            <Grid item xs={12}>
+              <TextField
+                label="Phone Number"
+                name="phoneNumber"
+                fullWidth
+                value={formData.phoneNumber}
+                onChange={handleChange}
+                error={!!errors.phoneNumber}
+                helperText={errors.phoneNumber}
+              />
+            </Grid>
+      {/* Notes */}
+            <Grid item xs={12}>
+    <TextField
+      label="Notes"
+      name="note"
+      fullWidth
+      multiline
+      rows={3}
+      value={formData.note || ""}
+      onChange={handleChange}
+      error={!!errors.note}
+      helperText={errors.note}
+    />
+  </Grid>
+      
+          </Grid>
+
+          <Button
+            variant="contained"
+            fullWidth
+            sx={{ mt: 3, py: 1.5 }}
+            onClick={handleSubmit}
+          >
+            Submit
+          </Button>
+        </Box>
+      </Modal>
+    </ThemeProvider>
+  );
 };
 
 export default CreateComplaints;

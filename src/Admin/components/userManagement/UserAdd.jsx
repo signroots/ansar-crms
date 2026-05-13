@@ -13,7 +13,7 @@ import axios from "axios";
 import BASE_URL from "../../../utils/baseUrl";
 import { toast } from "react-toastify";
 import CloseIcon from "@mui/icons-material/Close";
-
+import { Checkbox, FormControlLabel } from "@mui/material";
 const UserAdd = ({ open, handleClose, onUserAdded }) =>
 {
   const [formData, setFormData] = useState({
@@ -24,6 +24,7 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
     staff_id: "",
     role: "",
     section_for_staff: "",
+    is_admin: false,
   });
 
   const [departments, setDepartments] = useState([]);
@@ -31,6 +32,7 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
   const roles = ["Staff", "Tech Support","Teacher"];
   const [MobileNumberError, setMobileNumberError] = useState("");
   const [staffIdError, setStaffIdError] = useState("");
+  const [typesOfIssue, setTypesOfIssue] = useState([]);
   const [loading, setLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [formErrors, setFormErrors] = useState({
@@ -41,7 +43,18 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
     institution: false,
     section_for_staff: false,
     mobile_number: false,
+    is_admin: false,
+    
   });
+  const getAuthHeaders = () => {
+  const token = localStorage.getItem("access_token"); // ✅ FIXED
+
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
   const modalRef = useRef(); // Reference to the modal container
   // Detect clicks outside the modal
   useEffect(() =>
@@ -73,15 +86,37 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
   {
     event.stopPropagation(); // Prevent the event from propagating outside
   };
+useEffect(() => {
+  const fetchTypesOfIssue = async () => {
+    try {
+      const response = await axios.get(`${BASE_URL}/api/types-of-issue/`);
+      console.log("TYPE OF ISSUE RESPONSE:", response.data);
 
-  useEffect(() =>
-  {
-    // Fetch institutions
-    axios
-      .get(`${ BASE_URL }/api/institutions/`)
-      .then((response) => setInstitutions(response.data))
-      .catch((error) => console.error("Error fetching institutions:", error));
-  }, []);
+      // 🔥 TEMP FIX — force array
+      if (Array.isArray(response.data)) {
+        setTypesOfIssue(response.data);
+      } else if (Array.isArray(response.data.results)) {
+        setTypesOfIssue(response.data.results);
+      } else if (Array.isArray(response.data.data)) {
+        setTypesOfIssue(response.data.data);
+      } else {
+        setTypesOfIssue([]); // prevent crash
+      }
+
+    } catch (error) {
+      console.error("Error fetching types:", error);
+      setTypesOfIssue([]);
+    }
+  };
+
+  fetchTypesOfIssue();
+}, []);
+useEffect(() => {
+  axios
+    .get(`${BASE_URL}/api/institutions/`, getAuthHeaders())
+    .then((response) => setInstitutions(response.data))
+    .catch((error) => console.error("Error fetching institutions:", error));
+}, []);
 
   useEffect(() =>
   {
@@ -304,7 +339,7 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
       role: !formData.role,
       department: !formData.department && formData.role !== "Tech Support",
       institution: !formData.institution && formData.role !== "Tech Support",
-      section_for_staff: !formData.section_for_staff && formData.role === "Tech Support",
+      typesOfIssue: !formData.typeofissue && formData.role === "Tech Support",
       mobile_number: !formData.mobile_number,
     };
     setFormErrors(errors);
@@ -324,8 +359,13 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
       staff_id: formData.staff_id,
       institution_id: formData.role === "Tech Support" ? null : formData.institution,
       department_id: formData.role === "Tech Support" ? null : formData.department,
-      section_for_staff: formData.role === "Tech Support" ? formData.section_for_staff : null,
+      typeofissue_id: formData.role === "Tech Support" ? formData.typeofissue : null,
       mobile_number: formData.mobile_number,
+      is_admin:
+        formData.role === "Tech Support"
+          ? formData.is_admin
+          : false,   // non-tech support always false
+   
     };
 
     try
@@ -530,20 +570,39 @@ const UserAdd = ({ open, handleClose, onUserAdded }) =>
               fullWidth
               select
               label="Section"
-              name="section_for_staff"
-              value={formData.section_for_staff}
+              name="typeofissue"
+              value={formData.typeofissue}
               onChange={handleChange}
               variant="outlined"
               className="mb-3"
-              error={formErrors.section_for_staff} // Highlight red if error
-              helperText={formErrors.section_for_staff ? "This field is required" : ""}
+              error={formErrors.typeofissue}
+              helperText={formErrors.typeofissue ? "This field is required" : ""}
               required
             >
-              <MenuItem value="IT">IT</MenuItem>
-              <MenuItem value="Electrical & Maintanance">Electrical and Maintanance</MenuItem>
+              {typesOfIssue.map((issue) => (
+                <MenuItem key={issue.id} value={issue.id}>
+                  {issue.name}
+                </MenuItem>
+              ))}
             </TextField>
-          
           )}
+          {formData.role === "Tech Support" && (
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={formData.is_admin}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        is_admin: e.target.checked,
+                      })
+                    }
+                    color="primary"
+                  />
+                }
+                label="Is Admin"
+              />
+            )}
           <TextField
             fullWidth
             label="Mobile No"

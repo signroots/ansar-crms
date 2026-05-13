@@ -12,6 +12,9 @@ import FeedbackList from "./Admin/pages/Feedback";
 import StudentInfoPage from "./Admin/pages/StudentInfo";
 import AdminProtectedRoute from './Admin/routes/AdminProtectedRoute';
 import Layout from './Admin/components/layout/Layout';
+// import NotificationBell from "./components/NotificationBell";
+import TechAdminRoutes from "./TechAdmin/routes/TechAdminProtectedRoute";
+
 function App()
 {
 
@@ -19,12 +22,13 @@ function App()
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/landing" />} />
+        <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
         <Route path="/user/*" element={<UserRoutes />} />
         <Route path="/tech-support/*" element={<StaffRoutes />} />
+        <Route path="/tech-admin/*" element={<TechAdminRoutes />} />
         <Route path="*" element={<NotFound />} />
-        <Route path="/landing" element={<Landing />} />
+        <Route path="/login" element={<Landing />} />
         <Route
           path="/ansar/feedback-manage"
           element={
@@ -38,6 +42,7 @@ function App()
           }
         />
       </Routes>
+           
       <ToastContainer
         position='bottom-right'
       />

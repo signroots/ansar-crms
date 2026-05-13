@@ -1,0 +1,100 @@
+/* Remove default margin */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Full screen background */
+.login-page {
+  width: 100%;
+  height: 100vh;
+  background: url("/AnsarSchool.jpg") center center / cover no-repeat;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Blur overlay */
+.bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(6px);
+}
+
+/* Login card */
+.login-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 35px 30px;
+  width: 100%;
+  max-width: 420px;
+  border-radius: 14px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+  text-align: center;
+}
+
+/* Logo */
+.logo {
+  width: 80px;
+  height: auto;
+  margin-bottom: 10px;
+}
+
+/* Department text */
+.department {
+  margin: 0;
+  font-size: 25px;
+  color: #0c0c0c;
+}
+
+/* Inputs */
+.login-card input {
+  width: 100%;
+  padding: 12px 14px;
+  margin-top: 15px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  outline: none;
+  transition: 0.3s ease;
+}
+
+.login-card input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+/* Login Button */
+.login-btn {
+  width: 100%;
+  padding: 8px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #2563eb, #366af7);
+  color: white;
+  font-weight: 400;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.login-btn:hover {
+  background: linear-gradient(90deg, #1d4ed8, #1e40af);
+}
+
+/* Footer outside card */
+.page-footer {
+  position: absolute;
+  bottom: 12px;
+  padding-bottom: 180px;
+  text-align: center;
+  width: 100%;
+  font-weight: 500;
+  font-size: 13px;
+  color: white;
+  z-index: 2;
+}

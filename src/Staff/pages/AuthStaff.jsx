@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import { Container } from "react-bootstrap";
-import
-  {
-    Box,
-    Typography,
-    TextField,
-    IconButton,
-    InputAdornment,
-    Button,
-    ThemeProvider,
-  } from "@mui/material";
+import {
+Box,
+Typography,
+TextField,
+IconButton,
+InputAdornment,
+Button,
+ThemeProvider,
+} from "@mui/material";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import theme from "../../common/theme";
 import { toast } from "react-toastify";
@@ -17,8 +16,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import BASE_URL from "../../utils/baseUrl";
 
-function AuthStaff()
-{
+function AuthStaff() {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({ staffId: "", password: "" });
 
@@ -26,8 +24,7 @@ function AuthStaff()
 
   const navigate = useNavigate();
 
-  const handleChange = (e) =>
-  {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevData) => ({
       ...prevData,
@@ -35,40 +32,47 @@ function AuthStaff()
     }));
   };
 
-  const handleSubmit = async (e) =>
-  {
-    e.preventDefault();
-    try
-    {
-      const response = await axios.post(`${ BASE_URL }/api/userlogin/`, {
-        staff_id: formData.staffId,
-        mobile_number: formData.password,
-      });
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-      const user = response.data;
+  try {
+    const response = await axios.post(`${BASE_URL}/api/userlogin/`, {
+      username: formData.staffId,
+      mobile_number: formData.password,
+    });
 
-      if (user.role === "Department Head")
-      {
-        localStorage.setItem("user_access_token", response.data.access_token);
-        localStorage.setItem("staff_id", response.data.staff_id);
-        toast.success("Login successful!");
-        navigate("/user/user-home");
-      } else if (user.role === "Staff")
-      {
-        localStorage.setItem("ts_access_token", response.data.access_token);
-        localStorage.setItem("staff_id", response.data.staff_id);
-        toast.success("Login successful!");
-        navigate("/tech-support/tech-support-home");
-      } else
-      {
-        toast.error("Access denied. Invalid role.");
-      }
-    } catch (error)
-    {
-      console.error("Login error:", error.response?.data || error.message);
-      toast.error(error.response?.data?.error || "Login failed!");
+    const user = response.data;
+
+    console.log("LOGIN RESPONSE:", user); // 👈 IMPORTANT DEBUG
+
+    // ✅ ALWAYS STORE staff_id FIRST
+    if (user.staff_id) {
+      localStorage.setItem("staff_id", user.staff_id);
+      console.log("Saved staff_id:", user.staff_id);
+    } else {
+      console.error("staff_id NOT FOUND in response");
     }
-  };
+
+    // ✅ THEN ROLE CHECK
+    if (user.role === "Department Head") {
+      localStorage.setItem("user_access_token", user.access_token);
+      toast.success("Login successful!");
+      navigate("/user/user-home");
+
+    } else if (user.role === "Staff") {
+      localStorage.setItem("ts_access_token", user.access_token);
+      toast.success("Login successful!");
+      navigate("/tech-support/tech-support-home");
+
+    } else {
+      toast.error("Access denied. Invalid role.");
+    }
+
+  } catch (error) {
+    console.error("Login error:", error.response?.data || error.message);
+    toast.error(error.response?.data?.error || "Login failed!");
+  }
+};
 
   return (
     <ThemeProvider theme={theme}>

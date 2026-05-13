@@ -1,46 +1,164 @@
-import React from 'react';
-import { Doughnut } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import React, { useEffect, useState } from "react";
 
-// Register the necessary components for Chart.js
-ChartJS.register(ArcElement, Tooltip, Legend);
+import {
+  Doughnut
+} from "react-chartjs-2";
 
-const DoughnutChart = () => {
-  // Data for the doughnut chart
-  const data = {
-    labels: ["Purple", "Blue", "Yellow", "Green"], // Labels for the segments
-    datasets: [
-      {
-        data: [300, 300, 0, 0], // Data for each segment
-        backgroundColor: ["#ae9eed", "#33B5FF", "#FFEB33", "#33FF57"], // Segment colors
-        hoverBackgroundColor: ["#816a9d", "#2196F3", "#FFEB3B", "#4CAF50"], // Hover colors
-      },
-    ],
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import axios from "axios";
+
+import BASE_URL from "../../../utils/baseUrl";
+
+ChartJS.register(
+  ArcElement,
+  Tooltip,
+  Legend
+);
+
+function DoughnutChart({ type }) {
+
+  const [chartData, setChartData] =
+    useState({});
+
+  useEffect(() => {
+    fetchChartData();
+  }, [type]);
+
+  const fetchChartData = async () => {
+
+    try {
+
+      const response = await axios.get(
+        `${BASE_URL}/api/pie_chart_monthly-complaints-requests/`
+      );
+
+      if (type === "complaints") {
+
+        setChartData(
+          response.data.complaints_status_wise
+        );
+
+      } else {
+
+        setChartData(
+          response.data.requests_status_wise
+        );
+      }
+
+    } catch (error) {
+
+      console.log(error);
+
+    }
   };
 
-  // Options for the chart (optional customization)
-  const options = {
-    responsive: true,
-    plugins: {
-      tooltip: {
-        enabled: true, // Enable tooltips on hover
-      },
-      legend: {
-        position: 'top', // Position of the legend (can be 'top', 'left', 'bottom', 'right')
-        labels: {
-          boxWidth: 20, // Width of the box next to the label
-          padding: 15,  // Padding between the label and the chart
-        },
-      },
-    },
+  // =========================
+  // TOTALS
+  // =========================
+
+  const getTotals = (data) => {
+
+    const totals = {};
+
+    Object.values(data).forEach(
+      (monthData) => {
+
+        Object.entries(monthData)
+          .forEach(([status, count]) => {
+
+            totals[status] =
+              (totals[status] || 0)
+              + count;
+          });
+      }
+    );
+
+    return totals;
   };
+
+  const totals = getTotals(chartData);
 
   return (
-    <div style={{ width: '100%', margin: '0 auto',borderRadius:'1rem',backgroundColor:'white',padding:'1rem',boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)' }}>
-      <h5>Chart</h5>
-      <Doughnut data={data} options={options} />
+
+    <div
+      style={{
+        background: "#fff",
+        borderRadius: "15px",
+        padding: "20px",
+        boxShadow:
+          "0 2px 10px rgba(0,0,0,0.08)",
+        height: "100%",
+      }}
+    >
+
+      <h2
+        style={{
+          marginBottom: "20px",
+          fontWeight: "600",
+        }}
+      >
+
+        {type === "complaints"
+          ? "Complaints"
+          : "Requests"}
+
+      </h2>
+
+      <div
+        style={{
+          height: "320px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+
+        <Doughnut
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+          }}
+
+          data={{
+            labels:
+              Object.keys(totals),
+
+            datasets: [
+              {
+                data:
+                  Object.values(totals),
+
+                backgroundColor:
+                  type === "complaints"
+                    ? [
+                        "#4caf50",
+                        "#f44336",
+                        "#ff9800",
+                        "#2196f3",
+                      ]
+                    : [
+                        "#2196f3",
+                        "#9c27b0",
+                        "#ff9800",
+                        "#4caf50",
+                      ],
+
+                borderWidth: 1,
+              },
+            ],
+          }}
+        />
+
+      </div>
+
     </div>
   );
-};
+}
 
 export default DoughnutChart;

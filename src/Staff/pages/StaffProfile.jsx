@@ -38,7 +38,7 @@ function StaffProfile()
   const handleLogout = () =>
   {
     localStorage.removeItem('staff_id'); // Remove staff_id from storage
-    navigate('/user/user-login'); // Redirect to login page
+    navigate('/login'); // Redirect to login page
   };
 
   if (!user)

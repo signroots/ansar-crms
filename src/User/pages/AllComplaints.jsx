@@ -42,35 +42,37 @@ function AllComplaints()
 
     
 
-    useEffect(() =>
-    {
-        const staff_id = localStorage.getItem("staff_id");
+    useEffect(() => {
+    const staff_id = localStorage.getItem("staff_id");
+    const token = localStorage.getItem("access_token");
 
-        if (!staff_id)
-        {
-            console.error("Staff ID is not found in localStorage");
-            return;
-        }
+    console.log("Stored staff_id:", staff_id);
 
-        // Fetch service requests for the current user (no Authorization header)
-        axios
-            .get(`${ BASE_URL }/api/sumbitted-complaint/list/`, {
-                params: {
-                    staff_id: staff_id, // Send staff_id as a query parameter
-                },
-            })
-            .then((response) =>
-            {
-                setComplaints(response.data); // Store the fetched service requests in state
-            })
-            .catch((error) =>
-            {
-                console.error("Error fetching service requests:", error);
-                toast.error("Failed to load service requests.");
-            });
-    }, []);
+    if (!staff_id) {
+        console.error("Staff ID is not found in localStorage");
+        return;
+    }
 
+    if (!token) {
+        console.error("Access token is missing. Please login again.");
+        return;
+    }
 
+    axios
+        .get(`${BASE_URL}/api/sumbitted-complaint/list/?`, {
+            params: { staff_id },
+            headers: {
+                Authorization: `Bearer ${token}`, // ✅ THIS FIXES 401
+            },
+        })
+        .then((response) => {
+            console.log("API Response:", response.data);
+            setComplaints(response.data);
+        })
+        .catch((error) => {
+            console.error("Error fetching service requests:", error);
+        });
+}, []);
     const handleListClick = (request) =>
     {
         const stepIndex = Complaintssteps.indexOf(request.status);

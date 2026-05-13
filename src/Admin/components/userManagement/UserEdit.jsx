@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from "react";
-import
-  {
-    Modal,
-    Box,
-    TextField,
-    Button,
-    MenuItem,
-    ThemeProvider,
-    createTheme,
-  } from "@mui/material";
+import {
+  Modal,
+  Box,
+  TextField,
+  Button,
+  MenuItem,
+  ThemeProvider,
+  createTheme,
+} from "@mui/material";
 import axios from "axios";
 import BASE_URL from "../../../utils/baseUrl";
 import { toast } from "react-toastify";
 
-const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
-{
+const UserEdit = ({ open, handleClose, userId, onUpdate }) => {
   const [formData, setFormData] = useState({
     name: "",
     department: "",
@@ -41,105 +39,99 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
   const [MobileNumberError, setMobileNumberError] = useState("");
 
   const roles = ["Staff", "Tech Support"];
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("access_token"); // ✅ FIXED
 
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
+};
   // ✅ Function to fetch users and update state
-  const fetchUsers = async () =>
-  {
-    try
-    {
-      const response = await axios.get(`${ BASE_URL }/api/users/`);
-      setUsers(response.data);
-    } catch (error)
-    {
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/api/users/`,
+        getAuthHeaders()
+      );
+
+      setUsers(response.data.results)
+    } catch (error) {
       console.error("Error fetching users:", error);
     }
   };
-  const handleMobileChange = (e) =>
-  {
+  const handleMobileChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "mobile_number")
-    {
+    if (name === "mobile_number") {
       // Allow only digits and prevent more than 10 characters
-      if (/^\d*$/.test(value) && value.length <= 10)
-      {
+      if (/^\d*$/.test(value) && value.length <= 10) {
         setFormData((prev) => ({
           ...prev,
           [name]: value,
         }));
 
 
-        if (value.length === 10)
-        {
+        if (value.length === 10) {
           checkMobileNumberExists(value); // Check only when it's 10 digits
         }
-        else
-        {
+        else {
           setMobileNumberError(""); // Clear error if user modifies input
         }
       }
     }
   };
 
-  useEffect(() =>
-  {
-    fetchUsers(); // ✅ Fetch users when component loads
-  }, []);
-  const checkMobileNumberExists = async (MobileNumber) =>
-    {
-      try
-      {
-        const response = await axios.get(`${ BASE_URL }/api/check-mobile/`);
+  // useEffect(() => {
+  //   fetchUsers(); // ✅ Fetch users when component loads
+  // }, []);
   
-        if (response.data.mobile_numbers.includes(MobileNumber))
-        {
-          setMobileNumberError("This Mobile Number is already in use.");
-        } else
-        {
-          setMobileNumberError(""); // Clear error if available
-        }
-      } catch (error)
-      {
-        console.error("Error checking Staff ID:", error);
-      }
-    };
-  
+  const checkMobileNumberExists = async (MobileNumber) => {
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/api/check-mobile/`,
+        getAuthHeaders() // ✅ FIX
+      );
 
-  const handleEditClick = (userId) =>
-  {
+      if (response.data.mobile_numbers.includes(MobileNumber)) {
+        setMobileNumberError("This Mobile Number is already in use.");
+      } else {
+        setMobileNumberError(""); // Clear error if available
+      }
+    } catch (error) {
+      console.error("Error checking Staff ID:", error);
+    }
+  };
+
+
+  const handleEditClick = (userId) => {
     setSelectedUserId(userId);
     setOpen(true);
   };
 
   // Fetch users only when the modal opens
-  useEffect(() =>
-  {
-    if (open)
-    {
-      axios
-        .get(`${ BASE_URL }/api/users/`)
-        .then((response) => setUsers(response.data))
-        .catch((error) => console.error("Error fetching users:", error));
-    }
-  }, [open]);
-
-  // Fetch institutions on component mount
-  useEffect(() =>
-  {
+useEffect(() => {
+  if (open) {
     axios
-      .get(`${ BASE_URL }/api/institutions/`)
-      .then((response) => setInstitutions(response.data))
-      .catch((error) => console.error("Error fetching institutions:", error));
-  }, []);
+      .get(`${BASE_URL}/api/users/`, getAuthHeaders())
+      .then((response) => setUsers(response.data.results))
+      .catch((error) => console.error("Error fetching users:", error));
+  }
+}, [open]);
+  // Fetch institutions on component mount
+useEffect(() => {
+  axios
+    .get(`${BASE_URL}/api/institutions/`, getAuthHeaders())
+    .then((response) => setInstitutions(response.data))
+    .catch((error) => console.error("Error fetching institutions:", error));
+}, []);
 
   // Fetch user details when userId is available
-  useEffect(() =>
-  {
-    if (userId && users.length > 0)
-    {
+  useEffect(() => {
+    if (userId && users.length > 0) {
       const user = users.find((u) => u.id === userId);
-      if (user)
-      {
+      if (user) {
         setFormData({
           name: user.name || "",
           department: user.department?.id || "",
@@ -157,29 +149,26 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
   }, [userId, users]);
 
   // Fetch departments when institution changes
-  useEffect(() =>
-  {
-    if (formData.institution)
-    {
-      axios
-        .get(`${ BASE_URL }/api/departments/${ formData.institution }/`)
+  useEffect(() => {
+    if (formData.institution) {
+      axios.get(
+  `${BASE_URL}/api/departments/${formData.institution}/`,
+  getAuthHeaders()
+)
         .then((response) => setDepartments(response.data))
         .catch((error) => console.error("Error fetching departments:", error));
-    } else
-    {
+    } else {
       setDepartments([]);
     }
   }, [formData.institution]);
 
   // Handle input change
-  const handleChange = (e) =>
-  {
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   // Handle role change and reset dependent fields
-  const handleRoleChange = (e) =>
-  {
+  const handleRoleChange = (e) => {
     const selectedRole = e.target.value;
     setFormData({
       ...formData,
@@ -191,8 +180,7 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
   };
 
   // ✅ Update user data function
-  const updateData = async () =>
-  {
+  const updateData = async () => {
     // Validate the form data
     const errors = {
       name: !formData.name,
@@ -223,32 +211,30 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
       section_for_staff: formData.role === "Tech Support" ? formData.section_for_staff : null,
     };
 
-    try
-    {
-      const response = await axios.put(`${ BASE_URL }/api/users/${ userId }/update/`, requestData);
+    try {
+      const response = await axios.put(
+        `${BASE_URL}/api/users/${userId}/update/`,
+        requestData,
+        getAuthHeaders() // ✅ FIX
+      );
 
-      if (response.status === 200)
-      {
+      if (response.status === 200) {
         toast.success("User updated successfully!");
 
         // ✅ Ensure onUpdate is called correctly
-        if (typeof onUpdate === "function")
-        {
+        if (typeof onUpdate === "function") {
           console.log("✅ Calling onUpdate to refresh user list...");
           await onUpdate();
-        } else
-        {
+        } else {
           console.error("❌ onUpdate is not a valid function!");
         }
 
         handleClose(); // Close modal after update
         // window.location.reload();
-      } else
-      {
+      } else {
         throw new Error("Unexpected error occurred!");
       }
-    } catch (error)
-    {
+    } catch (error) {
       console.error("Error updating user:", error.response?.data);
       const errorMessage = error.response?.data?.message || "Error updating user!";
       toast.error(errorMessage);
@@ -300,24 +286,24 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
             error={formErrors.staff_id} // Error handling for Staff ID
             helperText={formErrors.staff_id ? "This field is required" : ""}
           />
-           <TextField
-                      fullWidth
-                      select
-                      label="Role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleRoleChange} // Change role handler
-                      variant="outlined"
-                      className="mb-3"
-                      error={formErrors.role} // Highlight red if error
-                      helperText={formErrors.role ? "This field is required" : ""}
-                    >
-                      {roles.map((role, index) => (
-                        <MenuItem key={index} value={role}>
-                          {role}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+          <TextField
+            fullWidth
+            select
+            label="Role"
+            name="role"
+            value={formData.role}
+            onChange={handleRoleChange} // Change role handler
+            variant="outlined"
+            className="mb-3"
+            error={formErrors.role} // Highlight red if error
+            helperText={formErrors.role ? "This field is required" : ""}
+          >
+            {roles.map((role, index) => (
+              <MenuItem key={index} value={role}>
+                {role}
+              </MenuItem>
+            ))}
+          </TextField>
           {/* <TextField
                           fullWidth
                           select
@@ -337,9 +323,9 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
                             </MenuItem>
                           ))}
                         </TextField> */}
-                   
 
-     
+
+
 
           {(formData.role === "Department Head" || formData.role === "Staff") && (
             <>
@@ -400,7 +386,7 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
               <MenuItem value="IT">IT</MenuItem>
               <MenuItem value="Electrical & Maintenance">Electrical & Maintenance</MenuItem>
             </TextField>
-            
+
           )}
           <TextField
             fullWidth
@@ -412,7 +398,7 @@ const UserEdit = ({ open, handleClose, userId, onUpdate }) =>
             error={!!MobileNumberError || !!formErrors.mobile_number} // Show error if message exists
             helperText={MobileNumberError || (formErrors.mobile_number ? "This field is required" : "")} // Show appropriate error message
           />
-         
+
           <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
             <Button variant="outlined" onClick={handleClose} sx={{ mr: 2 }}>
               Cancel

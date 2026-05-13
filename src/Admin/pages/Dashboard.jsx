@@ -1,24 +1,65 @@
 import React from 'react';
+
 import InfoCards from '../components/dashboard/InfoCards';
 import InfoChart from '../components/dashboard/InfoChart';
-import TableList from '../components/dashboard/TableList';
 import DoughnutChart from '../components/dashboard/DoughnutChart';
 
 function Dashboard() {
+
   return (
-    <div>
+
+    <div className="container-fluid">
+
       <InfoCards />
 
-      <div className="row mt-4">
+      {/* ========================= */}
+      {/* COMPLAINTS ROW */}
+      {/* ========================= */}
+
+      <div className="row mt-4 align-items-stretch">
+
+        {/* BAR CHART */}
+
         <div className="col-12 col-lg-9 mb-4">
-          <InfoChart />
+
+          <InfoChart type="complaints" />
+
         </div>
 
-        <div className="col-12 col-lg-3">
-          <DoughnutChart />
+        {/* PIE CHART */}
+
+        <div className="col-12 col-lg-3 mb-4">
+
+          <DoughnutChart type="complaints" />
+
         </div>
+
       </div>
-      <TableList />
+
+      {/* ========================= */}
+      {/* REQUESTS ROW */}
+      {/* ========================= */}
+
+      <div className="row align-items-stretch">
+
+        {/* BAR CHART */}
+
+        <div className="col-12 col-lg-9 mb-4">
+
+          <InfoChart type="requests" />
+
+        </div>
+
+        {/* PIE CHART */}
+
+        <div className="col-12 col-lg-3 mb-4">
+
+          <DoughnutChart type="requests" />
+
+        </div>
+
+      </div>
+
     </div>
   );
 }

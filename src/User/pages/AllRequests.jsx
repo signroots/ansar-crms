@@ -16,7 +16,7 @@ import
 import axios from 'axios';
 import BASE_URL from '../../utils/baseUrl';
 import { FaRegEye } from 'react-icons/fa6';
-
+import { toast } from "react-toastify";
 
 function AllRequests()
 {
@@ -39,33 +39,50 @@ function AllRequests()
     }, [selectedComplaint]);
 
 
-    useEffect(() =>
-    {
-        const staff_id = localStorage.getItem("staff_id");
+   useEffect(() => {
 
-        if (!staff_id)
+    const staff_id = localStorage.getItem("staff_id");
+    const token = localStorage.getItem("access_token");
+
+    console.log("STAFF ID:", staff_id);
+    console.log("TOKEN:", token);
+
+    if (!staff_id) {
+        console.error("Staff ID is not found in localStorage");
+        return;
+    }
+
+    if (!token) {
+        console.error("Access token missing");
+        return;
+    }
+
+    axios.get(
+        `${BASE_URL}/api/sumbitted-request/list/`,
         {
-            console.error("Staff ID is not found in localStorage");
-            return;
-        }
+            params: {
+                staff_id: staff_id,
+            },
 
-        // Fetch service requests for the current user (no Authorization header)
-        axios
-            .get(`${ BASE_URL }/api/sumbitted-request/list/`, {
-                params: {
-                    staff_id: staff_id,
-                },
-            })
-            .then((response) =>
-            {
-                setComplaints(response.data);
-            })
-            .catch((error) =>
-            {
-                console.error("Error fetching service requests:", error);
-                toast.error("Failed to load service requests.");
-            });
-    }, []);
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        }
+    )
+    .then((response) => {
+
+        console.log("REQUEST DATA:", response.data);
+
+        setComplaints(response.data);
+
+    })
+    .catch((error) => {
+
+        console.error("Error fetching service requests:", error);
+
+    });
+
+}, []);
 
 
     const handleListClick = (request) =>

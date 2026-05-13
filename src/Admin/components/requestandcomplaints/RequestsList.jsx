@@ -6,9 +6,8 @@ import BASE_URL from '../../../utils/baseUrl';
 import { FaRegEye } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import CreateRequests from './CreateRequests';
-
-const RequestsList = () =>
-{
+import Pagination from "@mui/material/Pagination";
+const RequestsList = () => {
     const [search, setSearch] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -19,175 +18,128 @@ const RequestsList = () =>
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [warningMessage, setWarningMessage] = useState('');
-    // to manage selected id from table for modal view
     const [selectedRequest, setSelectedRequest] = useState(null);
-    // Manage an array of delay reasons
     const [delayReasons, setDelayReasons] = useState([]);
-    const [newDelayReason, setNewDelayReason] = useState("");
-    // for submit delay reason
+    const [newDelayReason, setNewDelayReason] = useState('');
     const [showSubmitButton, setShowSubmitButton] = useState(false);
-
-
-
+const [showDetails, setShowDetails] = useState(false);
+const [totalCount, setTotalCount] = useState(0);
     // Fetch existing service requests
-    const fetchServiceRequests = async () =>
-    {
-        try
-        {
-            const response = await axios.get(`${ BASE_URL }/api/requests-list/`);
-            setServiceRequests(response.data);
-        } catch (error)
-        {
-            console.error('Error fetching service requests:', error);
-        } finally
-        {
-            setLoading(false);
-        }
-    };
+    const fetchServiceRequests = async () => {
+    try {
+        const token = localStorage.getItem("access_token");
 
-    // handle sse event realtime update 
-    useEffect(() =>
-    {
+        if (!token) {
+            throw new Error("Authentication credentials were not provided.");
+        }
+
+        const response = await axios.get(
+            `${BASE_URL}/api/requests-list/?page=${currentPage}&page_size=${rowsPerPage}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        );
+
+        setServiceRequests(response.data.results || []);
+        setTotalCount(response.data.count || 0);
+
+    } catch (error) {
+        console.error('Error fetching service requests:', error);
+        toast.error("Please log in to view service requests.");
+    } finally {
+        setLoading(false);
+    }
+};
+    // Handle SSE event for real-time updates
+    useEffect(() => {
         fetchServiceRequests();
 
-        // Setup SSE for real-time updates
-        const eventSource = new EventSource(`${ BASE_URL }/api/sse/request/`);
+       const eventSource = new EventSource(
+    `${BASE_URL}/api/sse/request/`
+);
 
-        eventSource.onmessage = function (event)
-        {
+        eventSource.onmessage = function (event) {
             console.log('New service request received:', event.data);  // Log the raw data
             const newRequest = JSON.parse(event.data);  // Parse the new request data
 
             // Update the state with the new request, ensuring no duplication
-            setServiceRequests((prevRequests) =>
-            {
-                const ids = new Set(prevRequests.map(req => req.id));
-                // If the new request is already in the list, do not add it again
-                return ids.has(newRequest.id) ? prevRequests : [...prevRequests, newRequest];
-            });
+            setServiceRequests((prevRequests) => {
+
+    const exists = prevRequests.some(
+        (req) => req.id === newRequest.id
+    );
+
+    if (exists) {
+        return prevRequests;
+    }
+
+    // ADD NEW REQUEST ON TOP
+    const updatedRequests = [
+        newRequest,
+        ...prevRequests
+    ];
+
+    return updatedRequests;
+});
+
+// REFRESH CURRENT PAGE DATA
+fetchServiceRequests();
         };
 
-        eventSource.onerror = function (error)
-        {
+        eventSource.onerror = function (error) {
             console.error('Error in SSE connection:', error);
             eventSource.close();
         };
 
-        // Cleanup: Close the SSE connection when the component unmounts
-        return () =>
-        {
+        return () => {
             eventSource.close();
         };
-    }, []);
+    }, [currentPage, rowsPerPage]);
 
-    useEffect(() =>
-    {
-        console.log('Updated service requests:', serviceRequests);
-    }, [serviceRequests]);
-
-
-    // Frontend search
-    const filteredData = serviceRequests.filter((request) =>
-    {
+    // Frontend search filter
+    const filteredData = serviceRequests.filter((request) => {
         const department = request.department ? String(request.department.name).toLowerCase() : '';
         const issueRequest = request.issue_request ? String(request.issue_request.name).toLowerCase() : '';
         const searchTerm = search.toLowerCase();
         return department.includes(searchTerm) || issueRequest.includes(searchTerm);
     });
 
+    // Pagination logic
 
-    // Filter date for export
-    const filterByDateRange = (data) =>
-    {
-        if (startDate && endDate)
-        {
-            return data.filter((request) =>
-            {
-                const requestDate = new Date(request.date);
-                return requestDate >= new Date(startDate) && requestDate <= new Date(endDate);
-            });
-        }
-        return data;
+    const currentRows = filteredData.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+
+   
+    // Handle rows per page change
+    const handleRowsPerPageChange = (e) => {
+        setRowsPerPage(Number(e));
+        setCurrentPage(1);  // Reset to first page when rows per page change
     };
 
+    // For selected request with id
+  const handleRowClick = (request) => {
+    setSelectedRequest(request);
+    setShowDetails(true);   // ✅ OPEN MODAL
+};
 
-    // Export table data to excel
-    const handleExport = () =>
-    {
-        if (!startDate || !endDate || new Date(startDate) > new Date(endDate))
-        {
-            setWarningMessage('Invalid date range! Please ensure "From Date" is before "To Date".');
-            return;
-        }
-
-        const dataToExport = filterByDateRange(filteredData).map((request) => ({
-            ID: request.id,
-            Date: new Date(request.date).toLocaleString(),
-            Department: request.department ? request.department.name : 'N/A',
-            Institution: request.institution ? request.institution.name : 'N/A',
-            RequestRequest: request.issue_request ? request.issue_request.name : 'N/A',
-            Status: request.status,
-            ResolvedBy: request.resolved_by ? request.resolved_by.name : 'N/A',
-            ResolvedDate: request.resolved_date ? new Date(request.resolved_date).toLocaleString() : 'N/A',
-        }));
-
-        if (dataToExport.length === 0)
-        {
-            setWarningMessage('No data available for the selected date range.');
-            return;
-        }
-
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, 'Requests');
-        XLSX.writeFile(workbook, 'Requests.xlsx');
-        setShowExportModal(false);
-    };
-
-    const indexOfLastRow = currentPage * rowsPerPage;
-    const indexOfFirstRow = indexOfLastRow - rowsPerPage;
-    const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
-    const totalPages = Math.ceil(filteredData.length / rowsPerPage);
-
-    // For handle page change (pagination)
-    const handlePageChange = (pageNumber) =>
-    {
-        if (pageNumber > 0 && pageNumber <= totalPages)
-        {
-            setCurrentPage(pageNumber);
-        }
-    };
-
-
-    // For handle selected request with id
-    const handleRowClick = (request) =>
-    {
-        setSelectedRequest(request);
-        // update delayReasons selectedRequest's data
-        setDelayReasons(request.delay_reason || []);
-        setShowTableModal(true);
-    };
-
-
-    // handle status change
-    const handleStatusChange = async (event) =>
-    {
+    // Handle status change
+    const handleStatusChange = async (event) => {
         const newStatus = event.target.value;
-        const token = localStorage.getItem("admin_access_token");
+        const token = localStorage.getItem("access_token");
 
-        try
-        {
+        try {
             const response = await axios.patch(
-                `${ BASE_URL }/api/request/${ selectedRequest.id }/update-status-admin/`,
+                `${BASE_URL}/api/request/${selectedRequest.id}/update-status-admin/`,
                 { status: newStatus },
                 {
                     headers: {
-                        Authorization: `Bearer ${ token }`,
+                        Authorization: `Bearer ${token}`,
                     },
                 }
             );
 
-            // Update the state with the new status
             setSelectedRequest({ ...selectedRequest, status: newStatus });
             setServiceRequests((prevRequests) =>
                 prevRequests.map((task) =>
@@ -196,130 +148,77 @@ const RequestsList = () =>
             );
 
             toast.success("Status updated successfully:", response.data);
-        } catch (error)
-        {
+        } catch (error) {
             toast.error("Error updating status:", error);
             console.error("Error updating status:", error);
         }
     };
 
-    // For update delay reason on selectedRequest
-    useEffect(() =>
-    {
-        if (selectedRequest?.delay_reason)
-        {
-            try
-            {
-                setDelayReasons(selectedRequest.delay_reason);
-            } catch (error)
-            {
-                console.error("Error  delay_reason:", error);
-            }
-        }
-    }, [selectedRequest]);
-
-
-
-    // Handle delay_reason value/submit button 
-    const handleDelayReasonChange = (e) =>
-    {
+    // Handle delay reason change
+    const handleDelayReasonChange = (e) => {
         const value = e.target.value;
         setNewDelayReason(value);
-        // Show button only if new input
         setShowSubmitButton(value.trim().length > 0);
     };
 
+    // Handle delay reason update
+    const handleReasonUpdate = async () => {
+        const token = localStorage.getItem("access_token");
 
-    // Handle update delay_reason
-    const handleReasonUpdate = async () =>
-    {
-        const token = localStorage.getItem("admin_access_token");
-
-        try
-        {
+        try {
             const newReason = newDelayReason;
 
-            // Update delay_reason on the backend
             const response = await axios.patch(
-                `${ BASE_URL }/api/request/${ selectedRequest.id }/update-delay-admin/`,
+                `${BASE_URL}/api/request/${selectedRequest.id}/update-delay-admin/`,
                 { delay_reason: newReason },
                 {
                     headers: {
-                        Authorization: `Bearer ${ token }`,
+                        Authorization: `Bearer ${token}`,
                     },
                 }
             );
 
-            // Get the updated complaint data from the backend 
-            const updatedComplaint = response.data;
+            const updatedRequest = response.data;
 
-            // Update selectedRequest locally with the full updated delay_reason list
             setSelectedRequest((prev) => ({
                 ...prev,
-                delay_reason: updatedComplaint.delay_reason,
+                delay_reason: updatedRequest.delay_reason,
             }));
 
-            // Update delayReasons state locally to reflect the change
-            setDelayReasons(updatedComplaint.delay_reason);
-
-            // Clear the input field and UI state
+            setDelayReasons(updatedRequest.delay_reason);
             setNewDelayReason("");
             setShowSubmitButton(false);
             toast.success("Reason updated successfully");
 
-        } catch (error)
-        {
+        } catch (error) {
             console.error("Error submitting delay reason:", error);
         }
     };
 
-    // update is_view to true () 
-    const markAsViewed = async (requestId) =>
-    {
-        try
-        {
+    // Mark as viewed
+    const markAsViewed = async (requestId) => {
+        try {
             const response = await axios.patch(
-                `${ BASE_URL }/api/requests/${ requestId }/mark-as-viewed/`,
+                `${BASE_URL}/api/requests/${requestId}/mark-as-viewed/`,
                 {}
             );
 
-            if (response.status === 200)
-            {
+            if (response.status === 200) {
                 console.log("Request marked as viewed successfully.");
-            } else
-            {
+            } else {
                 console.error("Error:", response.data);
             }
-        } catch (error)
-        {
+        } catch (error) {
             console.error("Request failed:", error.response ? error.response.data : error.message);
         }
     };
 
-    const handleCloseModal = () =>
-    {
-        setShowModal(false); // or however you're controlling modal visibility
-    };
-
-
-    // handle close table modal
-    const handleCloseTableModal = () =>
-    {
-        setShowTableModal(false);
-        setNewDelayReason('')
-    }
-
-
     return (
-        <div
-            className="mt-5 "
-            style={{ backgroundColor: "#fcfcfc", minHeight: "80vh", padding: "20px", margin: "auto", fontSize: '13px', }}
-        >
+        <div className="mt-5" style={{ backgroundColor: "#fcfcfc", minHeight: "80vh", padding: "20px", fontSize: '13px' }}>
             <h6>Requests</h6>
             <small>Live Request tracking & management.</small>
             <div className="d-flex justify-content-between align-items-center mb-3 mt-4">
-
-                <div className='d-flex justify-content-between align-items-center'>
+                <div className="d-flex justify-content-between align-items-center">
                     <FormControl
                         type="text"
                         placeholder="Search"
@@ -327,26 +226,25 @@ const RequestsList = () =>
                         onChange={(e) => setSearch(e.target.value)}
                         style={{ width: '250px', boxShadow: 'none', fontSize: '15px' }}
                     />
-                    <DropdownButton
+                    {/* <DropdownButton
                         id="row-count-dropdown"
-                        title={`Rows: ${ rowsPerPage }`}
+                        title={`Rows: ${rowsPerPage}`}
                         variant="outline"
                         size="sm"
-                        onSelect={(value) => setRowsPerPage(Number(value))}
+                        onSelect={handleRowsPerPageChange}
                     >
                         <Dropdown.Item eventKey="5">5</Dropdown.Item>
                         <Dropdown.Item eventKey="10">10</Dropdown.Item>
                         <Dropdown.Item eventKey="20">20</Dropdown.Item>
                         <Dropdown.Item eventKey="50">50</Dropdown.Item>
-                    </DropdownButton>
+                    </DropdownButton> */}
                 </div>
-                <div className='d-flex flex-row'>
+                <div className="d-flex flex-row">
                     <CreateRequests />
-                    <Button variant="secondary" className='ms-2' size="sm" onClick={() => setShowExportModal(true)}>
+                    <Button variant="secondary" className="ms-2" size="sm" onClick={() => setShowExportModal(true)}>
                         Export
                     </Button>
                 </div>
-
             </div>
 
             {warningMessage && <div className="alert alert-warning">{warningMessage}</div>}
@@ -367,52 +265,14 @@ const RequestsList = () =>
                             <th>View</th>
                         </tr>
                     </thead>
-                        <tbody>
-                            {currentRows.map((request, index) => (
-                                <tr key={request.id}>
-                                    {/* Serial Number for Pagination */}
-                                    <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
-
-                                    <td
-                                        style={{
-                                            padding: '0',
-                                            margin: '0',
-                                            maxWidth: '150px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
-                                        
-                                        <span style={{ fontWeight: 'bold' }}>
-                                            {new Date(request.date).toLocaleDateString('en-GB', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric',
-                                            })}
-                                        </span>{" "}
-                                        -{" "}
-                                        <span style={{ color: 'black' }}>
-                                            {new Date(request.date).toLocaleTimeString('en-GB', {
-                                                hour: '2-digit',
-                                                minute: '2-digit',
-                                                hour12: true,
-                                            })}
-                                        </span>{" "}
-                                        <small className="badge text-bg-success">
-                                            {request && !request.is_viewed ? 'new' : null}
-                                        </small>
-                                    </td>
-
-                                    <td>
-                                        <b>{request.institution ? request.institution.name : null}</b>{" - "}
-                                        {request.department ? request.department.name : null}
-                                    </td>
-
-                                    <td>{request.issue_request ? request.issue_request.name : 'N/A'}</td>
-
-                                    <td>
-                                        <span
+                    <tbody>
+                        {currentRows.map((request, index) => (
+                            <tr key={request.id}>
+                                <td>{(currentPage - 1) * rowsPerPage + index + 1}</td>
+                                <td>{new Date(request.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                                <td>{request.institution?.name} - {request.department?.name}</td>
+                                <td>{request.issue_request?.name}</td>
+                                <td> <span
                                             className={`badge fixed-width-badge ${ request.status === 'Completed'
                                                     ? 'bg-success'
                                                     : request.status === 'Pending'
@@ -425,339 +285,195 @@ const RequestsList = () =>
                                                 }`}
                                         >
                                             {request.status}
-                                        </span>
-                                    </td>
+                                        </span></td>
+                                <td>{request.resolved_by?.name}</td>
+                                <td>{request.resolved_date ? new Date(request.resolved_date).toLocaleDateString('en-GB') : 'N/A'}</td>
+                                <td
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => {
+    if (!request.is_viewed) {
+        markAsViewed(request.id);
+    }
 
-                                    <td>{request.resolved_by ? request.resolved_by.name : 'N/A'}</td>
-
-                                    <td>
-                                        {request.resolved_date ? (
-                                            <>
-                                                <span style={{ fontWeight: 'bold' }}>
-                                                    {new Date(request.resolved_date).toLocaleDateString('en-GB', {
-                                                        day: '2-digit',
-                                                        month: 'short',
-                                                        year: 'numeric',
-                                                    })}
-                                                </span>{" "}
-                                                -{" "}
-                                                <span style={{ color: 'black' }}>
-                                                    {new Date(request.resolved_date).toLocaleTimeString('en-GB', {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                        hour12: true,
-                                                    })}
-                                                </span>
-                                            </>
-                                        ) : (
-                                            <span style={{ color: 'gray' }}>{''}</span>
-                                        )}
-                                    </td>
-
-                                    <td
-                                        style={{ cursor: 'pointer' }}
-                                        onClick={() =>
-                                        {
-                                            if (!request.is_viewed)
-                                            {
-                                                markAsViewed(request.id);
-                                                fetchServiceRequests();
-                                            }
-                                            handleRowClick(request);
-                                            fetchServiceRequests();
-                                        }}
-                                        
-                                    >
-                              
-                                        <FaRegEye />
-                                    </td>
-                                </tr>
-                            ))}
-                            
-                        </tbody>
-
+    setSelectedRequest(request);
+    setShowDetails(true);   // ✅ OPEN MODAL
+}}
+                                >
+                                    <FaRegEye />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
                 </Table>
             )}
+<Modal show={showDetails} onHide={() => setShowDetails(false)} size="lg">
+    <Modal.Header closeButton>
+        <Modal.Title>Request Details</Modal.Title>
+    </Modal.Header>
 
-            <div className="d-flex justify-content-end align-items-center mt-3">
-                <ButtonGroup>
-                    <button
-                        className="btn btn-sm custom-pagination-outline-btn"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
+    <Modal.Body>
+        {selectedRequest && (
+            <div className="p-2">
+
+                {/* HEADER */}
+                <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <div>
+                        <h6 className="mb-0 fw-bold">Request Details</h6>
+                        <small className="text-muted">
+                            {selectedRequest.request_id}
+                        </small>
+                    </div>
+
+                    <span className={`px-3 py-1 rounded-pill text-white small
+                        ${selectedRequest.status === "Completed"
+                            ? "bg-success"
+                            : selectedRequest.status === "Pending"
+                                ? "bg-danger"
+                                : selectedRequest.status === "In Progress"
+                                    ? "bg-primary"
+                                    : "bg-secondary"
+                        }`}
                     >
-                        Prev
-                    </button>
-                    {[...Array(totalPages)].map((_, index) => (
-                        <button
-                            key={index + 1}
-                            className={`btn btn-sm custom-pagination-btn ${ currentPage === index + 1 ? 'active' : ''
-                                }`}
-                            onClick={() => handlePageChange(index + 1)}
-                        >
-                            {index + 1}
-                        </button>
-                    ))}
-                    <button
-                        className="btn btn-sm custom-pagination-outline-btn"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage === totalPages}
-                    >
-                        Next
-                    </button>
-                </ButtonGroup>
-            </div>
+                        {selectedRequest.status}
+                    </span>
+                </div>
 
-            <Modal show={showTableModal} onHide={handleCloseTableModal} centered size="lg">
-                {/* Modal Header with custom hover style */}
-                <Modal.Header closeButton className="custom-close-header">
-                </Modal.Header>
+                <div className="row g-4">
 
-                <Modal.Body>
-                    {/* Modal content here */}
-                </Modal.Body>
+                    {/* LEFT */}
+                    <div className="col-md-6">
 
-                {/* Custom hover style */}
-                <style>
-                    {`
-            .custom-close-header .btn-close:hover {
-                filter: brightness(0) saturate(100%) invert(19%) sepia(92%) saturate(6371%) hue-rotate(357deg) brightness(97%) contrast(107%);
-            }
-        `}
-                </style>
-                <Modal.Body>
-                   
-                    {selectedRequest && (
-                        <div className="p-3">
-                            {/* Header: ID and Date */}
-                            <div className="d-flex justify-content-between mb-3">
-                                <p className="mb-0">
-                                    <strong>ID:</strong> {selectedRequest.id}
-                                </p>
-                                <p className="mb-0">
-                                    <strong>Date:</strong>{" "}
-                                    {new Date(selectedRequest.date).toLocaleString("en-GB", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        hour12: true,
-                                    }).replace(",", "")}
-                                </p>
+                        <div className="mb-3">
+                            <div className="text-muted small">Date</div>
+                            <div className="fw-semibold">
+                                {new Date(selectedRequest.date).toLocaleString()}
                             </div>
-
-                            {/* Data in Table Format */}
-                            <table className="table table-bordered">
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <strong>Department:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.department ? selectedRequest.department.name : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Request:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.issue_request ? selectedRequest.issue_request.name : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Program Name:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.program_name ? selectedRequest.program_name : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Program Date:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.program_date ? selectedRequest.program_date : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Program Time:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.program_time ? selectedRequest.program_time : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Requested by:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.requested_by.name ? selectedRequest.requested_by.name : "N/A"}
-
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Status:</strong>
-                                        </td>
-                                        <td className="status_table_row">
-                                            {selectedRequest.status === "Pending" ? (
-                                                <h6 className="text-danger">{selectedRequest.status}</h6>
-                                            ) : selectedRequest.status === "Completed" ? (
-                                                <h6 className="text-success">{selectedRequest.status}</h6>
-                                            ) : selectedRequest.status === "Cancelled" ? (
-                                                <h6 className="text-secondary">{selectedRequest.status}</h6>
-                                            ) : (
-                                                <select
-                                                    className={`form-select ${ selectedRequest.status === "In Progress"
-                                                        ? "text-primary"
-                                                        : selectedRequest.status === "Waiting"
-                                                            ? "text-warning"
-                                                            : ""
-                                                        }`}
-                                                    value={selectedRequest.status}
-                                                    onChange={handleStatusChange}
-                                                >
-                                                    <option className="text-dark" value="Cancelled">
-                                                        Cancel
-                                                    </option>
-                                                    <option className="text-dark" value="Waiting">
-                                                        Waiting
-                                                    </option>
-                                                    <option className="text-dark" value="In Progress" disabled hidden>
-                                                        In Progress
-                                                    </option>
-                                                    <option className="text-dark" value="Completed">
-                                                        Completed
-                                                    </option>
-                                                </select>
-                                            )}
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td>
-                                            <strong>Attended by :</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.resolved_by ? selectedRequest.resolved_by.name : 'N/A'}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <strong>Resolved Date:</strong>
-                                        </td>
-                                        <td>
-                                            {selectedRequest.resolved_date
-                                                ? new Date(selectedRequest.resolved_date).toLocaleString()
-                                                : 'N/A'}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                                {/* Notes as a full-width row */}
-                                <tfoot>
-                                    <tr>
-                                        <td colSpan="2">
-                                            <strong>Notes:</strong> {selectedRequest.notes}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                            {/* Show Delay Reasons only if status is "waiting" */}
-                            {selectedRequest.status === "Waiting" && (
-                                <div>
-                                    <div className="mb-3">
-                                        <p className='mb-2 fw-bold'>Delay Reasons</p>
-                                        <div className="border p-2"
-                                            style={{
-                                                maxHeight: "200px",
-                                                overflowY: "auto",
-                                                border: "1px solid #ddd",
-                                                borderRadius: "4px",
-                                                padding: "5px",
-                                            }}
-                                        >
-                                            {delayReasons.length > 0 ? (
-                                                delayReasons.map((remarks, index) => (
-                                                    <div
-                                                        key={index}
-                                                        className="d-flex justify-content-between align-items-center border-bottom py-2"
-                                                    >
-                                                        <div>
-                                                            {remarks.reason}
-                                                        </div>
-                                                        <div>
-                                                            <small className="text-muted">
-                                                                {new Date(remarks.created_at).toLocaleString("en-GB", {
-                                                                    day: "numeric",
-                                                                    month: "short",
-                                                                    year: "numeric",
-                                                                    hour: "2-digit",
-                                                                    minute: "2-digit",
-                                                                    hour12: true,
-                                                                }).replace(",", "")}
-                                                            </small>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <small className="text-muted">No delay reasons available.</small>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <textarea
-                                        className="form-control my-2"
-                                        value={newDelayReason}
-                                        onChange={handleDelayReasonChange}
-                                        placeholder="Enter delay reason"
-                                        rows="3"
-                                    />
-                                    {showSubmitButton && (
-                                        <div className="text-center mt-3">
-                                            <button
-                                                className="btn btn-outline-secondary btn-sm"
-                                                onClick={handleReasonUpdate}
-                                            >
-                                                Submit Delay Reason
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
                         </div>
-                    )}
-                </Modal.Body>
-                <style>
-                    {`.modal-content {background: white;}`}
-                </style>
 
-            </Modal>
+                        <div className="mb-3">
+                            <div className="text-muted small">Institution</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.institution?.name || "N/A"}
+                            </div>
+                        </div>
 
-            <Modal show={showExportModal} onHide={() => setShowExportModal(false)} centered>
-                <Modal.Body>
-                    <small>Select Date Range for Export</small>
-                    <div className="d-flex gap-3 mt-3">
-                        <FormControl
-                            type="date"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                        />
-                        <FormControl
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                        />
+                        <div className="mb-3">
+                            <div className="text-muted small">Department</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.department?.name || "N/A"}
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Issue</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.issue_request?.name || "N/A"}
+                            </div>
+                        </div>
+
                     </div>
-                    <div className="d-flex justify-content-end mt-3">
-                        <Button variant="secondary" size="sm" onClick={handleExport}>
-                            Export
-                        </Button>
+
+                    {/* RIGHT */}
+                    <div className="col-md-6">
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Priority</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.priority || "N/A"}
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Resolved By</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.resolved_by?.name || "N/A"}
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Resolved Date</div>
+                            <div className="fw-semibold">
+                                {selectedRequest.resolved_date
+                                    ? new Date(selectedRequest.resolved_date).toLocaleString()
+                                    : "N/A"}
+                            </div>
+                        </div>
+
                     </div>
-                </Modal.Body>
-            </Modal>
+
+                    {/* FULL WIDTH */}
+                    <div className="col-12">
+                        <hr />
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Notes</div>
+                            <div className="p-2 bg-light rounded">
+                                {selectedRequest.notes || "No notes"}
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Program Name</div>
+                            <div className="p-2 bg-light rounded">
+                                {selectedRequest.program_name || "N/A"}
+                            </div>
+                        </div>
+
+                        <div className="mb-3">
+                            <div className="text-muted small">Program Date / Time</div>
+                            <div className="p-2 bg-light rounded">
+                                {selectedRequest.program_date || "N/A"} {selectedRequest.program_time || ""}
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        )}
+    </Modal.Body>
+
+    <Modal.Footer>
+        <Button variant="secondary" onClick={() => setShowDetails(false)}>
+            Close
+        </Button>
+    </Modal.Footer>
+</Modal>
+            <div className="d-flex justify-content-between align-items-center mt-3">
+
+    {/* LEFT SIDE PAGINATION */}
+    <Pagination
+        count={Math.ceil(totalCount / rowsPerPage)}
+        page={currentPage}
+        onChange={(e, value) => setCurrentPage(value)}
+        color="primary"
+        siblingCount={1}
+        boundaryCount={1}
+    />
+
+    {/* RIGHT SIDE ROWS */}
+    <div className="d-flex align-items-center gap-2">
+
+        <span>Rows:</span>
+
+        <select
+            value={rowsPerPage}
+            onChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value));
+                setCurrentPage(1);
+            }}
+            className="form-select form-select-sm"
+            style={{ width: "120px" }}
+        >
+            <option value={10}>10 / page</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+        </select>
+
+    </div>
+
+</div>
         </div>
     );
 };

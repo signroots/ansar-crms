@@ -5,12 +5,13 @@ import BASE_URL from '../../utils/baseUrl';
 import { toast } from "react-toastify";
 import { Snackbar, Alert } from '@mui/material';
 
-function ComplaintForm()
-{
+function ComplaintForm() {
     const [formData, setFormData] = useState({
         typeOfIssue: '',
         issue: '',
         notes: '',
+        priority:'',
+        phone_number:''
     });
     const [typesOfIssue, setTypesOfIssue] = useState([]);
     const [issues, setIssues] = useState([]);
@@ -18,57 +19,62 @@ function ComplaintForm()
     const [snackbarMessage, setSnackbarMessage] = useState('');
     const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // 'success' or 'error'
 
-    useEffect(() =>
-    {
-        axios.get(`${ BASE_URL }/api/types-of-issue/`)
+    useEffect(() => {
+        axios.get(`${BASE_URL}/api/types-of-issue/`)
             .then((response) => setTypesOfIssue(response.data))
             .catch(() => setTypesOfIssue([]));
     }, []);
 
-    const handleTypeOfIssueChange = (e) =>
-    {
+    const handleTypeOfIssueChange = (e) => {
         const typeOfIssueId = e.target.value;
         setFormData({ ...formData, typeOfIssue: typeOfIssueId, issue: '' });
 
-        axios.get(`${ BASE_URL }/api/issues/${ typeOfIssueId }/`)
+        axios.get(`${BASE_URL}/api/issues/${typeOfIssueId}/`)
             .then((response) => setIssues(response.data))
             .catch(() => setIssues([]));
     };
 
-    const handleInputChange = (e) =>
-    {
+    const handleInputChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = async (e) =>
-    {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const payload = {
             staff_id: localStorage.getItem('staff_id'),
             issue_complaint: formData.issue,
             notes: formData.notes,
-            type_of_issue: formData.typeOfIssue
+            type_of_issue: formData.typeOfIssue,
+            priority: formData.priority,
+            phone_number:formData.phone_number
         };
 
-        try
-        {
-            const response = await axios.post(`${ BASE_URL }/api/complaints/submit/`, payload);
+        try {
+            const token = localStorage.getItem("access_token");
 
-            if (response.status === 201)
-            {
+            const response = await axios.post(
+                `${BASE_URL}/api/complaints/submit/`,   // also fixed URL
+                payload,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            );
+
+            if (response.status === 201) {
                 setSnackbarSeverity('success');
                 setSnackbarMessage('Complaint submitted successfully!');
                 setOpenSnackbar(true); // Show snackbar on success
                 setFormData({ typeOfIssue: '', issue: '', notes: '' });
-            } else
-            {
+            } else {
                 setSnackbarSeverity('error');
                 setSnackbarMessage('Failed to submit the Complaint.');
                 setOpenSnackbar(true); // Show snackbar on error
             }
-        } catch (error)
-        {
+        } catch (error) {
             console.error('Error submitting the Complaint:', error);
             setSnackbarSeverity('error');
             setSnackbarMessage('An error occurred while submitting the complaint.');
@@ -76,8 +82,7 @@ function ComplaintForm()
         }
     };
     // Handle Snackbar close
-    const handleSnackbarClose = () =>
-    {
+    const handleSnackbarClose = () => {
         setOpenSnackbar(false);
     };
 
@@ -85,7 +90,7 @@ function ComplaintForm()
     return (
         <Box
             sx={{ padding: 2, maxWidth: 400, margin: 'auto', height: '100%' }}
-        
+
         >
             {/* Snackbar for success/error messages */}
             <Snackbar
@@ -104,9 +109,9 @@ function ComplaintForm()
                     {snackbarMessage}
                 </Alert>
             </Snackbar>
-      <Typography align="center" variant="subtitle2" className='fw-semibold text-muted mb-5' gutterBottom>
-        Complaints
-      </Typography>
+            <Typography align="center" variant="subtitle2" className='fw-semibold text-muted mb-5' gutterBottom>
+                Complaints
+            </Typography>
 
 
             <Select
@@ -135,7 +140,18 @@ function ComplaintForm()
                     <MenuItem key={issue.id} value={issue.id}>{issue.name}</MenuItem>
                 ))}
             </Select>
-
+<Select
+  value={formData.priority || ""}
+  onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+  fullWidth
+  displayEmpty
+  sx={{ marginBottom: 2 }}
+>
+  <MenuItem value="" disabled>Select Priority</MenuItem>
+  <MenuItem value="Low">Low</MenuItem>
+  <MenuItem value="Medium">Medium</MenuItem>
+  <MenuItem value="High">High</MenuItem>
+</Select>
             <TextField
                 name="notes"
                 value={formData.notes}
