@@ -1,7 +1,3 @@
-import React from "react";
+import Complaints from "../../Admin/pages/Complaints";
 
-function Dashboard() {
-  return <h2>Tech Admin Complaints</h2>;
-}
-
-export default Dashboard;
+export default Complaints;
