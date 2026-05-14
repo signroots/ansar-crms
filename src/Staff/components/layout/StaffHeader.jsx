@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 import {
   AppBar,
@@ -26,6 +26,8 @@ import {
 
 import { toast } from "react-toastify";
 import { useNavigate } from 'react-router-dom';
+import { env } from '../../../V2/config/env';
+import { clearAuthSession, getAuthSession } from '../../../V2/shared/utils/authSession';
 
 function StaffHeader() {
 
@@ -54,21 +56,17 @@ function StaffHeader() {
   // ================= LOGOUT =================
   const Logout = () => {
 
-    localStorage.removeItem("access_token");
-
-    localStorage.removeItem("staff_id");
+    clearAuthSession();
 
     toast.success('Logout Successfully');
 
-    navigate('/staff/staff-login');
+    navigate('/login');
   };
 
   // ================= WEBSOCKET =================
   useEffect(() => {
 
-    const token = localStorage.getItem(
-      "access_token"
-    );
+    const { accessToken: token } = getAuthSession();
 
     if (!token) {
 
@@ -81,7 +79,7 @@ function StaffHeader() {
 
     // ✅ WEBSOCKET URL
     const socket = new WebSocket(
-      `ws://127.0.0.1:8001/ws/notifications/?token=${token}`
+      `${env.wsUrl}/ws/notifications/?token=${token}`
     );
 
     // ================= CONNECT =================

@@ -1,20 +1,21 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Container } from "react-bootstrap";
 import {
-Box,
-Typography,
-TextField,
-IconButton,
-InputAdornment,
-Button,
-ThemeProvider,
+  Box,
+  Typography,
+  TextField,
+  IconButton,
+  InputAdornment,
+  Button,
+  ThemeProvider,
 } from "@mui/material";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 import theme from "../../common/theme";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import BASE_URL from "../../utils/baseUrl";
+import { authApi } from "../../V2/services/api/endpoints/auth.api";
+import { USER_ROLES } from "../../V2/shared/constants/roles";
+import { setAuthSession } from "../../V2/shared/utils/authSession";
 
 function AuthStaff() {
   const [showPassword, setShowPassword] = useState(false);
@@ -32,47 +33,47 @@ function AuthStaff() {
     }));
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    const response = await axios.post(`${BASE_URL}/api/userlogin/`, {
-      username: formData.staffId,
-      mobile_number: formData.password,
-    });
+    try {
+      const user = await authApi.userLogin({
+        username: formData.staffId,
+        mobile_number: formData.password,
+      });
 
-    const user = response.data;
+      console.log("LOGIN RESPONSE:", user); // 👈 IMPORTANT DEBUG
 
-    console.log("LOGIN RESPONSE:", user); // 👈 IMPORTANT DEBUG
+      // ✅ ALWAYS STORE staff_id FIRST
+      if (!user.staff_id) {
+        console.error("staff_id NOT FOUND in response");
+      }
 
-    // ✅ ALWAYS STORE staff_id FIRST
-    if (user.staff_id) {
-      localStorage.setItem("staff_id", user.staff_id);
-      console.log("Saved staff_id:", user.staff_id);
-    } else {
-      console.error("staff_id NOT FOUND in response");
+      // ✅ THEN ROLE CHECK
+      if (user.role === "Department Head") {
+        setAuthSession({
+          accessToken: user.access_token,
+          role: USER_ROLES.DEPARTMENT_HEAD,
+          staffId: user.staff_id,
+        });
+        toast.success("Login successful!");
+        navigate("/user/user-home");
+      } else if (user.role === "Staff") {
+        setAuthSession({
+          accessToken: user.access_token,
+          role: USER_ROLES.TECHNICAL_STAFF,
+          staffId: user.staff_id,
+        });
+        toast.success("Login successful!");
+        navigate("/tech-support/tech-support-home");
+      } else {
+        toast.error("Access denied. Invalid role.");
+      }
+    } catch (error) {
+      console.error("Login error:", error.response?.data || error.message);
+      toast.error(error.response?.data?.error || "Login failed!");
     }
-
-    // ✅ THEN ROLE CHECK
-    if (user.role === "Department Head") {
-      localStorage.setItem("user_access_token", user.access_token);
-      toast.success("Login successful!");
-      navigate("/user/user-home");
-
-    } else if (user.role === "Staff") {
-      localStorage.setItem("ts_access_token", user.access_token);
-      toast.success("Login successful!");
-      navigate("/tech-support/tech-support-home");
-
-    } else {
-      toast.error("Access denied. Invalid role.");
-    }
-
-  } catch (error) {
-    console.error("Login error:", error.response?.data || error.message);
-    toast.error(error.response?.data?.error || "Login failed!");
-  }
-};
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -145,16 +146,14 @@ function AuthStaff() {
               className="w-100"
               variant="contained"
               sx={{
-                background:
-                  "linear-gradient(135deg,rgb(165, 130, 255),rgb(108, 123, 255))",
+                background: "linear-gradient(135deg,rgb(165, 130, 255),rgb(108, 123, 255))",
                 borderRadius: 2,
                 padding: "0.75rem",
                 color: "white",
                 fontWeight: "bold",
                 textTransform: "none",
                 "&:hover": {
-                  background:
-                    "linear-gradient(135deg, rgb(161, 74, 255),rgb(74, 141, 255))",
+                  background: "linear-gradient(135deg, rgb(161, 74, 255),rgb(74, 141, 255))",
                 },
               }}
             >

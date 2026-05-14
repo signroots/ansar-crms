@@ -1,4 +1,4 @@
-import React, {
+import {
   useState,
   useEffect
 } from 'react';
@@ -30,6 +30,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import { toast } from 'react-toastify';
+import { env } from '../../V2/config/env';
+import { clearAuthSession, getAuthSession } from '../../V2/shared/utils/authSession';
 
 function HeaderSidebar()
 {
@@ -63,13 +65,7 @@ function HeaderSidebar()
   // ================= LOGOUT =================
   const Logout = () =>
   {
-    localStorage.removeItem(
-      "user_access_token"
-    );
-
-    localStorage.removeItem(
-      "staff_id"
-    );
+    clearAuthSession();
 
     toast.success(
       'Logout Successfully'
@@ -81,10 +77,7 @@ function HeaderSidebar()
   // ================= WEBSOCKET =================
   useEffect(() =>
   {
-    const token =
-      localStorage.getItem(
-        "user_access_token"
-      );
+    const { accessToken: token } = getAuthSession();
 
     if (!token)
     {
@@ -102,7 +95,7 @@ function HeaderSidebar()
 
     // ✅ WEBSOCKET CONNECT
     const socket = new WebSocket(
-      `ws://127.0.0.1:8001/ws/notifications/?token=${token}`
+      `${env.wsUrl}/ws/notifications/?token=${token}`
     );
 
     // ================= CONNECT =================

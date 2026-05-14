@@ -1,191 +1,186 @@
-import React from "react";
+/* eslint-disable react/prop-types */
 import { LuUsers } from "react-icons/lu";
-import { MdDashboard} from "react-icons/md";
+import { MdDashboard, MdFeedback } from "react-icons/md";
 import { PiWarningCircle } from "react-icons/pi";
 import { TbFileSymlink, TbUserStar } from "react-icons/tb";
-import { Link, useLocation } from "react-router-dom";
-import { MdFeedback } from "react-icons/md";
+import { NavLink } from "react-router-dom";
 
-const Sidebar = ({ isOpen }) => {
-  
+import ROUTE_PATHS from "../../../V2/app/router/paths";
+import { USER_ROLES } from "../../../V2/shared/constants/roles";
+import { getAuthSession } from "../../../V2/shared/utils/authSession";
 
-  const sidebarStyle = {
-    width: isOpen ? "240px" : "60px",
-    backgroundColor: "#223349",
-    color: "#9b9b9d",
-    height: "100%",
-    transition: "width 0.3s",
+const superAdminMenu = [
+  {
+    label: "Dashboard",
+    path: ROUTE_PATHS.superAdmin.dashboard,
+    icon: MdDashboard,
+  },
+  {
+    label: "Complaints",
+    path: ROUTE_PATHS.superAdmin.complaints,
+    icon: PiWarningCircle,
+  },
+  {
+    label: "Requests",
+    path: ROUTE_PATHS.superAdmin.requests,
+    icon: TbFileSymlink,
+  },
+  {
+    label: "Users",
+    path: ROUTE_PATHS.superAdmin.users,
+    icon: LuUsers,
+  },
+  {
+    label: "Staff",
+    path: ROUTE_PATHS.superAdmin.staff,
+    icon: TbUserStar,
+  },
+  {
+    label: "Feedback",
+    path: ROUTE_PATHS.superAdmin.feedback,
+    icon: MdFeedback,
+  },
+];
+
+const departmentAdminMenu = [
+  {
+    label: "Dashboard",
+    path: ROUTE_PATHS.departmentAdmin.dashboard,
+    icon: MdDashboard,
+  },
+  {
+    label: "Complaints",
+    path: ROUTE_PATHS.departmentAdmin.complaints,
+    icon: PiWarningCircle,
+  },
+  {
+    label: "Requests",
+    path: ROUTE_PATHS.departmentAdmin.requests,
+    icon: TbFileSymlink,
+  },
+  {
+    label: "Users",
+    path: ROUTE_PATHS.departmentAdmin.users,
+    icon: LuUsers,
+  },
+];
+
+const getSidebarContext = () => {
+  const { role, isAdmin } = getAuthSession();
+  const isDepartmentAdmin =
+    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
+
+  if (isDepartmentAdmin) {
+    return {
+      label: "Department Admin",
+      caption: "Operations",
+      menuItems: departmentAdminMenu,
+    };
+  }
+
+  return {
+    label: "Super Admin",
+    caption: "Control Center",
+    menuItems: superAdminMenu,
+  };
+};
+
+const styles = {
+  sidebar: (isOpen, theme) => ({
+    width: isOpen ? "280px" : "88px",
+    height: "calc(100% - 24px)",
+    margin: "12px 0 12px 12px",
+    padding: isOpen ? "16px" : "14px 10px",
+    background: theme.sidebar.background,
+    border: `1px solid ${theme.sidebar.border}`,
+    borderRadius: "18px",
+    color: theme.sidebar.text,
+    transition: "width 0.22s ease, padding 0.22s ease, background 0.2s ease",
     overflow: "hidden",
-    borderRadius:"0px"
-  };
-
-  const ulStyle = {
-    listStyle: "none",
-    padding: 5,
-    margin: 0,
-  };
-
-  const sidebarItemStyle = {
+    boxShadow: theme.sidebar.shadow,
+    display: "flex",
+    flexDirection: "column",
+    flexShrink: 0,
+  }),
+  sectionLabel: (theme) => ({
+    margin: "4px 8px 12px",
+    color: theme.sidebar.muted,
+    fontSize: "11px",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  }),
+  nav: {
+    display: "grid",
+    gap: "8px",
+  },
+  navItem: (isOpen, isActive, theme) => ({
     display: "flex",
     alignItems: "center",
-    padding: "15px",
-    cursor: "pointer",
-    transition: "background-color 0.3s, color 0.3s",
-    color: "#9b9b9d",
+    justifyContent: isOpen ? "flex-start" : "center",
+    gap: "12px",
+    minHeight: "46px",
+    padding: isOpen ? "0 12px" : "0",
+    borderRadius: "14px",
+    background: isActive ? theme.sidebar.navActiveBackground : theme.sidebar.navBackground,
+    color: isActive ? theme.sidebar.navActiveText : theme.sidebar.navText,
+    border: `1px solid ${isActive ? theme.sidebar.navActiveBorder : theme.sidebar.navBorder}`,
+    textDecoration: "none",
+    transition: "background 0.18s ease, color 0.18s ease, transform 0.18s ease",
+    boxShadow: isActive ? theme.sidebar.navActiveShadow : "none",
+  }),
+  icon: {
+    width: "20px",
+    height: "20px",
+    flexShrink: 0,
+  },
+  navText: {
+    overflow: "hidden",
+    whiteSpace: "nowrap",
     fontSize: "14px",
-  };
+    fontWeight: 600,
+    letterSpacing: "0",
+  },
+  footer: (theme) => ({
+    marginTop: "auto",
+    padding: "12px",
+    borderRadius: "14px",
+    background: theme.sidebar.footerBackground,
+    border: `1px solid ${theme.sidebar.footerBorder}`,
+    color: theme.sidebar.footerText,
+    fontSize: "12px",
+    lineHeight: 1.45,
+  }),
+};
 
-  const sidebarItemHoverStyle = {
-    backgroundColor: "#d8ecff",
-    color: "#fff",
-  };
+function Sidebar({ isOpen, theme }) {
+  const { label, caption, menuItems } = getSidebarContext();
 
   return (
-    <aside className="card" style={sidebarStyle}>
-      <ul style={ulStyle}>
-        {/* Dashboard Item */}
-        <Link to="/admin/dashboard" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
-          >
-            <MdDashboard
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Dashboard</span>}
-          </li>
-        </Link>
+    <aside style={styles.sidebar(isOpen, theme)} aria-label={`${label} sidebar`}>
+      {isOpen && <div style={styles.sectionLabel(theme)}>{caption}</div>}
 
-        {/* complaint Item */}
-        <Link to="/admin/complaints" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
+      <nav style={styles.nav} aria-label={`${label} navigation`}>
+        {menuItems.map(({ icon: Icon, label: itemLabel, path }) => (
+          <NavLink
+            key={path}
+            to={path}
+            title={isOpen ? undefined : itemLabel}
+            style={({ isActive }) => styles.navItem(isOpen, isActive, theme)}
           >
-            <PiWarningCircle
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Complaints</span>}
-          </li>
-        </Link>
+            <Icon style={styles.icon} aria-hidden="true" />
+            {isOpen && <span style={styles.navText}>{itemLabel}</span>}
+          </NavLink>
+        ))}
+      </nav>
 
-        {/* Request Item */}
-        <Link to="/admin/requests" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) =>
-            {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) =>
-            {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
-          >
-            <TbFileSymlink
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Requests</span>}
-          </li>
-        </Link>
-
-        {/* Users Item */}
-        <Link to="/admin/user-manage" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
-          >
-            <LuUsers
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Users</span>}
-          </li>
-        </Link>
-        {/* Feedback Item */}
-        <Link to="" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) =>
-            {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) =>
-            {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
-          >
-            <MdFeedback
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Feedback</span>}
-          </li>
-        </Link>
-
-        {/* Staff Item */}
-        {/* <Link to="/admin/staff-manage" style={{ textDecoration: "none" }}>
-          <li
-            className="sidebarItem"
-            style={sidebarItemStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = sidebarItemHoverStyle.color;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "#9b9b9d";
-            }}
-          >
-            <TbUserStar
-              style={{ fontSize: "17px", marginRight: isOpen ? "15px" : "0" }}
-            />
-            {isOpen && <span>Super Admin</span>}
-          </li>
-        </Link> */}
-
-        {/* Logout Item */}
-        {/* <li
-          className="sidebarItem"
-          style={sidebarItemStyle}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = sidebarItemHoverStyle.color;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#9b9b9d";
-          }}
-        >
-          <FaPowerOff
-            style={{ fontSize: "16px", marginRight: isOpen ? "15px" : "0" }}
-          />
-          {isOpen && <span>Logout</span>}
-        </li> */}
-      </ul>
+      {isOpen && (
+        <div style={styles.footer(theme)}>
+          Manage requests, complaints, users, and service workflows from one place.
+        </div>
+      )}
     </aside>
   );
-};
+}
 
 export default Sidebar;

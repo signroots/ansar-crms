@@ -1,17 +1,10 @@
-import React, { useState } from "react";
+/* eslint-disable react/prop-types */
+import { Fragment, useState } from "react";
 import NotificationsIcon from "@mui/icons-material/Notifications";
-import {
-  IconButton,
-  Badge,
-  Menu,
-  MenuItem,
-  Typography,
-  Box,
-  Divider,
-} from "@mui/material";
+import { Badge, Box, Divider, IconButton, Menu, MenuItem, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
-const NotificationBell = ({ notifications = [] }) => {
+const NotificationBell = ({ iconColor = "inherit", notifications = [] }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const navigate = useNavigate();
 
@@ -25,15 +18,12 @@ const NotificationBell = ({ notifications = [] }) => {
     setAnchorEl(null);
   };
 
-  // ✅ CLICK HANDLER
-  const handleNotificationClick = (n) => {
-    const complaintId = n?.message?.complaint_id;
+  const handleNotificationClick = (notification) => {
+    const complaintId = notification?.message?.complaint_id;
 
     if (complaintId) {
-      // 👉 navigate to complaint page
       navigate(`/admin/complaints/${complaintId}`);
     } else {
-      // fallback
       navigate("/admin/complaints");
     }
 
@@ -42,18 +32,16 @@ const NotificationBell = ({ notifications = [] }) => {
 
   return (
     <Box>
-      {/* 🔔 Bell */}
-      <IconButton onClick={handleOpen}>
+      <IconButton onClick={handleOpen} sx={{ color: iconColor }}>
         <Badge badgeContent={notifications.length} color="error">
           <NotificationsIcon />
         </Badge>
       </IconButton>
 
-      {/* 📩 Menu */}
       <Menu
         anchorEl={anchorEl}
-        open={open}
         onClose={handleClose}
+        open={open}
         PaperProps={{
           style: { width: 300, maxHeight: 400 },
         }}
@@ -63,30 +51,30 @@ const NotificationBell = ({ notifications = [] }) => {
             <Typography>No notifications</Typography>
           </MenuItem>
         ) : (
-          notifications.map((n, i) => (
-            <React.Fragment key={i}>
+          notifications.map((notification, index) => (
+            <Fragment key={`${notification?.message?.title || "notification"}-${index}`}>
               <MenuItem
-                onClick={() => handleNotificationClick(n)}
                 alignItems="flex-start"
+                onClick={() => handleNotificationClick(notification)}
                 sx={{ whiteSpace: "normal", cursor: "pointer" }}
               >
                 <Box>
-                  <Typography variant="subtitle2" fontWeight="bold">
-                    {n?.message?.title || "Notification"}
+                  <Typography fontWeight="bold" variant="subtitle2">
+                    {notification?.message?.title || "Notification"}
                   </Typography>
 
                   <Typography variant="body2">
-                    {n?.message?.body || "New notification"}
+                    {notification?.message?.body || "New notification"}
                   </Typography>
 
-                  <Typography variant="caption" color="text.secondary">
-                    Priority: {n?.message?.priority || "N/A"}
+                  <Typography color="text.secondary" variant="caption">
+                    Priority: {notification?.message?.priority || "N/A"}
                   </Typography>
                 </Box>
               </MenuItem>
 
-              {i !== notifications.length - 1 && <Divider />}
-            </React.Fragment>
+              {index !== notifications.length - 1 && <Divider />}
+            </Fragment>
           ))
         )}
       </Menu>

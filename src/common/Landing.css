@@ -90,7 +90,7 @@ body {
 .page-footer {
   position: absolute;
   bottom: 12px;
-  padding-bottom: 180px;
+  /* padding-bottom: 180px; */
   text-align: center;
   width: 100%;
   font-weight: 500;

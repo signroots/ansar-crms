@@ -1,10 +1,11 @@
-import React, { useState } from "react";
-import { Grid, Box, TextField, Button, Card } from "@mui/material";
+import { useState } from "react";
+import { Grid, TextField, Button, Card } from "@mui/material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import { toast } from "react-toastify";
-import BASE_URL from "../../utils/baseUrl";
+import { authApi } from "../../V2/services/api/endpoints/auth.api";
+import { USER_ROLES } from "../../V2/shared/constants/roles";
+import { setAuthSession } from "../../V2/shared/utils/authSession";
 
 const theme = createTheme({
   palette: {
@@ -36,17 +37,20 @@ function Authentication() {
     e.preventDefault();
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/adminlogin/`, {
+      const data = await authApi.adminLogin({
         username,
         password,
       });
 
-      if (response.status === 200) {
-        localStorage.setItem("admin_access_token", response.data.access_token);
-        navigate("/admin/dashboard"); 
+      if (data.access_token) {
+        setAuthSession({
+          accessToken: data.access_token,
+          role: USER_ROLES.SUPER_ADMIN,
+        });
+        navigate("/admin/dashboard");
       }
-    } catch (error) {
-      toast.error("Invalid credentials, please try again."); 
+    } catch {
+      toast.error("Invalid credentials, please try again.");
     }
   };
 

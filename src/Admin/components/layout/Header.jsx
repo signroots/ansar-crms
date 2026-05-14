@@ -1,196 +1,316 @@
-import React, { useState, useEffect } from "react";
-import {
-  Navbar,
-  Nav,
-  Button,
-  Container,
-  Dropdown,
-  Offcanvas,
-} from "react-bootstrap";
-
+/* eslint-disable react/prop-types */
+import { forwardRef, useEffect, useState } from "react";
+import { Button, Dropdown, Offcanvas } from "react-bootstrap";
 import { BsBell } from "react-icons/bs";
 import { FaPowerOff } from "react-icons/fa6";
 import { LuUser } from "react-icons/lu";
-import { MdFullscreen } from "react-icons/md";
+import { MdDarkMode, MdFullscreen, MdLightMode } from "react-icons/md";
 import { RxHamburgerMenu } from "react-icons/rx";
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import NotificationBell from "../../../common/NotificationBell";
+import { env } from "../../../V2/config/env";
+import { ADMIN_LAYOUT_THEME_NAMES } from "./layoutTheme";
+import { clearAuthSession, getAuthSession } from "../../../V2/shared/utils/authSession";
 
-function Header({ toggleSidebar }) {
+const styles = {
+  header: (theme) => ({
+    margin: "12px 12px 0",
+    minHeight: "72px",
+    padding: "12px 16px",
+    background: theme.header.background,
+    border: `1px solid ${theme.header.border}`,
+    borderRadius: "18px",
+    boxShadow: theme.header.shadow,
+    color: theme.header.text,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "16px",
+    transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+    zIndex: 10,
+  }),
+  left: {
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+    gap: "12px",
+  },
+  brand: {
+    display: "flex",
+    alignItems: "center",
+    minWidth: 0,
+    gap: "10px",
+  },
+  brandMark: (theme) => ({
+    width: "40px",
+    height: "40px",
+    borderRadius: "12px",
+    display: "grid",
+    placeItems: "center",
+    background: theme.header.brandMark,
+    color: "#ffffff",
+    fontWeight: 800,
+    flexShrink: 0,
+  }),
+  brandCopy: {
+    minWidth: 0,
+  },
+  brandTitle: (theme) => ({
+    margin: 0,
+    color: theme.header.text,
+    fontSize: "16px",
+    fontWeight: 800,
+    lineHeight: 1.2,
+    letterSpacing: "0",
+  }),
+  brandSubtitle: (theme) => ({
+    display: "block",
+    marginTop: "2px",
+    color: theme.header.muted,
+    fontSize: "12px",
+    fontWeight: 600,
+    lineHeight: 1.2,
+  }),
+  actions: {
+    alignItems: "center",
+    gap: "10px",
+  },
+  iconButton: (theme) => ({
+    width: "42px",
+    height: "42px",
+    borderRadius: "12px",
+    border: `1px solid ${theme.header.buttonBorder}`,
+    background: theme.header.buttonBackground,
+    color: theme.header.buttonColor,
+    display: "grid",
+    placeItems: "center",
+    padding: 0,
+    lineHeight: 1,
+    transition: "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
+  }),
+  notificationSlot: (theme) => ({
+    width: "42px",
+    height: "42px",
+    borderRadius: "12px",
+    border: `1px solid ${theme.header.buttonBorder}`,
+    background: theme.header.buttonBackground,
+    display: "grid",
+    placeItems: "center",
+  }),
+  dropdownMenu: (theme) => ({
+    marginTop: "10px",
+    padding: "8px",
+    borderRadius: "14px",
+    border: `1px solid ${theme.header.border}`,
+    background: theme.header.background,
+    boxShadow: theme.header.shadow,
+  }),
+  dropdownItem: {
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "12px",
+    fontWeight: 600,
+  },
+  panel: (theme) => ({
+    background: theme.header.background,
+    color: theme.header.text,
+  }),
+  notificationItem: (theme) => ({
+    padding: "12px 0",
+    borderBottom: `1px solid ${theme.header.border}`,
+  }),
+  notificationTitle: (theme) => ({
+    color: theme.header.text,
+    fontWeight: 700,
+  }),
+  notificationBody: (theme) => ({
+    color: theme.header.muted,
+    marginTop: "4px",
+  }),
+  notificationMeta: (theme) => ({
+    color: theme.header.muted,
+    display: "block",
+    marginTop: "6px",
+  }),
+};
+
+const ProfileToggle = forwardRef(({ children, onClick, style }, ref) => (
+  <button
+    aria-label="Open profile menu"
+    onClick={(event) => {
+      event.preventDefault();
+      onClick(event);
+    }}
+    ref={ref}
+    style={style}
+    type="button"
+  >
+    {children}
+  </button>
+));
+
+ProfileToggle.displayName = "ProfileToggle";
+
+function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
   const navigate = useNavigate();
+  const isDarkMode = themeName === ADMIN_LAYOUT_THEME_NAMES.DARK;
 
-  // ================= FULLSCREEN =================
   const enterFullScreen = () => {
     const el = document.documentElement;
+
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     else if (el.msRequestFullscreen) el.msRequestFullscreen();
   };
 
-  // ================= LOGOUT =================
   const adminLogout = () => {
-    localStorage.removeItem("admin_access_token");
+    clearAuthSession();
     toast.success("Logout Successfully");
     navigate("/login");
   };
 
-  // ================= WEBSOCKET =================
-  // ================= WEBSOCKET =================
-useEffect(() => {
+  useEffect(() => {
+    const { accessToken: token } = getAuthSession();
 
-  // ✅ GET TOKEN
-  const token = localStorage.getItem("access_token");
+    if (!token) return undefined;
 
-  // ✅ CHECK TOKEN
-  if (!token) {
-    console.log("No token found");
-    return;
-  }
+    const socket = new WebSocket(`${env.wsUrl}/ws/notifications/?token=${token}`);
 
-  // ✅ CONNECT WEBSOCKET
-  const socket = new WebSocket(
-    `ws://127.0.0.1:8001/ws/notifications/?token=${token}`
-  );
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
 
-  socket.onopen = () => {
-    console.log("✅ WebSocket Connected");
-  };
+        toast.success(data?.message?.body || "New Notification");
 
- socket.onmessage = (event) => {
+        setNotifications((prev) => {
+          const exists = prev.some(
+            (notification) =>
+              notification?.message?.body === data?.message?.body &&
+              notification?.message?.title === data?.message?.title,
+          );
 
-  console.log("🔥 RAW WS DATA:", event.data);
+          if (exists) return prev;
 
-  try {
+          return [data, ...prev];
+        });
+      } catch (err) {
+        console.error("Invalid notification payload:", err);
+      }
+    };
 
-    const data = JSON.parse(event.data);
+    socket.onerror = (err) => {
+      console.error("Notification socket error:", err);
+    };
 
-    console.log("✅ PARSED DATA:", data);
-
-    // ✅ SHOW TOAST
-    toast.success(
-      data?.message?.body || "New Notification"
-    );
-
-    // ✅ STORE NOTIFICATION
-    setNotifications((prev) => {
-
-      const exists = prev.some(
-        (n) =>
-          n?.message?.body === data?.message?.body &&
-          n?.message?.title === data?.message?.title
-      );
-
-      if (exists) return prev;
-
-      return [data, ...prev];
-
-    });
-
-  } catch (err) {
-
-    console.error("❌ Invalid WS data:", err);
-
-  }
-};
-
-  socket.onerror = (err) => {
-    console.error("❌ WebSocket error:", err);
-  };
-
-  socket.onclose = () => {
-    console.log("⚠️ WebSocket closed");
-  };
-
-  return () => socket.close();
-
-}, []);
+    return () => socket.close();
+  }, []);
 
   return (
-    <Navbar expand="lg" bg="light">
-      <Container fluid>
+    <header style={styles.header(theme)}>
+      <div style={styles.left}>
+        <button
+          aria-label="Toggle sidebar"
+          onClick={toggleSidebar}
+          style={styles.iconButton(theme)}
+          type="button"
+        >
+          <RxHamburgerMenu size={22} />
+        </button>
 
-        {/* LEFT SIDE */}
-        <div className="d-flex align-items-center">
-          <button
-            onClick={toggleSidebar}
-            className="bg-transparent border-0 me-2"
-          >
-            <RxHamburgerMenu size={25} />
-          </button>
+        <div style={styles.brand}>
+          <div style={styles.brandMark(theme)}>A</div>
+          <div style={styles.brandCopy}>
+            <p style={styles.brandTitle(theme)}>Ansar</p>
+            <span style={styles.brandSubtitle(theme)}>Admin Workspace</span>
+          </div>
+        </div>
+      </div>
 
-          <Navbar.Brand className="fw-bold">Ansar</Navbar.Brand>
+      <div className="d-lg-none d-flex" style={styles.actions}>
+        <button
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={toggleTheme}
+          style={styles.iconButton(theme)}
+          title={isDarkMode ? "Light mode" : "Dark mode"}
+          type="button"
+        >
+          {isDarkMode ? <MdLightMode size={20} /> : <MdDarkMode size={20} />}
+        </button>
+
+        <button
+          aria-label="Open notifications"
+          onClick={() => setShowNotifications(true)}
+          style={styles.iconButton(theme)}
+          type="button"
+        >
+          <BsBell size={18} />
+        </button>
+
+        <button
+          aria-label="Open profile"
+          onClick={() => setShowProfile(true)}
+          style={styles.iconButton(theme)}
+          type="button"
+        >
+          <LuUser size={20} />
+        </button>
+      </div>
+
+      <div className="d-none d-lg-flex" style={styles.actions}>
+        <button
+          aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+          onClick={toggleTheme}
+          style={styles.iconButton(theme)}
+          title={isDarkMode ? "Light mode" : "Dark mode"}
+          type="button"
+        >
+          {isDarkMode ? <MdLightMode size={20} /> : <MdDarkMode size={20} />}
+        </button>
+
+        <button
+          aria-label="Enter fullscreen"
+          onClick={enterFullScreen}
+          style={styles.iconButton(theme)}
+          type="button"
+        >
+          <MdFullscreen size={23} />
+        </button>
+
+        <div style={styles.notificationSlot(theme)}>
+          <NotificationBell iconColor={theme.header.buttonColor} notifications={notifications} />
         </div>
 
-        {/* MOBILE ICONS */}
-        <div className="d-lg-none d-flex ms-auto align-items-center">
-
-          <Button
-            variant="link"
-            className="p-0 text-dark me-3"
-            onClick={() => setShowNotifications(true)}
-          >
-            <BsBell size={18} />
-          </Button>
-
-          <Button
-            variant="link"
-            className="p-0 text-dark"
-            onClick={() => setShowProfile(true)}
+        <Dropdown align="end">
+          <Dropdown.Toggle
+            as={ProfileToggle}
+            id="admin-profile-menu"
+            style={styles.iconButton(theme)}
           >
             <LuUser size={20} />
-          </Button>
-        </div>
+          </Dropdown.Toggle>
 
-        {/* RIGHT SIDE */}
-        <Navbar.Collapse className="justify-content-end">
-          <Nav>
+          <Dropdown.Menu style={styles.dropdownMenu(theme)}>
+            <Dropdown.Item onClick={adminLogout} style={styles.dropdownItem}>
+              Logout <FaPowerOff />
+            </Dropdown.Item>
+          </Dropdown.Menu>
+        </Dropdown>
+      </div>
 
-            {/* FULLSCREEN */}
-            <Nav.Item className="ms-2">
-              <Button variant="link" className="p-0 text-dark">
-                <MdFullscreen size={22} onClick={enterFullScreen} />
-              </Button>
-            </Nav.Item>
-
-            {/* 🔔 NOTIFICATION BELL */}
-            <Nav.Item className="ms-2">
-              <NotificationBell notifications={notifications} />
-            </Nav.Item>
-
-            {/* PROFILE */}
-            <Nav.Item className="ms-2">
-              <Dropdown align="end">
-                <Dropdown.Toggle variant="link" className="p-0 text-dark">
-                  <LuUser size={20} />
-                </Dropdown.Toggle>
-
-                <Dropdown.Menu>
-                  <Dropdown.Item
-                    onClick={adminLogout}
-                    className="text-danger"
-                  >
-                    Logout <FaPowerOff />
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              </Dropdown>
-            </Nav.Item>
-
-          </Nav>
-        </Navbar.Collapse>
-      </Container>
-
-      {/* ================= NOTIFICATIONS PANEL ================= */}
       <Offcanvas
-        show={showNotifications}
+        data-bs-theme={themeName}
         onHide={() => setShowNotifications(false)}
         placement="end"
+        show={showNotifications}
+        style={styles.panel(theme)}
       >
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>Notifications</Offcanvas.Title>
@@ -198,47 +318,46 @@ useEffect(() => {
 
         <Offcanvas.Body>
           {notifications.length === 0 ? (
-            <p className="text-secondary">No notifications</p>
+            <p style={styles.notificationBody(theme)}>No notifications</p>
           ) : (
-            notifications.map((n, i) => (
-              <div key={i} className="border-bottom py-2">
-
-                <div className="fw-bold">
-                  {n?.message?.title || "Notification"}
+            notifications.map((notification, index) => (
+              <div
+                key={`${notification?.message?.title || "notification"}-${index}`}
+                style={styles.notificationItem(theme)}
+              >
+                <div style={styles.notificationTitle(theme)}>
+                  {notification?.message?.title || "Notification"}
                 </div>
-
-                <div>
-                  {n?.message?.body || "No message"}
+                <div style={styles.notificationBody(theme)}>
+                  {notification?.message?.body || "No message"}
                 </div>
-
-                <small className="text-muted">
-                  Priority: {n?.message?.priority || "N/A"}
+                <small style={styles.notificationMeta(theme)}>
+                  Priority: {notification?.message?.priority || "N/A"}
                 </small>
-
               </div>
             ))
           )}
         </Offcanvas.Body>
       </Offcanvas>
 
-      {/* ================= PROFILE PANEL ================= */}
       <Offcanvas
-        show={showProfile}
+        data-bs-theme={themeName}
         onHide={() => setShowProfile(false)}
         placement="end"
+        show={showProfile}
+        style={styles.panel(theme)}
       >
         <Offcanvas.Header closeButton>
           <Offcanvas.Title>Profile</Offcanvas.Title>
         </Offcanvas.Header>
 
         <Offcanvas.Body>
-          <Button variant="danger" onClick={adminLogout}>
-            Logout
+          <Button onClick={adminLogout} variant="danger">
+            Logout <FaPowerOff />
           </Button>
         </Offcanvas.Body>
       </Offcanvas>
-
-    </Navbar>
+    </header>
   );
 }
 
