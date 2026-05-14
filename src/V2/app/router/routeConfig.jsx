@@ -5,7 +5,6 @@ import Dashboard from "../../../Admin/pages/Dashboard";
 import FeedbackList from "../../../Admin/pages/Feedback";
 import Requests from "../../../Admin/pages/Requests";
 import StaffManage from "../../../Admin/pages/StaffManage";
-import StudentInfoPage from "../../../Admin/pages/StudentInfo";
 import UserManage from "../../../Admin/pages/UserManage";
 import Landing from "../../../common/Landing";
 import AuthStaff from "../../../Staff/pages/AuthStaff";
@@ -79,11 +78,11 @@ export const appRoutes = [
   },
   {
     path: ROUTE_PATHS.superAdmin.feedback,
-    element: protectedElement(<StudentInfoPage />, superAdminOptions),
+    element: protectedElement(withLayout(AdminLayout, <FeedbackList />), superAdminOptions),
   },
   {
     path: ROUTE_PATHS.superAdmin.feedbackList,
-    element: protectedElement(<FeedbackList />, superAdminOptions),
+    element: protectedElement(withLayout(AdminLayout, <FeedbackList />), superAdminOptions),
   },
 
   {

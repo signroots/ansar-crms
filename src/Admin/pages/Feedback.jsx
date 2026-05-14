@@ -1,12 +1,7 @@
-import React from 'react';
-import FeedbackList from '../components/feedbackmanagement/feedbacklist';  // Corrected import
+import FeedbackList from "../components/feedbackmanagement/feedbacklist";
 
 function FeedbackPage() {
-  return (
-    <div>
-      <FeedbackList />  {/* Corrected to use the FeedbackList component */}
-    </div>
-  );
+  return <FeedbackList />;
 }
 
 export default FeedbackPage;

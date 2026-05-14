@@ -2,7 +2,7 @@
 import { LuUsers } from "react-icons/lu";
 import { MdDashboard, MdFeedback } from "react-icons/md";
 import { PiWarningCircle } from "react-icons/pi";
-import { TbFileSymlink, TbUserStar } from "react-icons/tb";
+import { TbFileSymlink } from "react-icons/tb";
 import { NavLink } from "react-router-dom";
 
 import ROUTE_PATHS from "../../../V2/app/router/paths";
