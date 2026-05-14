@@ -14,25 +14,13 @@ const initialFormData = {
   location: "",
   notes: "",
   phoneNumber: "",
-  priority: "",
+  priority: "Medium",
   program_date: "",
   program_name: "",
   program_time: "",
   staffId: "",
   subLocation: "",
   typeOfRequest: "",
-};
-
-const priorityOptions = [
-  { label: "Low", value: "Low" },
-  { label: "Medium", value: "Medium" },
-  { label: "Emergency", value: "Emergency" },
-];
-
-const priorityTagColors = {
-  Emergency: "error",
-  Low: "success",
-  Medium: "warning",
 };
 
 const getAccessToken = () => localStorage.getItem("access_token");
@@ -81,7 +69,6 @@ const styles = {
   form: {
     display: "grid",
     gap: "20px",
-    // marginTop: "22px",
   },
   section: {
     padding: 0,
@@ -190,6 +177,10 @@ const toOptions = (items, getLabel = getItemLabel) =>
   }));
 
 const findById = (items, value) => items.find((item) => String(item.id) === String(value));
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 const getSelectedLabel = (items, value) => {
   const item = findById(items, value);
 
@@ -222,8 +213,11 @@ function CreateRequests({ fetchRequests }) {
   const selectedCategoryName = getSelectedLabel(allRequests, formData.allRequest);
   const selectedRequestTypeName =
     requestTypeName || getSelectedLabel(typesOfRequest, formData.typeOfRequest);
-  const isMaintenance = selectedRequestTypeName === "Maintenance";
-  const isStageProgram = selectedCategoryName === "Stage Programs";
+  const selectedCategoryKey = normalizeLabel(selectedCategoryName);
+  const selectedRequestTypeKey = normalizeLabel(selectedRequestTypeName);
+  const isMaintenance = selectedRequestTypeKey === "maintenance";
+  const isStageProgram =
+    selectedCategoryKey.includes("stage") && selectedCategoryKey.includes("program");
 
   const staffOptions = useMemo(
     () =>
@@ -253,13 +247,16 @@ function CreateRequests({ fetchRequests }) {
   const resetForm = () => {
     const storedTypeId = localStorage.getItem("type_of_issue_id") || "";
     const storedTypeName = localStorage.getItem("type_of_issue") || "";
+    const storedRole = localStorage.getItem("user_role") || localStorage.getItem("role") || "";
+    const shouldUseStoredType = storedRole === "Tech Support";
 
     setFormData({
       ...initialFormData,
-      typeOfRequest: isTechSupport ? storedTypeId : "",
+      typeOfRequest: shouldUseStoredType ? storedTypeId : "",
     });
-    setRequestTypeName(isTechSupport ? storedTypeName : "");
+    setRequestTypeName(shouldUseStoredType ? storedTypeName : "");
     setErrors({});
+    setAllRequests([]);
     setSubLocations([]);
   };
 
@@ -329,6 +326,7 @@ function CreateRequests({ fetchRequests }) {
   const handleRequestTypeChange = (value) => {
     const selectedType = findById(typesOfRequest, value);
 
+    setAllRequests([]);
     setRequestTypeName(selectedType ? getItemLabel(selectedType) : "");
     setField("typeOfRequest", value, {
       allRequest: "",
@@ -364,14 +362,6 @@ function CreateRequests({ fetchRequests }) {
 
     if (!formData.allRequest) {
       nextErrors.allRequest = "Required";
-    }
-
-    if (!formData.phoneNumber) {
-      nextErrors.phoneNumber = "Required";
-    }
-
-    if (!formData.priority) {
-      nextErrors.priority = "Required";
     }
 
     if (isMaintenance) {
@@ -484,18 +474,6 @@ function CreateRequests({ fetchRequests }) {
                 />
                 <FieldError>{errors.staffId}</FieldError>
               </label>
-
-              {/* <label style={styles.field}>
-                <span style={styles.label}>Phone Number</span>
-                <Input
-                  placeholder="Phone number"
-                  status={errors.phoneNumber ? "error" : undefined}
-                  style={styles.control}
-                  value={formData.phoneNumber}
-                  onChange={(event) => setField("phoneNumber", event.target.value)}
-                />
-                <FieldError>{errors.phoneNumber}</FieldError>
-              </label> */}
             </div>
           </section>
 
@@ -544,22 +522,6 @@ function CreateRequests({ fetchRequests }) {
                 />
                 <FieldError>{errors.allRequest}</FieldError>
               </label>
-
-              {/* <label style={styles.field}>
-                <span style={styles.label}>Priority</span>
-                <Select
-                  optionRender={(option) => (
-                    <Tag color={priorityTagColors[option.value] || "default"}>{option.label}</Tag>
-                  )}
-                  options={priorityOptions}
-                  placeholder="Select priority"
-                  status={errors.priority ? "error" : undefined}
-                  style={styles.control}
-                  value={formData.priority || undefined}
-                  onChange={(value) => setField("priority", value)}
-                />
-                <FieldError>{errors.priority}</FieldError>
-              </label> */}
             </div>
           </section>
 

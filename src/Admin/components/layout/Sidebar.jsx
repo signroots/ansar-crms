@@ -30,11 +30,11 @@ const superAdminMenu = [
     path: ROUTE_PATHS.superAdmin.users,
     icon: LuUsers,
   },
-  {
-    label: "Staff",
-    path: ROUTE_PATHS.superAdmin.staff,
-    icon: TbUserStar,
-  },
+  // {
+  //   label: "Staff",
+  //   path: ROUTE_PATHS.superAdmin.staff,
+  //   icon: TbUserStar,
+  // },
   {
     label: "Feedback",
     path: ROUTE_PATHS.superAdmin.feedback,

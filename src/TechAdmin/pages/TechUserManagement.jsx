@@ -1,7 +1,3 @@
-import React from "react";
+import UserManage from "../../Admin/pages/UserManage";
 
-function Dashboard() {
-  return <h2>Tech Admin user mngmnt</h2>;
-}
-
-export default Dashboard;
+export default UserManage;
