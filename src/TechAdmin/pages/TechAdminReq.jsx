@@ -1,7 +1,3 @@
-import React from "react";
+import Requests from "../../Admin/pages/Requests";
 
-function Dashboard() {
-  return <h2>Tech Admin Request</h2>;
-}
-
-export default Dashboard;
+export default Requests;
