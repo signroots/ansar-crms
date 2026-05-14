@@ -57,6 +57,17 @@ const Layout = ({ children }) => {
         overflow: "hidden",
         backgroundColor: theme.shellBackground,
         transition: "background-color 0.2s ease",
+        "--admin-bg": theme.contentBackground,
+        "--admin-surface": theme.name === "dark" ? "#111827" : "#ffffff",
+        "--admin-surface-soft": theme.name === "dark" ? "#172033" : "#f8fafc",
+        "--admin-surface-muted": theme.name === "dark" ? "#1f2937" : "#eef2f7",
+        "--admin-border": theme.name === "dark" ? "rgba(255, 255, 255, 0.08)" : "#e2e8f0",
+        "--admin-text": theme.header.text,
+        "--admin-muted": theme.header.muted,
+        "--admin-shadow":
+          theme.name === "dark"
+            ? "0 18px 45px rgba(0, 0, 0, 0.28)"
+            : "0 18px 45px rgba(16, 24, 40, 0.08)",
       }}
     >
       <Header
