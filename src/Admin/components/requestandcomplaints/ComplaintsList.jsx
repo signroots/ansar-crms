@@ -50,13 +50,6 @@ const statusMeta = {
   },
 };
 
-const priorityMeta = {
-  Emergency: "error",
-  High: "error",
-  Medium: "warning",
-  Low: "success",
-};
-
 const styles = {
   page: {
     display: "grid",
@@ -186,6 +179,37 @@ const styles = {
     fontSize: "13px",
     fontWeight: 500,
   },
+  dateBlock: {
+    display: "grid",
+    gap: "2px",
+    marginTop: "7px",
+  },
+  dateCaption: {
+    color: "var(--admin-muted, #667085)",
+    fontSize: "11px",
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+  },
+  dateValue: {
+    color: "var(--admin-text, #101828)",
+    fontSize: "13px",
+    fontWeight: 800,
+    lineHeight: 1.25,
+  },
+  timeValue: {
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+  dateEmpty: {
+    display: "inline-flex",
+    marginTop: "7px",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 700,
+  },
   iconButton: {
     width: "34px",
     height: "34px",
@@ -284,11 +308,63 @@ const formatDate = (value, withTime = false) => {
 
   return new Intl.DateTimeFormat("en-IN", {
     day: "2-digit",
+    hour12: true,
     hour: withTime ? "2-digit" : undefined,
     minute: withTime ? "2-digit" : undefined,
     month: "short",
     year: "numeric",
   }).format(date);
+};
+
+const formatDateTimeParts = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-IN", {
+      hour: "2-digit",
+      hour12: true,
+      minute: "2-digit",
+    }).format(date),
+  };
+};
+
+const formatDateTimeText = (value) => {
+  const parts = formatDateTimeParts(value);
+
+  if (!parts) {
+    return "N/A";
+  }
+
+  return `${parts.date} at ${parts.time}`;
+};
+
+const renderDateTimeCell = (value, label, emptyText = "N/A") => {
+  const parts = formatDateTimeParts(value);
+
+  if (!parts) {
+    return <span style={styles.dateEmpty}>{emptyText}</span>;
+  }
+
+  return (
+    <div style={styles.dateBlock}>
+      <span style={styles.dateCaption}>{label}</span>
+      <span style={styles.dateValue}>{parts.date}</span>
+      <span style={styles.timeValue}>Time: {parts.time}</span>
+    </div>
+  );
 };
 
 const normalizeListResponse = (data) => {
@@ -327,8 +403,6 @@ const getRoleContext = () => {
 };
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
-
-const getPriorityTagColor = (priority) => priorityMeta[priority] || "default";
 
 const getComplaintSearchText = (complaint) =>
   [
@@ -560,18 +634,18 @@ function ComplaintsList() {
 
   const columns = [
     {
-      dataIndex: "complaint_id",
-      key: "complaint_id",
+      dataIndex: "date_id",
+      key: "date_id",
       render: (_, complaint, index) => (
         <div>
           <strong>
             {complaint.complaint_id || `#${(currentPage - 1) * rowsPerPage + index + 1}`}
           </strong>
-          <div style={styles.muted}>{formatDate(complaint.date)}</div>
+          {renderDateTimeCell(complaint.date, "Created", "Created date not found")}
         </div>
       ),
-      title: "Complaint",
-      width: 150,
+      title: "Complaint / Created",
+      width: 190,
     },
     {
       key: "institution",
@@ -592,15 +666,8 @@ function ComplaintsList() {
           <div style={styles.muted}>{getText(complaint.type_of_issue?.name)}</div>
         </div>
       ),
-      title: "Issue",
+      title: "Complaint",
       width: 240,
-    },
-    {
-      dataIndex: "priority",
-      key: "priority",
-      render: (priority) => <Tag color={getPriorityTagColor(priority)}>{getText(priority)}</Tag>,
-      title: "Priority",
-      width: 120,
     },
     {
       dataIndex: "status",
@@ -614,11 +681,11 @@ function ComplaintsList() {
       render: (_, complaint) => (
         <div>
           <strong>{getText(complaint.resolved_by?.name)}</strong>
-          <div style={styles.muted}>{formatDate(complaint.resolved_date)}</div>
+          {renderDateTimeCell(complaint.resolved_date, "Resolved", "Not resolved yet")}
         </div>
       ),
-      title: "Attended By",
-      width: 180,
+      title: "Attended / Resolved",
+      width: 210,
     },
     {
       align: "right",
@@ -651,12 +718,11 @@ function ComplaintsList() {
         ["Complaint", selectedComplaint.issue_complaint?.name],
         ["Type of Issue", selectedComplaint.type_of_issue?.name],
         ["Category", selectedComplaint.category],
-        ["Priority", selectedComplaint.priority],
         ["Status", selectedComplaint.status],
-        ["Created Date & Time", formatDate(selectedComplaint.date, true)],
-        ["Attend Date & Time", formatDate(selectedComplaint.attend_date, true)],
+        ["Created Date & Time", formatDateTimeText(selectedComplaint.date)],
+        ["Attend Date & Time", formatDateTimeText(selectedComplaint.attend_date)],
         ["Attended By", selectedComplaint.resolved_by?.name],
-        ["Resolved Date & Time", formatDate(selectedComplaint.resolved_date, true)],
+        ["Resolved Date & Time", formatDateTimeText(selectedComplaint.resolved_date)],
         ["Delay Reason", selectedComplaint.delay_reason],
         ["Remark", selectedComplaint.remark],
         ["Notes", selectedComplaint.notes],
@@ -851,7 +917,11 @@ function ComplaintsList() {
         <p style={styles.muted}>
           Select a created-date range. The export uses the complaints API and writes an Excel file.
         </p>
-        <RangePicker onChange={setExportRange} style={{ width: "100%", height: '50px' }} value={exportRange} />
+        <RangePicker
+          onChange={setExportRange}
+          style={{ width: "100%", height: "50px" }}
+          value={exportRange}
+        />
       </Modal>
     </div>
   );
