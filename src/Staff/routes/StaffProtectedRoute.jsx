@@ -1,16 +1,14 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-
-const isAuthenticated = () => {
-    const token = localStorage.getItem('access_token');
-    const role = localStorage.getItem('role');
-
-    return token && role === "Tech Support";
-};
+/* eslint-disable react/prop-types */
+import ProtectedRoute from '../../V2/app/router/ProtectedRoute';
+import { ROLE_GROUPS } from '../../V2/shared/constants/roles';
 
 function StaffProtectedRoute({ element })
 {
-    return isAuthenticated() ? element : <Navigate to="/" />;
+    return (
+        <ProtectedRoute allowedRoles={ROLE_GROUPS.TECHNICAL_STAFF}>
+            {element}
+        </ProtectedRoute>
+    );
 }
 
 export default StaffProtectedRoute;

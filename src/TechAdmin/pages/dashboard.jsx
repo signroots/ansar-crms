@@ -1,7 +1,3 @@
-import React from "react";
-
-function Dashboard() {
-  return <h2>Tech Admin Dashboard</h2>;
-}
+import Dashboard from "../../Admin/pages/Dashboard";
 
 export default Dashboard;

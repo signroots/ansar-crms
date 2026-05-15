@@ -1,4 +1,3 @@
-import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 
@@ -17,7 +16,7 @@ if ('serviceWorker' in navigator)
     });
 }
 
-if (process.env.NODE_ENV === 'production')
+if (import.meta.env.PROD)
 {
   console.log = () => { };  // Disable all console.log calls in production
 }

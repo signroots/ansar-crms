@@ -4,9 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "vite --mode development",
+    "start:dev": "vite --mode development",
+    "dev:staging": "vite --mode staging",
+    "start:staging": "vite --mode staging",
+    "build": "vite build --mode production",
+    "build:dev": "vite build --mode development",
+    "build:staging": "vite build --mode staging",
+    "build:production": "vite build --mode production",
     "lint": "eslint .",
+    "lint:v2": "eslint src/V2 src/App.jsx src/common/Landing.jsx src/Admin/pages/Authentication.jsx src/Staff/pages/AuthStaff.jsx",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write . --ignore-unknown --cache --log-level silent",
+    "format:check": "prettier --check . --ignore-unknown --log-level silent",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,6 +26,7 @@
     "@mui/material": "^6.5.0",
     "@mui/x-date-pickers": "^7.23.3",
     "@reduxjs/toolkit": "^2.5.0",
+    "antd": "^6.4.1",
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.5.1",
@@ -36,11 +47,15 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.5.0",
     "eslint": "^9.15.0",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
     "globals": "^15.12.0",
+    "postcss": "^8.5.14",
+    "prettier": "^3.8.3",
+    "tailwindcss": "^3.4.19",
     "vite": "^6.0.1"
   }
 }

@@ -5,7 +5,16 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  {
+    ignores: [
+      'dist',
+      'build',
+      'coverage',
+      '.cache',
+      'node_modules',
+      'public',
+    ],
+  },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {
@@ -33,6 +42,16 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    files: ['src/V2/**/*.{js,jsx}'],
+    rules: {
+      curly: ['error', 'all'],
+      eqeqeq: ['warn', 'smart'],
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'prefer-const': 'warn',
+      'react/prop-types': 'off',
     },
   },
 ]

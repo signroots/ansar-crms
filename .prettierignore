@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+coverage
+.cache
+.git
+.codex
+package-lock.json

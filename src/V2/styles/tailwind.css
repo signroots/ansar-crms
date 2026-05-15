@@ -1,0 +1,12 @@
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .v2-page {
+    @apply min-h-screen bg-slate-50 text-ink-900;
+  }
+
+  .v2-panel {
+    @apply rounded-xl border border-slate-200 bg-white;
+  }
+}

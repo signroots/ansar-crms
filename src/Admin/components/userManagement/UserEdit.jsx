@@ -1,416 +1,503 @@
-import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  Box,
-  TextField,
-  Button,
-  MenuItem,
-  ThemeProvider,
-  createTheme,
-} from "@mui/material";
-import axios from "axios";
-import BASE_URL from "../../../utils/baseUrl";
+/* eslint-disable react/prop-types */
+import { useEffect, useMemo, useState } from "react";
+import { Button, Checkbox, Drawer, Input, Select } from "antd";
 import { toast } from "react-toastify";
 
-const UserEdit = ({ open, handleClose, userId, onUpdate }) => {
-  const [formData, setFormData] = useState({
-    name: "",
-    department: "",
-    mobile_number: "",
-    institution: "",
-    staff_id: "",
-    role: "",
-    section_for_staff: "",
-  });
+import { apiService } from "../../../V2/services/api/Api.service";
+import { USER_ROLES } from "../../../V2/shared/constants/roles";
 
-  const [formErrors, setFormErrors] = useState({
-    name: false,
-    department: false,
-    mobile_number: false,
-    institution: false,
-    staff_id: false,
-    role: false,
-    section_for_staff: false,
-  });
+const USER_UPDATE_ENDPOINT = (id) => `/api/api/users/${id}/update/`;
+const INSTITUTIONS_ENDPOINT = "/api/api/institutions/";
+const TYPES_OF_ISSUE_ENDPOINT = "/api/api/types-of-issue/";
+const CHECK_MOBILE_ENDPOINT = "/api/api/check-mobile/";
+const DEPARTMENTS_ENDPOINT = (institutionId, role) =>
+  `/api/api/departments/${institutionId}/?data=${encodeURIComponent(role || "")}`;
 
-  const [users, setUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [institutions, setInstitutions] = useState([]);
-  const [MobileNumberError, setMobileNumberError] = useState("");
+const roleOptions = [
+  { label: "Staff", value: USER_ROLES.STAFF },
+  { label: "Teacher", value: USER_ROLES.TEACHER },
+  { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
+];
 
-  const roles = ["Staff", "Tech Support"];
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token"); // ✅ FIXED
-
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
+const initialFormData = {
+  department: "",
+  institution: "",
+  is_admin: false,
+  mobile_number: "",
+  name: "",
+  role: "",
+  staff_id: "",
+  typeofissue: "",
 };
-  // ✅ Function to fetch users and update state
-  const fetchUsers = async () => {
-    try {
-      const response = await axios.get(
-        `${BASE_URL}/api/users/`,
-        getAuthHeaders()
-      );
 
-      setUsers(response.data.results)
-    } catch (error) {
-      console.error("Error fetching users:", error);
-    }
-  };
-  const handleMobileChange = (e) => {
-    const { name, value } = e.target;
+const styles = {
+  heroTitle: {
+    margin: 0,
+    color: "var(--admin-text, #101828)",
+    fontSize: "24px",
+    fontWeight: 850,
+    lineHeight: 1.2,
+    letterSpacing: "0",
+  },
+  heroText: {
+    maxWidth: "620px",
+    margin: "8px 0 0",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "15px",
+    lineHeight: 1.6,
+    fontWeight: 500,
+  },
+  form: {
+    display: "grid",
+    gap: "20px",
+  },
+  section: {
+    padding: 0,
+    border: 0,
+    background: "var(--admin-surface, #ffffff)",
+  },
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
+  },
+  field: {
+    display: "grid",
+    gap: "8px",
+  },
+  label: {
+    color: "var(--admin-text, #101828)",
+    fontSize: "14px",
+    fontWeight: 500,
+    letterSpacing: "0",
+  },
+  error: {
+    color: "#ef4444",
+    fontSize: "13px",
+    fontWeight: 700,
+  },
+  control: {
+    height: "48px",
+    fontSize: "15px",
+    width: "100%",
+  },
+  footer: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    marginTop: "24px",
+    paddingTop: "18px",
+    borderTop: "1px solid var(--admin-border, #e2e8f0)",
+  },
+  submitButton: {
+    minWidth: "150px",
+    height: "46px",
+    borderRadius: "12px",
+    fontWeight: 800,
+  },
+  cancelButton: {
+    height: "46px",
+    borderRadius: "12px",
+    fontWeight: 700,
+  },
+};
 
-    if (name === "mobile_number") {
-      // Allow only digits and prevent more than 10 characters
-      if (/^\d*$/.test(value) && value.length <= 10) {
-        setFormData((prev) => ({
-          ...prev,
-          [name]: value,
-        }));
-
-
-        if (value.length === 10) {
-          checkMobileNumberExists(value); // Check only when it's 10 digits
-        }
-        else {
-          setMobileNumberError(""); // Clear error if user modifies input
-        }
-      }
-    }
-  };
-
-  // useEffect(() => {
-  //   fetchUsers(); // ✅ Fetch users when component loads
-  // }, []);
-  
-  const checkMobileNumberExists = async (MobileNumber) => {
-    try {
-      const response = await axios.get(
-        `${BASE_URL}/api/check-mobile/`,
-        getAuthHeaders() // ✅ FIX
-      );
-
-      if (response.data.mobile_numbers.includes(MobileNumber)) {
-        setMobileNumberError("This Mobile Number is already in use.");
-      } else {
-        setMobileNumberError(""); // Clear error if available
-      }
-    } catch (error) {
-      console.error("Error checking Staff ID:", error);
-    }
-  };
-
-
-  const handleEditClick = (userId) => {
-    setSelectedUserId(userId);
-    setOpen(true);
-  };
-
-  // Fetch users only when the modal opens
-useEffect(() => {
-  if (open) {
-    axios
-      .get(`${BASE_URL}/api/users/`, getAuthHeaders())
-      .then((response) => setUsers(response.data.results))
-      .catch((error) => console.error("Error fetching users:", error));
+const normalizeApiList = (data) => {
+  if (Array.isArray(data)) {
+    return data;
   }
-}, [open]);
-  // Fetch institutions on component mount
-useEffect(() => {
-  axios
-    .get(`${BASE_URL}/api/institutions/`, getAuthHeaders())
-    .then((response) => setInstitutions(response.data))
-    .catch((error) => console.error("Error fetching institutions:", error));
-}, []);
 
-  // Fetch user details when userId is available
-  useEffect(() => {
-    if (userId && users.length > 0) {
-      const user = users.find((u) => u.id === userId);
-      if (user) {
-        setFormData({
-          name: user.name || "",
-          department: user.department?.id || "",
-          mobile_number: user.mobile_number || "",
-          institution: user.institution?.id || "",
-          staff_id: user.staff_id || "",
-          role: user.role || "",
-          section_for_staff:
-            user.section_for_staff === "Electrical & Maintanance"
-              ? "Electrical & Maintenance"
-              : user.section_for_staff || "",
-        });
-      }
-    }
-  }, [userId, users]);
+  if (Array.isArray(data?.results)) {
+    return data.results;
+  }
 
-  // Fetch departments when institution changes
-  useEffect(() => {
-    if (formData.institution) {
-      axios.get(
-  `${BASE_URL}/api/departments/${formData.institution}/`,
-  getAuthHeaders()
-)
-        .then((response) => setDepartments(response.data))
-        .catch((error) => console.error("Error fetching departments:", error));
-    } else {
-      setDepartments([]);
-    }
-  }, [formData.institution]);
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
 
-  // Handle input change
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  if (Array.isArray(data?.types)) {
+    return data.types;
+  }
+
+  return [];
+};
+
+const toOptions = (items) =>
+  items.map((item) => ({
+    label: item.name || item.title || "Untitled",
+    value: item.id,
+  }));
+
+const findById = (items, value) => items.find((item) => String(item.id) === String(value));
+
+const normalizeExistingValues = (items, key) =>
+  (Array.isArray(items) ? items : []).map((item) =>
+    typeof item === "object"
+      ? String(item[key] || item.staff_id || item.mobile_number || item.value || item.id || "")
+      : String(item),
+  );
+
+const getUserIssueId = (user) =>
+  user?.typeofissue?.id ||
+  user?.type_of_issue?.id ||
+  user?.type_of_issue_id ||
+  user?.typeofissue_id ||
+  "";
+
+function FieldError({ children }) {
+  if (!children) {
+    return null;
+  }
+
+  return <span style={styles.error}>{children}</span>;
+}
+
+function UserEdit({ onClose, onUpdate, open, user }) {
+  const [departments, setDepartments] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [formData, setFormData] = useState(initialFormData);
+  const [institutions, setInstitutions] = useState([]);
+  const [mobileNumberError, setMobileNumberError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [typesOfIssue, setTypesOfIssue] = useState([]);
+
+  const needsInstitution =
+    formData.role === USER_ROLES.STAFF || formData.role === USER_ROLES.TEACHER;
+  const isTechSupport = formData.role === USER_ROLES.TECHNICAL_STAFF;
+
+  const institutionOptions = useMemo(() => toOptions(institutions), [institutions]);
+  const departmentOptions = useMemo(() => toOptions(departments), [departments]);
+  const issueTypeOptions = useMemo(() => toOptions(typesOfIssue), [typesOfIssue]);
+
+  const setField = (name, value, extra = {}) => {
+    setFormData((currentFormData) => ({
+      ...currentFormData,
+      [name]: value,
+      ...extra,
+    }));
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      [name]: "",
+    }));
   };
 
-  // Handle role change and reset dependent fields
-  const handleRoleChange = (e) => {
-    const selectedRole = e.target.value;
+  useEffect(() => {
+    apiService
+      .get(INSTITUTIONS_ENDPOINT)
+      .then((data) => setInstitutions(normalizeApiList(data)))
+      .catch(() => setInstitutions([]));
+
+    apiService
+      .get(TYPES_OF_ISSUE_ENDPOINT)
+      .then((data) => setTypesOfIssue(normalizeApiList(data)))
+      .catch(() => setTypesOfIssue([]));
+  }, []);
+
+  useEffect(() => {
+    if (!open || !user) {
+      return;
+    }
+
     setFormData({
-      ...formData,
-      role: selectedRole,
-      institution: selectedRole === "Staff" ? "" : formData.institution,
-      department: selectedRole === "Staff" ? "" : formData.department,
-      section_for_staff: selectedRole === "Tech Support" ? "" : "",
+      department: user.department?.id || "",
+      institution: user.institution?.id || "",
+      is_admin: Boolean(user.is_admin),
+      mobile_number: user.mobile_number || "",
+      name: user.name || "",
+      role: user.role || "",
+      staff_id: user.staff_id || "",
+      typeofissue: getUserIssueId(user),
+    });
+    setErrors({});
+    setMobileNumberError("");
+  }, [open, user]);
+
+  useEffect(() => {
+    if (!formData.institution || !needsInstitution) {
+      setDepartments([]);
+      return;
+    }
+
+    apiService
+      .get(DEPARTMENTS_ENDPOINT(formData.institution, formData.role))
+      .then((data) => setDepartments(normalizeApiList(data)))
+      .catch(() => setDepartments([]));
+  }, [formData.institution, formData.role, needsInstitution]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !isTechSupport ||
+      !formData.typeofissue ||
+      findById(typesOfIssue, formData.typeofissue)
+    ) {
+      return;
+    }
+
+    const matchingIssue = typesOfIssue.find(
+      (issue) =>
+        String(issue.name || "")
+          .trim()
+          .toLowerCase() === String(formData.typeofissue).trim().toLowerCase(),
+    );
+
+    if (matchingIssue) {
+      setFormData((currentFormData) => ({
+        ...currentFormData,
+        typeofissue: matchingIssue.id,
+      }));
+    }
+  }, [formData.typeofissue, isTechSupport, open, typesOfIssue]);
+
+  const checkMobileNumberExists = async (mobileNumber) => {
+    if (!mobileNumber || mobileNumber.length !== 10 || mobileNumber === user?.mobile_number) {
+      return;
+    }
+
+    try {
+      const data = await apiService.get(CHECK_MOBILE_ENDPOINT);
+      const existingMobileNumbers = normalizeExistingValues(data?.mobile_numbers, "mobile_number");
+
+      setMobileNumberError(
+        existingMobileNumbers.includes(String(mobileNumber))
+          ? "This mobile number is already used."
+          : "",
+      );
+    } catch (error) {
+      console.error("Error checking mobile number:", error);
+    }
+  };
+
+  const handleMobileChange = (event) => {
+    const value = event.target.value.replace(/\D/g, "").slice(0, 10);
+
+    setMobileNumberError("");
+    setField("mobile_number", value);
+  };
+
+  const handleRoleChange = (value) => {
+    setField("role", value, {
+      department: "",
+      institution: "",
+      is_admin: false,
+      typeofissue: "",
     });
   };
 
-  // ✅ Update user data function
-  const updateData = async () => {
-    // Validate the form data
-    const errors = {
-      name: !formData.name,
-      department: !formData.department && formData.role !== "Staff",
-      mobile_number: !formData.mobile_number,
-      institution: !formData.institution && formData.role !== "Staff",
-      staff_id: !formData.staff_id,
-      role: !formData.role,
-      section_for_staff: formData.role === "Tech Support" && !formData.section_for_staff,
+  const validateForm = () => {
+    const nextErrors = {
+      department: needsInstitution && !formData.department ? "Department is required" : "",
+      institution: needsInstitution && !formData.institution ? "Institution is required" : "",
+      mobile_number: !formData.mobile_number
+        ? "Mobile number is required"
+        : formData.mobile_number.length !== 10
+          ? "Enter a 10 digit mobile number"
+          : "",
+      name: !formData.name.trim() ? "Name is required" : "",
+      role: !formData.role ? "Role is required" : "",
+      staff_id: !formData.staff_id ? "Staff ID is required" : "",
+      typeofissue: isTechSupport && !formData.typeofissue ? "Section is required" : "",
     };
 
-    setFormErrors(errors);
+    setErrors(nextErrors);
 
-    // If any field is invalid, stop the form submission
-    // if (Object.values(errors).includes(true))
-    // {
-    //   toast.warning("Please fill out all required fields!");
-    //   return;
-    // }
+    return !Object.values(nextErrors).some(Boolean) && !mobileNumberError;
+  };
 
-    const requestData = {
-      name: formData.name,
-      role: formData.role,
-      staff_id: formData.staff_id,
+  const updateUser = async () => {
+    if (!user?.id || !validateForm()) {
+      toast.warning("Please complete the required fields");
+      return;
+    }
+
+    const selectedIssue = findById(typesOfIssue, formData.typeofissue);
+    const payload = {
+      department_id: needsInstitution ? formData.department : null,
+      institution_id: needsInstitution ? formData.institution : null,
+      is_admin: isTechSupport ? formData.is_admin : false,
       mobile_number: formData.mobile_number,
-      department_id: formData.role === "Staff" ? formData.department : null,
-      institution_id: formData.role === "Staff" ? formData.institution : null,
-      section_for_staff: formData.role === "Tech Support" ? formData.section_for_staff : null,
+      name: formData.name.trim(),
+      role: formData.role,
+      section_for_staff: isTechSupport
+        ? selectedIssue?.name || user.section_for_staff || null
+        : null,
+      staff_id: formData.staff_id,
+      typeofissue_id: isTechSupport ? formData.typeofissue : null,
     };
+
+    setSubmitting(true);
 
     try {
-      const response = await axios.put(
-        `${BASE_URL}/api/users/${userId}/update/`,
-        requestData,
-        getAuthHeaders() // ✅ FIX
-      );
-
-      if (response.status === 200) {
-        toast.success("User updated successfully!");
-
-        // ✅ Ensure onUpdate is called correctly
-        if (typeof onUpdate === "function") {
-          console.log("✅ Calling onUpdate to refresh user list...");
-          await onUpdate();
-        } else {
-          console.error("❌ onUpdate is not a valid function!");
-        }
-
-        handleClose(); // Close modal after update
-        // window.location.reload();
-      } else {
-        throw new Error("Unexpected error occurred!");
-      }
+      await apiService.put(USER_UPDATE_ENDPOINT(user.id), payload);
+      toast.success("User updated successfully");
+      onUpdate?.();
+      onClose?.();
     } catch (error) {
-      console.error("Error updating user:", error.response?.data);
-      const errorMessage = error.response?.data?.message || "Error updating user!";
+      console.error("Error updating user:", error);
+      const errorMessage =
+        error.response?.data?.message || error.response?.data?.error || "Unable to update user";
       toast.error(errorMessage);
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Theme for MUI styling
-  const customTheme = createTheme({
-    palette: { primary: { main: "#877bdc" } },
-  });
-
-  // Modal style
-  const style = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 600,
-    bgcolor: "background.paper",
-    boxShadow: 24,
-    p: 4,
-    borderRadius: "8px",
-  };
-
   return (
-    <ThemeProvider theme={customTheme}>
-      <Modal open={open} onClose={handleClose}>
-        <Box sx={style}>
-          <h5>Edit User</h5>
-          <TextField
-            fullWidth
-            label="Name"
-            name="name"
-            value={formData.name}
-            onChange={handleChange}
-            variant="outlined"
-            className="mb-3"
-            error={formErrors.name} // Error handling for Name
-            helperText={formErrors.name ? "This field is required" : ""}
-          />
-          <TextField
-            fullWidth
-            label="Staff ID"
-            name="staff_id"
-            value={formData.staff_id}
-            onChange={handleChange}
-            variant="outlined"
-            className="mb-3"
-            error={formErrors.staff_id} // Error handling for Staff ID
-            helperText={formErrors.staff_id ? "This field is required" : ""}
-          />
-          <TextField
-            fullWidth
-            select
-            label="Role"
-            name="role"
-            value={formData.role}
-            onChange={handleRoleChange} // Change role handler
-            variant="outlined"
-            className="mb-3"
-            error={formErrors.role} // Highlight red if error
-            helperText={formErrors.role ? "This field is required" : ""}
-          >
-            {roles.map((role, index) => (
-              <MenuItem key={index} value={role}>
-                {role}
-              </MenuItem>
-            ))}
-          </TextField>
-          {/* <TextField
-                          fullWidth
-                          select
-                          label="Department"
-                          name="department"
-                          value={formData.department}
-                          onChange={handleChange}
-                          variant="outlined"
-                          className="mb-3"
-                          error={formErrors.department} // Highlight red if error
-                          helperText={formErrors.department ? "This field is required" : ""}
-                          disabled={!formData.institution}
-                        >
-                          {departments.map((dept) => (
-                            <MenuItem key={dept.id} value={dept.id}>
-                              {dept.name}
-                            </MenuItem>
-                          ))}
-                        </TextField> */}
+    <Drawer
+      destroyOnHidden
+      footer={null}
+      onClose={onClose}
+      open={open}
+      title={
+        <div>
+          <h2 style={styles.heroTitle}>Edit User</h2>
+          <p style={styles.heroText}>Update role, contact, and institution details.</p>
+        </div>
+      }
+      width={720}
+    >
+      <div style={styles.form}>
+        <section style={styles.section}>
+          <div style={styles.grid}>
+            <label style={styles.field}>
+              <span style={styles.label}>Name</span>
+              <Input
+                placeholder="Full name"
+                status={errors.name ? "error" : undefined}
+                style={styles.control}
+                value={formData.name}
+                onChange={(event) => setField("name", event.target.value)}
+              />
+              <FieldError>{errors.name}</FieldError>
+            </label>
 
+            <label style={styles.field}>
+              <span style={styles.label}>Staff ID</span>
+              <Input
+                placeholder="A12345"
+                status={errors.staff_id ? "error" : undefined}
+                style={styles.control}
+                value={formData.staff_id}
+                onChange={(event) => setField("staff_id", event.target.value.trim().toUpperCase())}
+              />
+              <FieldError>{errors.staff_id}</FieldError>
+            </label>
 
+            <label style={styles.field}>
+              <span style={styles.label}>Role</span>
+              <Select
+                options={roleOptions}
+                placeholder="Select role"
+                status={errors.role ? "error" : undefined}
+                style={styles.control}
+                value={formData.role || undefined}
+                onChange={handleRoleChange}
+              />
+              <FieldError>{errors.role}</FieldError>
+            </label>
 
+            <label style={styles.field}>
+              <span style={styles.label}>Mobile Number</span>
+              <Input
+                placeholder="10 digit mobile number"
+                status={errors.mobile_number || mobileNumberError ? "error" : undefined}
+                style={styles.control}
+                value={formData.mobile_number}
+                onBlur={() => checkMobileNumberExists(formData.mobile_number)}
+                onChange={handleMobileChange}
+              />
+              <FieldError>{errors.mobile_number || mobileNumberError}</FieldError>
+            </label>
+          </div>
+        </section>
 
-          {(formData.role === "Department Head" || formData.role === "Staff") && (
-            <>
-              <TextField
-                fullWidth
-                select
-                label="Institution"
-                name="institution"
-                value={formData.institution}
-                onChange={handleChange}
-                variant="outlined"
-                className="mb-3"
-                error={formErrors.institution} // Error handling for Institution
-                helperText={formErrors.institution ? "This field is required" : ""}
-              >
-                {institutions.map((inst) => (
-                  <MenuItem key={inst.id} value={inst.id}>
-                    {inst.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+        {needsInstitution ? (
+          <section style={styles.section}>
+            <div style={styles.grid}>
+              <label style={styles.field}>
+                <span style={styles.label}>Institution</span>
+                <Select
+                  optionFilterProp="label"
+                  options={institutionOptions}
+                  placeholder="Select institution"
+                  showSearch
+                  status={errors.institution ? "error" : undefined}
+                  style={styles.control}
+                  value={formData.institution || undefined}
+                  onChange={(value) =>
+                    setField("institution", value, {
+                      department: "",
+                    })
+                  }
+                />
+                <FieldError>{errors.institution}</FieldError>
+              </label>
 
-              <TextField
-                fullWidth
-                select
-                label="Department"
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                variant="outlined"
-                className="mb-3"
-                error={formErrors.department} // Error handling for Department
-                helperText={formErrors.department ? "This field is required" : ""}
-                disabled={!formData.institution}
-              >
-                {departments.map((dept) => (
-                  <MenuItem key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </>
-          )}
+              <label style={styles.field}>
+                <span style={styles.label}>Department</span>
+                <Select
+                  disabled={!formData.institution}
+                  optionFilterProp="label"
+                  options={departmentOptions}
+                  placeholder="Select department"
+                  showSearch
+                  status={errors.department ? "error" : undefined}
+                  style={styles.control}
+                  value={formData.department || undefined}
+                  onChange={(value) => setField("department", value)}
+                />
+                <FieldError>{errors.department}</FieldError>
+              </label>
+            </div>
+          </section>
+        ) : null}
 
-          {formData.role === "Tech Support" && (
-            <TextField
-              fullWidth
-              select
-              label="Section"
-              name="section_for_staff"
-              value={formData.section_for_staff}
-              onChange={handleChange}
-              variant="outlined"
-              className="mb-3"
-              error={formErrors.section_for_staff} // Error handling for Section
-              helperText={formErrors.section_for_staff ? "This field is required" : ""}
-            >
-              <MenuItem value="IT">IT</MenuItem>
-              <MenuItem value="Electrical & Maintenance">Electrical & Maintenance</MenuItem>
-            </TextField>
+        {isTechSupport ? (
+          <section style={styles.section}>
+            <div style={styles.grid}>
+              <label style={styles.field}>
+                <span style={styles.label}>Section</span>
+                <Select
+                  optionFilterProp="label"
+                  options={issueTypeOptions}
+                  placeholder="Select section"
+                  showSearch
+                  status={errors.typeofissue ? "error" : undefined}
+                  style={styles.control}
+                  value={formData.typeofissue || undefined}
+                  onChange={(value) => setField("typeofissue", value)}
+                />
+                <FieldError>{errors.typeofissue}</FieldError>
+              </label>
 
-          )}
-          <TextField
-            fullWidth
-            label="Mobile No"
-            name="mobile_number"
-            value={formData.mobile_number}
-            onChange={handleMobileChange}
-            variant="outlined"
-            error={!!MobileNumberError || !!formErrors.mobile_number} // Show error if message exists
-            helperText={MobileNumberError || (formErrors.mobile_number ? "This field is required" : "")} // Show appropriate error message
-          />
+              <label style={{ ...styles.field, alignContent: "end" }}>
+                <Checkbox
+                  checked={formData.is_admin}
+                  onChange={(event) => setField("is_admin", event.target.checked)}
+                >
+                  Department Admin
+                </Checkbox>
+              </label>
+            </div>
+          </section>
+        ) : null}
+      </div>
 
-          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3 }}>
-            <Button variant="outlined" onClick={handleClose} sx={{ mr: 2 }}>
-              Cancel
-            </Button>
-            <Button variant="contained" onClick={updateData}>
-              Update
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
-    </ThemeProvider>
+      <div style={styles.footer}>
+        <Button onClick={onClose} style={styles.cancelButton}>
+          Cancel
+        </Button>
+        <Button
+          loading={submitting}
+          onClick={updateUser}
+          style={styles.submitButton}
+          type="primary"
+        >
+          Update User
+        </Button>
+      </div>
+    </Drawer>
   );
-};
+}
 
 export default UserEdit;

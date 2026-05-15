@@ -1,12 +1,7 @@
-import React from 'react'
-import ComplaintsList from '../components/requestandcomplaints/ComplaintsList'
+import ComplaintsList from "../components/requestandcomplaints/ComplaintsList";
 
 function Complaints() {
-  return (
-      <div>
-          <ComplaintsList/>
-      </div>
-  )
+  return <ComplaintsList />;
 }
 
-export default Complaints
+export default Complaints;
