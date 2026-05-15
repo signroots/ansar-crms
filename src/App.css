@@ -101,7 +101,7 @@ th{
   background: rgba(255, 255, 255, 0.904);
   padding: 35px 30px;
   width: 100%;
-  max-width: 420px;
+  /* max-width: 420px; */
   border-radius: 14px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
   z-index: 2;
