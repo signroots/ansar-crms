@@ -13,6 +13,7 @@ import UserEdit from "./UserEdit";
 const USERS_ENDPOINT = "/api/api/users/";
 const USER_DELETE_ENDPOINT = (id) => `/api/api/users/delete/${id}/`;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const USERS_FETCH_PAGE_SIZE = 100;
 
 const ROLE_FILTER_OPTIONS = [
   { label: "All roles", value: "all" },
@@ -195,8 +196,59 @@ const normalizeUsersResponse = (data) => {
 
   return {
     count: Number(data?.count || data?.results?.length || data?.data?.length || 0),
-    results: Array.isArray(data?.results) ? data.results : data?.data || [],
+    results: Array.isArray(data?.results)
+      ? data.results
+      : Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.users)
+          ? data.users
+          : [],
   };
+};
+
+const getUserKey = (user) => user.id || user.staff_id || user.mobile_number || user.name;
+
+const dedupeUsers = (items) => {
+  const seen = new Set();
+
+  return items.filter((item) => {
+    const key = getUserKey(item);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
+
+const getUserSearchText = (user) =>
+  [
+    user.name,
+    user.staff_id,
+    user.role,
+    user.mobile_number,
+    user.institution?.name,
+    user.department?.name,
+    user.section_for_staff,
+    user.typeofissue?.name,
+    user.type_of_issue?.name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+const matchesUserRole = (user, roleFilter) => {
+  if (roleFilter === "all") {
+    return true;
+  }
+
+  if (roleFilter === USER_ROLES.DEPARTMENT_ADMIN) {
+    return user.role === USER_ROLES.DEPARTMENT_ADMIN || Boolean(user.is_admin);
+  }
+
+  return user.role === roleFilter;
 };
 
 const getRoleContext = () => {
@@ -229,39 +281,55 @@ function UsersList() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
-  const [totalCount, setTotalCount] = useState(0);
   const [users, setUsers] = useState([]);
 
   const roleContext = useMemo(() => getRoleContext(), []);
 
-  const fetchUsers = useCallback(
-    async (page = currentPage, size = pageSize) => {
-      setError("");
-      setLoading(true);
+  const fetchUsers = useCallback(async () => {
+    setError("");
+    setLoading(true);
 
-      try {
-        const data = await apiService.get(USERS_ENDPOINT, {
-          params: {
-            page,
-            page_size: size,
-            role: roleFilter === "all" ? undefined : roleFilter,
-            search: search.trim() || undefined,
-          },
-        });
-        const normalizedData = normalizeUsersResponse(data);
+    try {
+      const firstPageData = await apiService.get(USERS_ENDPOINT, {
+        params: {
+          page: 1,
+          page_size: USERS_FETCH_PAGE_SIZE,
+        },
+      });
+      const firstPage = normalizeUsersResponse(firstPageData);
+      const totalFromApi = firstPage.count;
+      const effectivePageSize = firstPage.results.length || USERS_FETCH_PAGE_SIZE;
+      const totalPages =
+        totalFromApi > firstPage.results.length ? Math.ceil(totalFromApi / effectivePageSize) : 1;
 
-        setUsers(normalizedData.results);
-        setTotalCount(normalizedData.count);
-      } catch (fetchError) {
-        console.error("Error fetching users:", fetchError);
-        setError("Unable to load users right now.");
-        toast.error("Unable to load users");
-      } finally {
-        setLoading(false);
+      let allUsers = firstPage.results;
+
+      if (totalPages > 1) {
+        const pageRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
+          apiService.get(USERS_ENDPOINT, {
+            params: {
+              page: index + 2,
+              page_size: USERS_FETCH_PAGE_SIZE,
+            },
+          }),
+        );
+        const pageResponses = await Promise.all(pageRequests);
+
+        allUsers = [
+          ...firstPage.results,
+          ...pageResponses.flatMap((response) => normalizeUsersResponse(response).results),
+        ];
       }
-    },
-    [currentPage, pageSize, roleFilter, search],
-  );
+
+      setUsers(dedupeUsers(allUsers));
+    } catch (fetchError) {
+      console.error("Error fetching users:", fetchError);
+      setError("Unable to load users right now.");
+      toast.error("Unable to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchUsers();
@@ -270,6 +338,31 @@ function UsersList() {
   useEffect(() => {
     setCurrentPage(1);
   }, [roleFilter, search]);
+
+  const filteredUsers = useMemo(() => {
+    const searchTerm = search.trim().toLowerCase();
+
+    return users.filter((user) => {
+      const matchesRole = matchesUserRole(user, roleFilter);
+      const matchesSearch = !searchTerm || getUserSearchText(user).includes(searchTerm);
+
+      return matchesRole && matchesSearch;
+    });
+  }, [roleFilter, search, users]);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+
+    return filteredUsers.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, filteredUsers, pageSize]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
+
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredUsers.length, pageSize]);
 
   const metrics = useMemo(() => {
     const loadedCounts = users.reduce(
@@ -293,7 +386,7 @@ function UsersList() {
         accent: "#0cb899",
         icon: FiUsers,
         label: "Total users",
-        value: totalCount,
+        value: users.length,
       },
       {
         accent: "#3b82f6",
@@ -314,7 +407,7 @@ function UsersList() {
         value: loadedCounts.adminUsers,
       },
     ];
-  }, [totalCount, users]);
+  }, [users]);
 
   const copyMobileNumber = async (mobileNumber) => {
     if (!mobileNumber) {
@@ -341,7 +434,7 @@ function UsersList() {
     try {
       await apiService.delete(USER_DELETE_ENDPOINT(user.id));
       toast.success("User deleted successfully");
-      fetchUsers(currentPage, pageSize);
+      setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
     } catch (deleteError) {
       console.error("Error deleting user:", deleteError);
       toast.error("Unable to delete user");
@@ -362,7 +455,7 @@ function UsersList() {
 
   const refreshFirstPage = () => {
     setCurrentPage(1);
-    fetchUsers(1, pageSize);
+    fetchUsers();
   };
 
   const columns = [
@@ -382,11 +475,8 @@ function UsersList() {
       key: "role",
       render: (role, user) => (
         <div style={{ display: "grid", gap: "6px" }}>
-          <Tag
-            color={roleTagColors[role] || "default"}
-            styles={{ root: { width: "fit", margin: "0 auto" } }}
-            className="w-fit"
-          >
+          <Tag color={roleTagColors[role] || "default"} className="w-fit"             styles={{ root: { width: "fit-content" } }}
+>
             {getText(role)}
           </Tag>
           {user.is_admin ? <Tag color="gold">Department Admin</Tag> : null}
@@ -513,7 +603,8 @@ function UsersList() {
           <Select onChange={setRoleFilter} options={ROLE_FILTER_OPTIONS} value={roleFilter} />
 
           <span style={styles.muted}>
-            Showing {formatNumber(users.length)} of {formatNumber(totalCount)}
+            Showing {formatNumber(paginatedUsers.length)} of {formatNumber(filteredUsers.length)}{" "}
+            filtered
           </span>
         </div>
 
@@ -525,7 +616,7 @@ function UsersList() {
           <div style={styles.tableWrap}>
             <Table
               columns={columns}
-              dataSource={users}
+              dataSource={paginatedUsers}
               loading={loading}
               locale={{ emptyText: <Empty description="No users found" /> }}
               pagination={false}
@@ -541,7 +632,7 @@ function UsersList() {
             onChange={(page) => setCurrentPage(page)}
             pageSize={pageSize}
             showSizeChanger={false}
-            total={totalCount}
+            total={filteredUsers.length}
           />
 
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -562,12 +653,7 @@ function UsersList() {
         </div>
       </section>
 
-      <UserEdit
-        open={editOpen}
-        user={selectedUser}
-        onClose={closeEdit}
-        onUpdate={() => fetchUsers(currentPage, pageSize)}
-      />
+      <UserEdit open={editOpen} user={selectedUser} onClose={closeEdit} onUpdate={fetchUsers} />
     </div>
   );
 }
