@@ -46,13 +46,6 @@ const statusMeta = {
   },
 };
 
-const priorityMeta = {
-  Emergency: "error",
-  High: "error",
-  Low: "success",
-  Medium: "warning",
-};
-
 const styles = {
   page: {
     display: "grid",
@@ -323,7 +316,6 @@ const getRoleContext = () => {
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default" };
 
-const getPriorityTagColor = (priority) => priorityMeta[priority] || "default";
 
 const getRequestSearchText = (request) =>
   [
@@ -332,7 +324,6 @@ const getRequestSearchText = (request) =>
     request.institution?.name,
     request.issue_request?.name,
     request.status,
-    request.priority,
     request.requested_by?.name,
     request.resolved_by?.name,
     request.program_name,
@@ -347,7 +338,6 @@ const mapRequestForExport = (request) => ({
   Institution: getText(request.institution?.name),
   Department: getText(request.department?.name),
   Request: getText(request.issue_request?.name),
-  Priority: getText(request.priority),
   Status: getText(request.status),
   "Requested By": getText(request.requested_by?.name),
   "Mobile Number": getText(request.requested_by?.mobile_number),
@@ -575,7 +565,7 @@ function RequestsList() {
           <div style={styles.muted}>{formatDate(request.date)}</div>
         </div>
       ),
-      title: "Request",
+      title: "ID & DATE",
       width: 150,
     },
     {
@@ -597,15 +587,8 @@ function RequestsList() {
           <div style={styles.muted}>{getText(request.program_name, "")}</div>
         </div>
       ),
-      title: "Request Type",
+      title: "Request",
       width: 240,
-    },
-    {
-      dataIndex: "priority",
-      key: "priority",
-      render: (priority) => <Tag color={getPriorityTagColor(priority)}>{getText(priority)}</Tag>,
-      title: "Priority",
-      width: 120,
     },
     {
       dataIndex: "status",
@@ -654,7 +637,6 @@ function RequestsList() {
         ["Requested By", selectedRequest.requested_by?.name],
         ["Mobile Number", selectedRequest.requested_by?.mobile_number],
         ["Request", selectedRequest.issue_request?.name],
-        ["Priority", selectedRequest.priority],
         ["Status", selectedRequest.status],
         ["Created Date & Time", formatDate(selectedRequest.date, true)],
         ["Program Name", selectedRequest.program_name],
