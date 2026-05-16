@@ -1,6 +1,6 @@
 import { BrowserRouter as Router, Navigate, Route, Routes } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
-import NotFound from "../../../common/NotFound";
+import NotFound from "../../shared/components/NotFound";
 import AppProviders from "../providers/AppProviders";
 import ROUTE_PATHS from "./paths";
 import { appRoutes } from "./routeConfig";

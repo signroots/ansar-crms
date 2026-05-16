@@ -54,4 +54,51 @@ export default [
       'react/prop-types': 'off',
     },
   },
+  {
+    files: [
+      'src/V2/features/**/*.{js,jsx}',
+      'src/V2/services/**/*.{js,jsx}',
+      'src/V2/shared/**/*.{js,jsx}',
+      'src/V2/theme/**/*.{js,jsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '../Admin/*',
+                '../../Admin/*',
+                '../../../Admin/*',
+                '../../../../Admin/*',
+                '../Staff/*',
+                '../../Staff/*',
+                '../../../Staff/*',
+                '../../../../Staff/*',
+                '../TechAdmin/*',
+                '../../TechAdmin/*',
+                '../../../TechAdmin/*',
+                '../../../../TechAdmin/*',
+                '../User/*',
+                '../../User/*',
+                '../../../User/*',
+                '../../../../User/*',
+                '../common/*',
+                '../../common/*',
+                '../../../common/*',
+                '../../../../common/*',
+                '../utils/*',
+                '../../utils/*',
+                '../../../utils/*',
+                '../../../../utils/*',
+              ],
+              message:
+                'V2 feature, service, shared, and theme code must use V2-owned modules instead of v1 folders.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]

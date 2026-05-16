@@ -1,0 +1,453 @@
+/* Ensure full-screen background */
+.student_info{
+  height: 100vh;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+  background: url("/public/AnsarSchool.jpg") no-repeat center center fixed;
+  background-size: cover;
+}
+
+/* Apply blur effect to background */
+.student_info-page::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: inherit;
+  filter: blur(8px);
+  z-index: -1;
+}
+
+/* Main feedback form container */
+.feedback-container {
+  width: 90%;
+  max-width: 480px;
+  padding: 250px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
+  box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  backdrop-filter: blur(10px);
+}
+
+/* Logo Styling */
+.logo {
+  width: 100px;
+  height: auto;
+  margin-bottom: 15px;
+}
+
+/* Heading styles */
+.ansar-heading {
+  font-size: 50px;
+  font-weight: bold;
+  color: #111;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.4);
+  margin-bottom: 15px;
+}
+
+.student-feedback {
+  font-size: 28px;
+  font-weight: 600;
+  color: #222;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Input Group Styling */
+.input-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 15px;
+  align-items: center;
+}
+
+/* Input field styles */
+.input-field {
+  border-radius: 25px;
+  width: 100%;
+  height: 50px;
+  padding: 12px 16px;
+  font-size: 18px;
+  border: 1px solid #888;
+  outline: none;
+  transition: all 0.3s ease-in-out;
+  box-sizing: border-box;
+  background-color: white;
+}
+
+.input-field:focus {
+  border-color: #02796b;
+  box-shadow: 0px 0px 10px rgba(2, 121, 107, 0.6);
+}
+
+/* Placeholder styling */
+::placeholder {
+  font-size: 16px;
+  color: #6c757d;
+}
+
+/* Submit button styling */
+.submit-btn {
+  background: #02796b;
+  color: white;
+  border-radius: 30px;
+  padding: 16px 24px;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+  margin-top: 25px;
+  width: 170px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.submit-btn:hover {
+  background: #026a5d;
+  transform: scale(1.05);
+  box-shadow: 5px 5px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* ---- Responsive Fixes ---- */
+
+/* MOBILE VIEW */
+@media (max-width: 599px) {
+  .feedback-container {
+    width: 95vw;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-group {
+    width: 100%;
+    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .input-field {
+    width: 85%; /* Reduce width to avoid stretching */
+    max-width: 280px; /* Prevents excessive stretching */
+    height: 45px;
+    padding: 10px 14px;
+    font-size: 16px;
+    border-radius: 25px !important; /* Force rounded corners */
+    border: 1px solid #888;
+    outline: none;
+    box-sizing: border-box;
+    background-color: #fff;
+    display: block;
+  }
+
+  /* Fix for Safari border-radius issue */
+  .input-field::-webkit-input-placeholder {
+    border-radius: 25px !important;
+  }
+
+  .logo {
+    margin-top: 25px !important; /* Increase space above logo */
+  }
+
+  .ansar-heading {
+    margin-top: -10px !important; /* Move heading up */
+  }
+
+  .student-feedback {
+    margin-top: 10px;
+  }
+
+  .input-group {
+    margin-top: 10px;
+  }
+
+  .submit-btn {
+    margin-bottom: 45px !important;
+  }
+}
+
+/* TABLET VIEW */
+@media (min-width: 600px) and (max-width: 899px) {
+  .feedback-container {
+    max-width: 750px; /* Increased from 680px to 750px */
+    padding: 50px; /* Increased padding for a more spacious look */
+  }
+
+  .ansar-heading {
+    font-size: 62px; /* Slightly larger heading */
+  }
+
+  .student-feedback {
+    font-size: 34px; /* Bigger subtitle */
+  }
+
+  .input-group {
+    flex-direction: row;
+    gap: 20px; /* More spacing between inputs */
+    width: 100%;
+    justify-content: center;
+  }
+
+  .input-field {
+    flex: 1;
+    min-width: 260px; /* Wider inputs */
+    max-width: 320px;
+    font-size: 20px; /* Larger text */
+    height: 55px;
+  }
+
+  .submit-btn {
+    padding: 14px 26px; /* Reduce height */
+    font-size: 18px; /* Adjust font size */
+    border-radius: 25px;
+  }
+}
+
+/* DESKTOP VIEW */
+@media (min-width: 900px) {
+  .feedback-container {
+    max-width: 800px; /* Increased from 520px to 800px */
+    padding: 55px; /* More padding for a spacious feel */
+  }
+
+  .input-group {
+    flex-direction: row;
+    gap: 20px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .input-field {
+    flex: 1;
+    min-width: 260px;
+    max-width: 320px;
+    padding: 16px;
+    font-size: 20px;
+  }
+
+  .submit-btn {
+    padding: 12px 24px; /* Reduce height */
+    font-size: 16px; /* Slightly smaller font */
+    border-radius: 25px;
+  }
+}
+
+/* FeedBackPage */
+
+.feedbackcontainer {
+  max-width: 700px;
+  width: 100%;
+  padding: 15px;
+  border-radius: 12px;
+  background: white;
+  color: #6f6c6c;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  height: auto;
+  min-height: 350px; /* Increased to ensure space for heading */
+}
+
+/* Ensure Heading is Visible */
+.feedbackcontainer h1 {
+  font-size: 24px;
+  text-align: center;
+  word-wrap: break-word;
+  margin-bottom: 10px;
+  display: block;
+  white-space: normal;
+}
+
+/* Button Styling */
+.feedbackcontainer .btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: bold;
+  border: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Default Button Color (Change from orange to another color) */
+.feedbackcontainer .btn {
+  background-color: #f4cb8f; /* Purple */
+  color: black;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-weight: bold;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Active Button Colors */
+.feedbackcontainer .btn.green.active {
+  background-color: #146c43; /* Green */
+  color: white;
+}
+
+.feedbackcontainer .btn.blue.active {
+  background-color: #0d529c; /* Blue */
+  color: white;
+}
+
+.feedbackcontainer .btn.yellow.active {
+  background-color: #ffc107; /* Yellow */
+  color: white;
+}
+
+.feedbackcontainer .btn.red.active {
+  background-color: #dc3545; /* Red */
+  color: white;
+}
+
+.feedbackcontainer .btn.dark.active {
+  background-color: #444c55; /* Dark */
+  color: white;
+}
+
+.feedbackcontainer .btn input[type="radio"] {
+  margin-right: 3px;
+  transform: scale(1);
+}
+
+.feedbackcontainer .d-flex {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Submit Button */
+.feedSubmit {
+  margin-top: 20px !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.feedbtn {
+  background: #02796b;
+  color: white;
+  border-radius: 30px;
+  padding: 12px 40px;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.feedbtn:hover {
+  background: #026a5d;
+}
+
+/* ---- Responsive Fixes for iPhone SE and Small Screens ---- */
+@media (max-width: 375px) {
+  .feedbackcontainer {
+    padding: 10px;
+  }
+
+  .feedbackcontainer h1 {
+    font-size: 20px;
+    margin-bottom: 5px;
+  }
+}
+
+/* Modal Overlay */
+.modal.d-block {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* Modal Box */
+.modal-content {
+  border-radius: 12px;
+  box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Modal Header */
+.modal-header {
+  border-bottom: none;
+  text-align: center;
+  padding-bottom: 5px;
+  margin-bottom: 0px;
+}
+
+.modal-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: -23px;
+  margin-top: -30px;
+}
+
+/* Modal Body */
+.modal-body p {
+  font-size: 16px;
+  color: #555;
+  text-align: center;
+  margin-top: 0px;
+  margin-bottom: 10px;
+}
+
+/* Modal Footer */
+.modal-footer {
+  border-top: none;
+  display: flex;
+  justify-content: center;
+}
+
+/* OK Button */
+.btn-footer {
+  background: #02796b;
+  color: white;
+  border-radius: 30px;
+  padding: 12px 40px;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.3s ease-in-out;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.btn-footer:hover {
+  background: #02796b;
+}
+
+/* Fade-in Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.logo {
+  width: 100px;
+  height: auto;
+  margin-bottom: 10px;
+}

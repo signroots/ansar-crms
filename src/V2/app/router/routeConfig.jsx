@@ -1,34 +1,35 @@
-import AdminLayout from "../../../Admin/components/layout/Layout";
-import Authentication from "../../../Admin/pages/Authentication";
-import Complaints from "../../../Admin/pages/Complaints";
-import Dashboard from "../../../Admin/pages/Dashboard";
-import FeedbackList from "../../../Admin/pages/Feedback";
-import Requests from "../../../Admin/pages/Requests";
-import StaffManage from "../../../Admin/pages/StaffManage";
-import UserManage from "../../../Admin/pages/UserManage";
-import Landing from "../../../common/Landing";
-import AuthStaff from "../../../Staff/pages/AuthStaff";
-import ComplaintHandle from "../../../Staff/pages/ComplaintHandle";
-import RequestHandle from "../../../Staff/pages/RequestHandle";
-import StaffHome from "../../../Staff/pages/StaffHome";
-import StaffProfile from "../../../Staff/pages/StaffProfile";
-import StaffLayout from "../../../Staff/components/layout/StaffLayout";
-import DepartmentAdminComplaints from "../../../TechAdmin/pages/TechAdminCom";
-import DepartmentAdminDashboard from "../../../TechAdmin/pages/dashboard";
-import DepartmentAdminRequests from "../../../TechAdmin/pages/TechAdminReq";
-import DepartmentAdminUsers from "../../../TechAdmin/pages/TechUserManagement";
-import AllComplaints from "../../../User/pages/AllComplaints";
-import AllRequests from "../../../User/pages/AllRequests";
-import Auth from "../../../User/pages/Auth";
-import ComplaintForm from "../../../User/pages/ComplaintForm";
-import Home from "../../../User/pages/Home";
-import RequestForm from "../../../User/pages/RequestForm";
-import UserProfile from "../../../User/pages/UserProfile";
-import UserLayout from "../../../User/layout/UserLayout";
+import Landing from "../../features/auth/pages/Landing";
+import SuperAdminLayout from "../../features/superAdmin/components/layout/Layout";
+import SuperAdminComplaints from "../../features/superAdmin/pages/Complaints";
+import SuperAdminDashboard from "../../features/superAdmin/pages/Dashboard";
+import SuperAdminFeedbackList from "../../features/superAdmin/pages/Feedback";
+import SuperAdminRequests from "../../features/superAdmin/pages/Requests";
+import SuperAdminStaffManage from "../../features/superAdmin/pages/StaffManage";
+import SuperAdminUserManage from "../../features/superAdmin/pages/UserManage";
+import StaffLayout from "../../features/technicalStaff/layout/StaffLayout";
+import ComplaintHandle from "../../features/technicalStaff/pages/ComplaintHandle";
+import RequestHandle from "../../features/technicalStaff/pages/RequestHandle";
+import StaffHome from "../../features/technicalStaff/pages/StaffHome";
+import StaffProfile from "../../features/technicalStaff/pages/StaffProfile";
 import { ROLE_GROUPS, USER_ROLES } from "../../shared/constants/roles";
 import ROUTE_PATHS from "./paths";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
+import { v1RouteAdapters } from "./v1RouteAdapters";
+
+const {
+  DepartmentAdminComplaints,
+  DepartmentAdminDashboard,
+  DepartmentAdminRequests,
+  DepartmentAdminUsers,
+  AllComplaints,
+  AllRequests,
+  ComplaintForm,
+  Home,
+  RequestForm,
+  UserProfile,
+  UserLayout,
+} = v1RouteAdapters;
 
 const withLayout = (LayoutComponent, page) => <LayoutComponent>{page}</LayoutComponent>;
 
@@ -54,37 +55,58 @@ const departmentAdminOptions = {
 
 export const appRoutes = [
   { path: ROUTE_PATHS.login, element: publicElement(<Landing />) },
-  { path: ROUTE_PATHS.superAdmin.auth, element: publicElement(<Authentication />) },
-  { path: ROUTE_PATHS.staffTeacher.login, element: publicElement(<Auth />) },
-  { path: ROUTE_PATHS.technicalStaff.login, element: publicElement(<AuthStaff />) },
+  { path: ROUTE_PATHS.superAdmin.auth, element: publicElement(<Landing />) },
+  { path: ROUTE_PATHS.staffTeacher.login, element: publicElement(<Landing />) },
+  { path: ROUTE_PATHS.technicalStaff.login, element: publicElement(<Landing />) },
 
   {
     path: ROUTE_PATHS.superAdmin.dashboard,
-    element: protectedElement(withLayout(AdminLayout, <Dashboard />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminDashboard />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.complaints,
-    element: protectedElement(withLayout(AdminLayout, <Complaints />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminComplaints />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.requests,
-    element: protectedElement(withLayout(AdminLayout, <Requests />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminRequests />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.users,
-    element: protectedElement(withLayout(AdminLayout, <UserManage />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminUserManage />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.staff,
-    element: protectedElement(withLayout(AdminLayout, <StaffManage />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminStaffManage />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.feedback,
-    element: protectedElement(withLayout(AdminLayout, <FeedbackList />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminFeedbackList />),
+      superAdminOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.superAdmin.feedbackList,
-    element: protectedElement(withLayout(AdminLayout, <FeedbackList />), superAdminOptions),
+    element: protectedElement(
+      withLayout(SuperAdminLayout, <SuperAdminFeedbackList />),
+      superAdminOptions,
+    ),
   },
 
   {
@@ -136,28 +158,28 @@ export const appRoutes = [
   {
     path: ROUTE_PATHS.departmentAdmin.dashboard,
     element: protectedElement(
-      withLayout(AdminLayout, <DepartmentAdminDashboard />),
+      withLayout(SuperAdminLayout, <DepartmentAdminDashboard />),
       departmentAdminOptions,
     ),
   },
   {
     path: ROUTE_PATHS.departmentAdmin.complaints,
     element: protectedElement(
-      withLayout(AdminLayout, <DepartmentAdminComplaints />),
+      withLayout(SuperAdminLayout, <DepartmentAdminComplaints />),
       departmentAdminOptions,
     ),
   },
   {
     path: ROUTE_PATHS.departmentAdmin.requests,
     element: protectedElement(
-      withLayout(AdminLayout, <DepartmentAdminRequests />),
+      withLayout(SuperAdminLayout, <DepartmentAdminRequests />),
       departmentAdminOptions,
     ),
   },
   {
     path: ROUTE_PATHS.departmentAdmin.users,
     element: protectedElement(
-      withLayout(AdminLayout, <DepartmentAdminUsers />),
+      withLayout(SuperAdminLayout, <DepartmentAdminUsers />),
       departmentAdminOptions,
     ),
   },

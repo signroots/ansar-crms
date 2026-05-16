@@ -1,0 +1,930 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Button,
+  DatePicker,
+  Drawer,
+  Empty,
+  Input,
+  Modal,
+  Pagination,
+  Popconfirm,
+  Select,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
+import * as XLSX from "xlsx";
+import { BiExport, BiRefresh } from "react-icons/bi";
+import { FaCheckCircle } from "react-icons/fa";
+import { FiAlertTriangle, FiEye, FiSearch } from "react-icons/fi";
+import { LuBuilding2, LuClock3, LuListChecks } from "react-icons/lu";
+import { toast } from "react-toastify";
+
+import { apiService } from "../../../../services/api/Api.service";
+import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
+import { getAuthSession } from "../../../../shared/utils/authSession";
+import CreateComplaints from "./CreateComplaints";
+
+const { RangePicker } = DatePicker;
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const COMPLAINTS_LIST_ENDPOINT = "/api/api/complaints-list/";
+const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
+
+const statusMeta = {
+  Completed: {
+    color: "success",
+    accent: "#0cb899",
+  },
+  Pending: {
+    color: "error",
+    accent: "#ef4444",
+  },
+  "In Progress": {
+    color: "processing",
+    accent: "#3b82f6",
+  },
+  Waiting: {
+    color: "warning",
+    accent: "#f59e0b",
+  },
+};
+
+const styles = {
+  page: {
+    display: "grid",
+    gap: "18px",
+    color: "var(--admin-text, #101828)",
+  },
+  header: {
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    gap: "16px",
+    alignItems: "end",
+    padding: "22px",
+    borderRadius: "22px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background:
+      "radial-gradient(circle at 10% 12%, rgba(239, 68, 68, 0.14), transparent 34%), linear-gradient(135deg, var(--admin-surface, #ffffff), var(--admin-surface-soft, #f8fafc))",
+    boxShadow: "var(--admin-shadow, 0 18px 45px rgba(16, 24, 40, 0.08))",
+  },
+  eyebrow: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    margin: 0,
+    padding: "8px 10px",
+    borderRadius: "999px",
+    background: "rgba(239, 68, 68, 0.1)",
+    color: "#b91c1c",
+    fontSize: "12px",
+    fontWeight: 800,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  },
+  title: {
+    margin: "16px 0 0",
+    color: "var(--admin-text, #101828)",
+    fontSize: "34px",
+    fontWeight: 850,
+    lineHeight: 1.1,
+    letterSpacing: "0",
+  },
+  subtitle: {
+    maxWidth: "720px",
+    margin: "10px 0 0",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "14px",
+    lineHeight: 1.65,
+  },
+  actions: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  metrics: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+    gap: "14px",
+  },
+  metric: (accent) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "14px",
+    minHeight: "112px",
+    padding: "18px",
+    borderRadius: "18px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface, #ffffff)",
+    boxShadow: "var(--admin-shadow, 0 18px 45px rgba(16, 24, 40, 0.08))",
+    "--metric-accent": accent,
+  }),
+  metricLabel: {
+    margin: 0,
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 800,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  },
+  metricValue: {
+    margin: "8px 0 0",
+    color: "var(--admin-text, #101828)",
+    fontSize: "30px",
+    fontWeight: 850,
+    lineHeight: 1,
+  },
+  metricIcon: {
+    width: "44px",
+    height: "44px",
+    borderRadius: "14px",
+    display: "grid",
+    placeItems: "center",
+    color: "var(--metric-accent)",
+    background: "color-mix(in srgb, var(--metric-accent) 14%, transparent)",
+    flexShrink: 0,
+  },
+  panel: {
+    borderRadius: "20px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface, #ffffff)",
+    boxShadow: "var(--admin-shadow, 0 18px 45px rgba(16, 24, 40, 0.08))",
+    overflow: "hidden",
+  },
+  toolbar: {
+    display: "grid",
+    gridTemplateColumns: "minmax(240px, 1fr) 190px auto",
+    gap: "12px",
+    alignItems: "center",
+    padding: "16px",
+    borderBottom: "1px solid var(--admin-border, #e2e8f0)",
+  },
+  tableWrap: {
+    padding: "0 16px 16px",
+  },
+  pagination: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: "12px",
+    padding: "14px 16px",
+    borderTop: "1px solid var(--admin-border, #e2e8f0)",
+  },
+  muted: {
+    color: "var(--admin-muted, #667085)",
+    fontSize: "13px",
+    fontWeight: 500,
+  },
+  dateBlock: {
+    display: "grid",
+    gap: "2px",
+    // marginTop: "7px",
+  },
+  dateCaption: {
+    color: "var(--admin-muted, #667085)",
+    fontSize: "11px",
+    fontWeight: 800,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+  },
+  dateValue: {
+    color: "var(--admin-text, #101828)",
+    fontSize: "13px",
+    fontWeight: 500,
+    lineHeight: 1.25,
+  },
+  timeValue: {
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 700,
+    lineHeight: 1.25,
+  },
+  dateEmpty: {
+    display: "block",
+    // marginTop: "7px",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 500,
+  },
+  iconButton: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "10px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface-soft, #f8fafc)",
+    color: "var(--admin-text, #101828)",
+    display: "grid",
+    placeItems: "center",
+  },
+  detailHeader: {
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: "14px",
+    padding: "16px",
+    borderRadius: "16px",
+    background: "var(--admin-surface-soft, #f8fafc)",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+  },
+  detailTitle: {
+    margin: 0,
+    color: "var(--admin-text, #101828)",
+    fontSize: "20px",
+    fontWeight: 850,
+  },
+  detailSubtitle: {
+    margin: "6px 0 0",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "13px",
+  },
+  detailGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "12px",
+    marginTop: "16px",
+  },
+  detailItem: {
+    padding: "14px",
+    borderRadius: "14px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface, #ffffff)",
+  },
+  detailLabel: {
+    display: "block",
+    marginBottom: "6px",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 500,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase",
+  },
+  detailValue: {
+    color: "var(--admin-text, #101828)",
+    fontSize: "14px",
+    fontWeight: 700,
+    wordBreak: "break-word",
+  },
+  statusEditor: {
+    display: "grid",
+    gap: "8px",
+    marginTop: "16px",
+    padding: "14px",
+    borderRadius: "14px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface, #ffffff)",
+  },
+  statusEditorRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(180px, 1fr) auto",
+    gap: "10px",
+    alignItems: "center",
+  },
+};
+
+const formatNumber = (value) => new Intl.NumberFormat("en-IN").format(Number(value || 0));
+
+const getText = (value, fallback = "N/A") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  return String(value);
+};
+
+const formatDate = (value, withTime = false) => {
+  if (!value) {
+    return "N/A";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    hour12: true,
+    hour: withTime ? "2-digit" : undefined,
+    minute: withTime ? "2-digit" : undefined,
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
+const formatDateTimeParts = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return {
+    date: new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-IN", {
+      hour: "2-digit",
+      hour12: true,
+      minute: "2-digit",
+    }).format(date),
+  };
+};
+
+const formatDateTimeText = (value) => {
+  const parts = formatDateTimeParts(value);
+
+  if (!parts) {
+    return "N/A";
+  }
+
+  return `${parts.date} at ${parts.time}`;
+};
+
+const renderDateTimeCell = (value, label, emptyText = "N/A") => {
+  const parts = formatDateTimeParts(value);
+
+  if (!parts) {
+    return <span style={styles.dateEmpty}>{emptyText}</span>;
+  }
+
+  return (
+    <div style={styles.dateBlock}>
+      {/* <span style={styles.dateCaption}>{label}</span> */}
+      <span style={styles.dateValue}>{parts.date} - {parts.time}</span>
+      {/* <span style={styles.timeValue}>Time: {parts.time}</span> */}
+    </div>
+  );
+};
+
+const normalizeListResponse = (data) => {
+  if (Array.isArray(data)) {
+    return {
+      count: data.length,
+      results: data,
+    };
+  }
+
+  return {
+    count: Number(data?.count || data?.results?.length || 0),
+    results: Array.isArray(data?.results) ? data.results : [],
+  };
+};
+
+const getRoleContext = () => {
+  const { isAdmin, role, typeOfIssue } = getAuthSession();
+  const isDepartmentAdmin =
+    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
+
+  if (isDepartmentAdmin) {
+    return {
+      eyebrow: typeOfIssue || "Department Desk",
+      title: "Department Complaints",
+      subtitle:
+        "Review assigned complaints, inspect resolution status, and track department workload.",
+    };
+  }
+
+  return {
+    eyebrow: "Complaint Desk",
+    title: "Complaints",
+    subtitle: "Track institution complaints, priorities, assigned staff, and resolution movement.",
+  };
+};
+
+const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
+
+const getComplaintSearchText = (complaint) =>
+  [
+    complaint.complaint_id,
+    complaint.department?.name,
+    complaint.institution?.name,
+    complaint.issue_complaint?.name,
+    complaint.type_of_issue?.name,
+    complaint.status,
+    complaint.priority,
+    complaint.complainted_by?.name,
+    complaint.resolved_by?.name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+const mapComplaintForExport = (complaint) => ({
+  "Complaint ID": getText(complaint.complaint_id || complaint.id),
+  Date: formatDate(complaint.date, true),
+  Institution: getText(complaint.institution?.name),
+  Department: getText(complaint.department?.name),
+  Complaint: getText(complaint.issue_complaint?.name),
+  "Type of Issue": getText(complaint.type_of_issue?.name),
+  Priority: getText(complaint.priority),
+  Status: getText(complaint.status),
+  "Complained By": getText(complaint.complainted_by?.name),
+  "Mobile Number": getText(complaint.complainted_by?.mobile_number),
+  "Attended By": getText(complaint.resolved_by?.name),
+  "Resolved Date": formatDate(complaint.resolved_date, true),
+  "Delay Reason": getText(complaint.delay_reason),
+  Remark: getText(complaint.remark),
+  Notes: getText(complaint.notes),
+  "Completed Note": getText(complaint.completed_note),
+});
+
+function ComplaintsList() {
+  const [complaints, setComplaints] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState("");
+  const [exportRange, setExportRange] = useState(null);
+  const [exporting, setExporting] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [search, setSearch] = useState("");
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [statusValue, setStatusValue] = useState("");
+
+  const roleContext = useMemo(() => getRoleContext(), []);
+  const { role } = useMemo(() => getAuthSession(), []);
+  const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
+  const totalCount = complaints.length;
+
+  const fetchComplaints = useCallback(async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const data = await apiService.get(COMPLAINTS_LIST_ENDPOINT);
+      const normalizedData = normalizeListResponse(data);
+
+      setComplaints(normalizedData.results);
+    } catch (fetchError) {
+      console.error("Error fetching complaints:", fetchError);
+      setError("Unable to load complaints right now.");
+      toast.error("Unable to load complaints");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]);
+
+  const filteredComplaints = useMemo(() => {
+    const searchTerm = search.trim().toLowerCase();
+
+    return complaints.filter((complaint) => {
+      const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
+      const matchesSearch = !searchTerm || getComplaintSearchText(complaint).includes(searchTerm);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [complaints, search, statusFilter]);
+
+  const paginatedComplaints = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+
+    return filteredComplaints.slice(startIndex, startIndex + rowsPerPage);
+  }, [currentPage, filteredComplaints, rowsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredComplaints.length / rowsPerPage));
+
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [currentPage, filteredComplaints.length, rowsPerPage]);
+
+  const metrics = useMemo(() => {
+    const pageStatusCounts = complaints.reduce(
+      (acc, complaint) => {
+        acc[complaint.status] = (acc[complaint.status] || 0) + 1;
+        return acc;
+      },
+      {
+        Completed: 0,
+        "In Progress": 0,
+        Pending: 0,
+        Waiting: 0,
+      },
+    );
+
+    return [
+      {
+        accent: "#ef4444",
+        icon: FiAlertTriangle,
+        label: "Total complaints",
+        value: totalCount,
+      },
+      {
+        accent: "#f59e0b",
+        icon: LuClock3,
+        label: "Pending",
+        value: pageStatusCounts.Pending,
+      },
+      {
+        accent: "#3b82f6",
+        icon: LuListChecks,
+        label: "In progress",
+        value: pageStatusCounts["In Progress"],
+      },
+      {
+        accent: "#0cb899",
+        icon: FaCheckCircle,
+        label: "Completed",
+        value: pageStatusCounts.Completed,
+      },
+    ];
+  }, [complaints, totalCount]);
+
+  const exportComplaints = async () => {
+    if (!exportRange?.[0] || !exportRange?.[1]) {
+      toast.warning("Select a date range before exporting");
+      return;
+    }
+
+    setExporting(true);
+
+    try {
+      const startDate = exportRange[0].startOf("day").toDate();
+      const endDate = exportRange[1].endOf("day").toDate();
+      const filteredExportRows = complaints.filter((complaint) => {
+        const complaintDate = new Date(complaint.date || complaint.created_at);
+
+        return complaintDate >= startDate && complaintDate <= endDate;
+      });
+
+      if (!filteredExportRows.length) {
+        toast.warning("No complaints found in the selected date range");
+        return;
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(filteredExportRows.map(mapComplaintForExport));
+      const workbook = XLSX.utils.book_new();
+      const startLabel = exportRange[0].format("YYYY-MM-DD");
+      const endLabel = exportRange[1].format("YYYY-MM-DD");
+
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
+      XLSX.writeFile(workbook, `complaints_${startLabel}_to_${endLabel}.xlsx`);
+      toast.success("Complaints exported successfully");
+      setIsExportModalOpen(false);
+      setExportRange(null);
+    } catch (exportError) {
+      console.error("Error exporting complaints:", exportError);
+      toast.error("Unable to export complaints");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const openComplaintDetails = (complaint) => {
+    setSelectedComplaint(complaint);
+    setStatusValue(complaint.status || "");
+  };
+
+  const closeComplaintDetails = () => {
+    setSelectedComplaint(null);
+    setStatusValue("");
+  };
+
+  const updateComplaintStatus = async () => {
+    if (!selectedComplaint?.id || !statusValue || statusValue === selectedComplaint.status) {
+      return;
+    }
+
+    setStatusUpdating(true);
+
+    try {
+      await apiService.patch(`/api/api/complaint/${selectedComplaint.id}/update-status-admin/`, {
+        status: statusValue,
+      });
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === selectedComplaint.id ? { ...complaint, status: statusValue } : complaint,
+        ),
+      );
+      setSelectedComplaint((currentComplaint) => ({
+        ...currentComplaint,
+        status: statusValue,
+      }));
+      toast.success("Complaint status updated");
+    } catch (statusError) {
+      console.error("Error updating complaint status:", statusError);
+      toast.error("Unable to update complaint status");
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const columns = [
+    {
+      dataIndex: "date_id",
+      key: "date_id",
+      render: (_, complaint, index) => (
+        <div>
+          <strong>
+            {complaint.complaint_id || `#${(currentPage - 1) * rowsPerPage + index + 1}`}
+          </strong>
+          {renderDateTimeCell(complaint.date, "Created", "Created date not found")}
+        </div>
+      ),
+      title: "ID & DATE",
+      width: 190,
+    },
+    {
+      key: "institution",
+      render: (_, complaint) => (
+        <div>
+          <strong>{getText(complaint.institution?.name)}</strong>
+          <div style={styles.muted}>{getText(complaint.department?.name)}</div>
+        </div>
+      ),
+      title: "Institution & Department",
+      width: 230,
+    },
+    {
+      key: "issue",
+      render: (_, complaint) => (
+        <div>
+          <strong>{getText(complaint.issue_complaint?.name)}</strong>
+          <div style={styles.muted}>{getText(complaint.type_of_issue?.name)}</div>
+        </div>
+      ),
+      title: "Complaint",
+      width: 240,
+    },
+    {
+      dataIndex: "status",
+      key: "status",
+      render: (status) => <Tag color={getStatusMeta(status).color}>{getText(status)}</Tag>,
+      title: "Status",
+      width: 140,
+    },
+    {
+      key: "attended_by",
+      render: (_, complaint) => (
+        <div>
+          <strong>{getText(complaint.resolved_by?.name)}</strong>
+          {renderDateTimeCell(complaint.resolved_date, "Resolved", "Not resolved yet")}
+        </div>
+      ),
+      title: "User & DATE",
+      width: 210,
+    },
+    {
+      align: "right",
+      key: "action",
+      render: (_, complaint) => (
+        <Tooltip title="View complaint">
+          <button
+            onClick={() => openComplaintDetails(complaint)}
+            style={styles.iconButton}
+            type="button"
+          >
+            <FiEye size={17} />
+          </button>
+        </Tooltip>
+      ),
+      title: "",
+      width: 70,
+    },
+  ];
+
+  const detailItems = selectedComplaint
+    ? [
+        ["Complaint ID", selectedComplaint.complaint_id || selectedComplaint.id],
+        [
+          "Department & Institution",
+          `${getText(selectedComplaint.department?.name)} - ${getText(selectedComplaint.institution?.name)}`,
+        ],
+        ["Complained By", selectedComplaint.complainted_by?.name],
+        ["Mobile Number", selectedComplaint.complainted_by?.mobile_number],
+        ["Complaint", selectedComplaint.issue_complaint?.name],
+        ["Type of Issue", selectedComplaint.type_of_issue?.name],
+        ["Category", selectedComplaint.category],
+        ["Status", selectedComplaint.status],
+        ["Created Date & Time", formatDateTimeText(selectedComplaint.date)],
+        ["Attend Date & Time", formatDateTimeText(selectedComplaint.attend_date)],
+        ["Attended By", selectedComplaint.resolved_by?.name],
+        ["Resolved Date & Time", formatDateTimeText(selectedComplaint.resolved_date)],
+        ["Delay Reason", selectedComplaint.delay_reason],
+        ["Remark", selectedComplaint.remark],
+        ["Notes", selectedComplaint.notes],
+        ["Completed Note", selectedComplaint.completed_note],
+      ]
+    : [];
+
+  return (
+    <div style={styles.page}>
+      <section style={styles.header}>
+        <div>
+          <p style={styles.eyebrow}>
+            <LuBuilding2 size={14} />
+            {roleContext.eyebrow}
+          </p>
+          <h1 style={styles.title}>{roleContext.title}</h1>
+          <p style={styles.subtitle}>{roleContext.subtitle}</p>
+        </div>
+
+        <div style={styles.actions}>
+          <CreateComplaints onCreated={fetchComplaints} />
+          <Button icon={<BiExport size={18} />} onClick={() => setIsExportModalOpen(true)}>
+            Export
+          </Button>
+          <Button icon={<BiRefresh size={18} />} loading={loading} onClick={fetchComplaints}>
+            Refresh
+          </Button>
+        </div>
+      </section>
+
+      <section style={styles.metrics}>
+        {metrics.map(({ accent, icon: Icon, label, value }) => (
+          <article key={label} style={styles.metric(accent)}>
+            <div>
+              <p style={styles.metricLabel}>{label}</p>
+              <h2 style={styles.metricValue}>{loading ? "-" : formatNumber(value)}</h2>
+            </div>
+            <div style={styles.metricIcon}>
+              <Icon size={22} />
+            </div>
+          </article>
+        ))}
+      </section>
+
+      <section style={styles.panel}>
+        <div style={styles.toolbar}>
+          <Input
+            allowClear
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search loaded complaints"
+            prefix={<FiSearch />}
+            value={search}
+          />
+
+          <Select
+            onChange={setStatusFilter}
+            options={[
+              { label: "All statuses", value: "all" },
+              { label: "Pending", value: "Pending" },
+              { label: "In Progress", value: "In Progress" },
+              { label: "Waiting", value: "Waiting" },
+              { label: "Completed", value: "Completed" },
+            ]}
+            value={statusFilter}
+          />
+
+          <span style={styles.muted}>
+            Showing {formatNumber(paginatedComplaints.length)} of{" "}
+            {formatNumber(filteredComplaints.length)} filtered
+          </span>
+        </div>
+
+        {error ? (
+          <div style={{ padding: "16px" }}>
+            <Empty description={error} />
+          </div>
+        ) : (
+          <div style={styles.tableWrap}>
+            <Table
+              columns={columns}
+              dataSource={paginatedComplaints}
+              loading={loading}
+              locale={{ emptyText: <Empty description="No complaints found" /> }}
+              pagination={false}
+              rowKey={(record) => record.id || record.complaint_id}
+              scroll={{ x: 1130 }}
+            />
+          </div>
+        )}
+
+        <div style={styles.pagination}>
+          <Pagination
+            current={currentPage}
+            onChange={(page) => setCurrentPage(page)}
+            pageSize={rowsPerPage}
+            showSizeChanger={false}
+            total={filteredComplaints.length}
+          />
+
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={styles.muted}>Rows</span>
+            <Select
+              onChange={(value) => {
+                setRowsPerPage(value);
+                setCurrentPage(1);
+              }}
+              options={PAGE_SIZE_OPTIONS.map((value) => ({
+                label: `${value} / page`,
+                value,
+              }))}
+              style={{ width: 128 }}
+              value={rowsPerPage}
+            />
+          </div>
+        </div>
+      </section>
+
+      <Drawer
+        onClose={closeComplaintDetails}
+        open={Boolean(selectedComplaint)}
+        title="Complaint Details"
+        width={680}
+      >
+        {selectedComplaint ? (
+          <>
+            <div style={styles.detailHeader}>
+              <div>
+                <h2 style={styles.detailTitle}>
+                  {selectedComplaint.issue_complaint?.name || "Complaint"}
+                </h2>
+                <p style={styles.detailSubtitle}>
+                  {getText(selectedComplaint.institution?.name)} -{" "}
+                  {getText(selectedComplaint.department?.name)}
+                </p>
+              </div>
+              <Tag color={getStatusMeta(selectedComplaint.status).color}>
+                {getText(selectedComplaint.status)}
+              </Tag>
+            </div>
+
+            {canUpdateStatus && selectedComplaint.status !== "Completed" ? (
+              <div style={styles.statusEditor}>
+                <span style={styles.detailLabel}>Update Status</span>
+                <div style={styles.statusEditorRow}>
+                  <Select
+                    options={STATUS_OPTIONS.map((status) => ({
+                      label: status,
+                      value: status,
+                    }))}
+                    value={statusValue || undefined}
+                    onChange={setStatusValue}
+                  />
+                  <Popconfirm
+                    cancelText="Cancel"
+                    description="This will update the complaint status."
+                    okText="Update"
+                    onConfirm={updateComplaintStatus}
+                    title="Update status?"
+                  >
+                    <Button
+                      disabled={!statusValue || statusValue === selectedComplaint.status}
+                      loading={statusUpdating}
+                      type="primary"
+                    >
+                      Update
+                    </Button>
+                  </Popconfirm>
+                </div>
+              </div>
+            ) : null}
+
+            <div style={styles.detailGrid}>
+              {detailItems.map(([label, value]) => (
+                <div key={label} style={styles.detailItem}>
+                  <span style={styles.detailLabel}>{label}</span>
+                  <span style={styles.detailValue}>{getText(value)}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </Drawer>
+
+      <Modal
+        confirmLoading={exporting}
+        okText="Export Excel"
+        onCancel={() => setIsExportModalOpen(false)}
+        onOk={exportComplaints}
+        open={isExportModalOpen}
+        title="Export Complaints"
+      >
+        <p style={styles.muted}>
+          Select a created-date range. The export uses the complaints API and writes an Excel file.
+        </p>
+        <RangePicker
+          onChange={setExportRange}
+          style={{ width: "100%", height: "50px" }}
+          value={exportRange}
+        />
+      </Modal>
+    </div>
+  );
+}
+
+export default ComplaintsList;
