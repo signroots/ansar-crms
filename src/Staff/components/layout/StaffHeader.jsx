@@ -153,7 +153,7 @@ function StaffHeader() {
               sx={{
                 display: "block",
                 color: "#64748b",
-                fontWeight: 800,
+                fontWeight: 600,
                 lineHeight: 1.1,
               }}
             >
@@ -165,8 +165,8 @@ function StaffHeader() {
                 noWrap
                 sx={{
                   color: "#0f172a",
-                  fontSize: { xs: 18, sm: 22 },
-                  fontWeight: 900,
+                  fontSize: { xs: 17, sm: 20 },
+                  fontWeight: 700,
                   letterSpacing: 0,
                   lineHeight: 1.2,
                 }}
@@ -221,7 +221,7 @@ function StaffHeader() {
             }}
           >
             <Box sx={{ px: 2, py: 1.5 }}>
-              <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 900 }}>
+              <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
                 Notifications
               </Typography>
               <Typography variant="caption" sx={{ color: "#64748b" }}>
@@ -247,7 +247,7 @@ function StaffHeader() {
                     }}
                   >
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 900 }}>
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
                         {getNotificationText(notification, "title", "Notification")}
                       </Typography>
                       <Typography variant="body2" sx={{ color: "#475569", mt: 0.25 }}>
@@ -258,7 +258,7 @@ function StaffHeader() {
                         sx={{
                           color: "#0f766e",
                           display: "block",
-                          fontWeight: 800,
+                          fontWeight: 600,
                           mt: 0.75,
                         }}
                       >

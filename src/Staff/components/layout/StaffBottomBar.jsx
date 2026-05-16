@@ -87,7 +87,7 @@ function StaffBottomBar() {
             "& .MuiBottomNavigationAction-label": {
               mt: 0.25,
               fontSize: 11,
-              fontWeight: 800,
+              fontWeight: 600,
               opacity: 1,
               letterSpacing: 0,
             },
