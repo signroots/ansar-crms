@@ -1,170 +1,294 @@
-import React, { useEffect, useState } from 'react';
-import
-{
-  Box,
-  Typography,
-  Avatar,
-  CircularProgress,
-  Card,
-  CardContent,
-  Button,
-  Divider,
-} from '@mui/material';
-import { Phone, CardMembership, AccountTree, HowToReg } from '@mui/icons-material';
-import { deepPurple, grey } from '@mui/material/colors';
-import BASE_URL from '../../utils/baseUrl';
-import { useNavigate } from 'react-router-dom'; 
-// import { Button } from 'bootstrap';
-function StaffProfile()
-{
-  const [user, setUser] = useState(null);
-  const navigate = useNavigate(); 
-  useEffect(() =>
-  {
-    const staffId = localStorage.getItem('staff_id') || '';
-    if (staffId)
-    {
-      fetch(`${ BASE_URL }/api/get-user-details/${ staffId }/`)
-        .then((response) => response.json())
-        .then((data) => setUser(data))
-        .catch((error) => console.error('Error fetching user details:', error));
-    } else
-    {
-      console.error('No staff_id found in localStorage');
-    }
-  }, []);
+import { useEffect, useMemo, useState } from "react";
 
-  // Logout function
-  const handleLogout = () =>
-  {
-    localStorage.removeItem('staff_id'); // Remove staff_id from storage
-    navigate('/login'); // Redirect to login page
+import AccountTree from "@mui/icons-material/AccountTree";
+import Badge from "@mui/icons-material/Badge";
+import Call from "@mui/icons-material/Call";
+import HowToReg from "@mui/icons-material/HowToReg";
+import Logout from "@mui/icons-material/Logout";
+import Person from "@mui/icons-material/Person";
+import SupportAgent from "@mui/icons-material/SupportAgent";
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  Chip,
+  CircularProgress,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+
+import ROUTE_PATHS from "../../V2/app/router/paths";
+import { clearAuthSession, getAuthSession } from "../../V2/shared/utils/authSession";
+import BASE_URL from "../../utils/baseUrl";
+
+const getInitial = (name) => name?.trim()?.charAt(0)?.toUpperCase() || "?";
+
+function StaffProfile() {
+  const [user, setUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const navigate = useNavigate();
+
+  const staffId = useMemo(
+    () => getAuthSession().staffId || localStorage.getItem("staff_id") || "",
+    [],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUser = async () => {
+      if (!staffId) {
+        setErrorMessage("Staff details are not available.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BASE_URL}/api/get-user-details/${staffId}/`);
+
+        if (!response.ok) {
+          throw new Error("Unable to fetch profile details.");
+        }
+
+        const data = await response.json();
+
+        if (isMounted) {
+          setUser(data);
+          setErrorMessage("");
+        }
+      } catch (error) {
+        console.error("Error fetching user details:", error);
+
+        if (isMounted) {
+          setErrorMessage("Unable to load profile details.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchUser();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [staffId]);
+
+  const handleLogout = () => {
+    clearAuthSession();
+    navigate(ROUTE_PATHS.login, { replace: true });
   };
 
-  if (!user)
-  {
+  const renderInfoRow = (label, value, Icon) => (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.25,
+        borderRadius: 2,
+        bgcolor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        px: 1.5,
+        py: 1.25,
+      }}
+    >
+      <Avatar sx={{ width: 34, height: 34, bgcolor: "#ecfeff", color: "#0f766e" }}>
+        <Icon sx={{ fontSize: 19 }} />
+      </Avatar>
+
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+          {label}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: 700,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {value || "N/A"}
+        </Typography>
+      </Box>
+    </Box>
+  );
+
+  if (isLoading) {
     return (
-      <Box
-        sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          minHeight: '100vh',
-          background: 'linear-gradient(to bottom right, #3f51b5, #2196f3)',
-        }}
-      >
-        <CircularProgress sx={{ color: '#fff' }} />
+      <Box sx={{ maxWidth: 640, mx: "auto" }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e2e8f0",
+            bgcolor: "#ffffff",
+          }}
+        >
+          <Stack alignItems="center" spacing={1.25} sx={{ py: 6, px: 2, textAlign: "center" }}>
+            <Avatar sx={{ width: 56, height: 56, bgcolor: "#ecfeff", color: "#0f766e" }}>
+              <CircularProgress size={24} thickness={4} sx={{ color: "#0f766e" }} />
+            </Avatar>
+            <Typography variant="subtitle1" sx={{ color: "#0f172a", fontWeight: 700 }}>
+              Loading profile
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748b", maxWidth: 320 }}>
+              Fetching your staff details.
+            </Typography>
+          </Stack>
+        </Card>
+      </Box>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <Box sx={{ maxWidth: 640, mx: "auto" }}>
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px dashed #cbd5e1",
+            bgcolor: "#ffffff",
+          }}
+        >
+          <Stack alignItems="center" spacing={1.25} sx={{ py: 6, px: 2, textAlign: "center" }}>
+            <Avatar sx={{ width: 56, height: 56, bgcolor: "#f8fafc", color: "#94a3b8" }}>
+              <Person />
+            </Avatar>
+            <Typography variant="subtitle1" sx={{ color: "#0f172a", fontWeight: 700 }}>
+              Profile unavailable
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748b", maxWidth: 320 }}>
+              {errorMessage}
+            </Typography>
+          </Stack>
+        </Card>
       </Box>
     );
   }
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%',
-        padding: 2,
-        background: 'linear-gradient(to bottom right,rgb(173, 185, 255),rgb(199, 230, 255))',
-      }}
-    >
-      {/* Avatar */}
-      <Avatar
-        sx={{
-          bgcolor: deepPurple[500],
-          width: 80,
-          height: 80,
-          fontSize: 36,
-          boxShadow: 3,
-          marginBottom: 2,
-        }}
-      >
-        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
-      </Avatar>
-
-      {/* Card with user information */}
+    <Box sx={{ maxWidth: 640, mx: "auto" }}>
       <Card
+        elevation={0}
         sx={{
-          width: '100%',
-          maxWidth: 400,
-          borderRadius: 2,
-          padding: 2,
-          backgroundColor: '#f0f0f0',  // Lighter background for better contrast
-          boxShadow: 0,
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          bgcolor: "#ffffff",
+          overflow: "hidden",
+          boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
         }}
       >
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: 'center',
-            marginBottom: 2,
-          }}
-        >
-          {user.name || 'Unknown User'}
-        </Typography>
-        <Divider sx={{ marginBottom: 2 }} />
+        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Stack alignItems="center" spacing={1.25} sx={{ textAlign: "center", mb: 2 }}>
+            <Avatar
+              sx={{
+                width: 78,
+                height: 78,
+                bgcolor: "#0f766e",
+                color: "#ffffff",
+                fontSize: 30,
+                fontWeight: 700,
+                boxShadow: "0 16px 34px rgba(15, 118, 110, 0.18)",
+              }}
+            >
+              {getInitial(user?.name)}
+            </Avatar>
 
-        <CardContent sx={{ padding: 0 }}>
-          {/* Staff ID */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <CardMembership sx={{ color: grey[700], marginRight: 1 }} />
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Staff ID:</Typography>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: 19, sm: 21 },
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {user?.name || "Unknown User"}
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#64748b", mt: 0.35 }}>
+                {user?.section_for_staff || "Tech Support"}
+              </Typography>
             </Box>
-            <Typography variant="body1">{user.staff_id || 'N/A'}</Typography>
+
+            <Chip
+              icon={<SupportAgent />}
+              label={user?.role || "Staff"}
+              size="small"
+              sx={{
+                height: 30,
+                borderRadius: 1.5,
+                bgcolor: "#ecfeff",
+                border: "1px solid #bae6fd",
+                color: "#0f766e",
+                fontSize: 12,
+                fontWeight: 700,
+                "& .MuiChip-icon": { color: "#0f766e" },
+              }}
+            />
+          </Stack>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 1,
+            }}
+          >
+            {renderInfoRow("Staff ID", user?.staff_id, Badge)}
+            {renderInfoRow("Role", user?.role, HowToReg)}
+            {renderInfoRow("Section", user?.section_for_staff, AccountTree)}
+            {renderInfoRow("Number", user?.mobile_number, Call)}
           </Box>
 
-
-          {/* role*/}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <HowToReg sx={{ color: grey[700], marginRight: 1 }} />
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Role:</Typography>
-            </Box>
-            <Typography variant="body1">{user.role || 'N/A'}</Typography>
-          </Box>
-
-          {/* Section*/}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <AccountTree sx={{ color: grey[700], marginRight: 1 }} />
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Section:</Typography>
-            </Box>
-            <Typography variant="body1">{user.section_for_staff || 'N/A'}</Typography>
-          </Box>
-
-
-          {/* Contact Number */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Phone sx={{ color: grey[700], marginRight: 1 }} />
-              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>Number:</Typography>
-            </Box>
-            <Typography variant="body1">{user.mobile_number || 'N/A'}</Typography>
-          </Box>
-        </CardContent>
+          <Button
+            variant="outlined"
+            fullWidth
+            startIcon={<Logout />}
+            onClick={handleLogout}
+            sx={{
+              mt: 2,
+              minHeight: 48,
+              borderRadius: 2,
+              bgcolor: "#fff7ed",
+              borderColor: "#fed7aa",
+              color: "#c2410c",
+              fontWeight: 700,
+              textTransform: "none",
+              "&:hover": {
+                bgcolor: "#ffedd5",
+                borderColor: "#fb923c",
+                color: "#9a3412",
+                boxShadow: "0 10px 24px rgba(234, 88, 12, 0.12)",
+              },
+            }}
+          >
+            Logout
+          </Button>
+        </Box>
       </Card>
-      {/* Logout Button */}
-      <Button
-        variant="contained"
-        color="error"
-        onClick={handleLogout}
-        sx={{ marginTop: 2 }}
-      >
-        LOGOUT
-      </Button>
 
-      {/* Footer */}
       <Typography
         variant="caption"
         sx={{
-          marginTop: 3,
-          color: '#ffffffb3',
+          display: "block",
+          mt: 1.5,
+          color: "#94a3b8",
+          textAlign: "center",
+          fontWeight: 600,
         }}
       >
-        Version: 0.001 - Developers Signroots
+        Version 0.001 - Developers Signroots
       </Typography>
     </Box>
   );

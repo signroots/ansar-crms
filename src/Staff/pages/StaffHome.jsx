@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  ArrowBack,
-  Assignment,
-  Business,
-  Call,
-  ChevronRight,
-  Inbox,
-  Notes,
-  Person,
-  ReportProblem,
-  Schedule,
-  WhatsApp,
-} from "@mui/icons-material";
+import ArrowBack from "@mui/icons-material/ArrowBack";
+import Assignment from "@mui/icons-material/Assignment";
+import Business from "@mui/icons-material/Business";
+import Call from "@mui/icons-material/Call";
+import ChevronRight from "@mui/icons-material/ChevronRight";
+import Inbox from "@mui/icons-material/Inbox";
+import Notes from "@mui/icons-material/Notes";
+import Person from "@mui/icons-material/Person";
+import ReportProblem from "@mui/icons-material/ReportProblem";
+import Schedule from "@mui/icons-material/Schedule";
+import WhatsApp from "@mui/icons-material/WhatsApp";
 import {
   Avatar,
   Box,

@@ -14,7 +14,8 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { Notifications, SupportAgent } from "@mui/icons-material";
+import Notifications from "@mui/icons-material/Notifications";
+import SupportAgent from "@mui/icons-material/SupportAgent";
 
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";

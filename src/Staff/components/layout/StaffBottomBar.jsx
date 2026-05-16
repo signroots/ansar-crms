@@ -1,4 +1,7 @@
-import { AccountCircle, FormatListBulleted, HistoryRounded, Home } from "@mui/icons-material";
+import AccountCircle from "@mui/icons-material/AccountCircle";
+import FormatListBulleted from "@mui/icons-material/FormatListBulleted";
+import HistoryRounded from "@mui/icons-material/HistoryRounded";
+import Home from "@mui/icons-material/Home";
 import { BottomNavigation, BottomNavigationAction, Box, Paper } from "@mui/material";
 import { Link, useLocation } from "react-router-dom";
 
