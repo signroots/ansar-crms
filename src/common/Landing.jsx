@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import "./Landing.css";
 import { authApi } from "../V2/services/api/endpoints/auth.api";
 import { USER_ROLES } from "../V2/shared/constants/roles";
-import { setAuthSession } from "../V2/shared/utils/authSession";
+import { getAuthenticatedHomePath, setAuthSession } from "../V2/shared/utils/authSession";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -61,23 +61,21 @@ function Login() {
         typeOfIssue: type_of_issue,
       });
 
-      if (role === USER_ROLES.SUPER_ADMIN) {
-        navigate("/admin/dashboard", { replace: true });
-      } else if (role === USER_ROLES.TECHNICAL_STAFF) {
-        if (isTechnicalAdmin) {
-          navigate("/tech-admin/dashboard", { replace: true });
-        } else {
-          navigate("/tech-support/tech-support-home", { replace: true });
-        }
-      } else if (
-        role === USER_ROLES.STAFF ||
-        role === USER_ROLES.TEACHER ||
-        role === USER_ROLES.DEPARTMENT_HEAD
+      if (
+        ![
+          USER_ROLES.SUPER_ADMIN,
+          USER_ROLES.TECHNICAL_STAFF,
+          USER_ROLES.STAFF,
+          USER_ROLES.TEACHER,
+          USER_ROLES.DEPARTMENT_HEAD,
+          USER_ROLES.DEPARTMENT_ADMIN,
+        ].includes(role)
       ) {
-        navigate("/user/user-home", { replace: true });
-      } else {
         toast.warning("Unknown role");
+        return;
       }
+
+      navigate(getAuthenticatedHomePath({ role, isAdmin: isTechnicalAdmin }), { replace: true });
     } catch (err) {
       console.error(err);
       toast.error("Invalid credentials, please try again.");

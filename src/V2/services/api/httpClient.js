@@ -1,9 +1,15 @@
 import axios from "axios";
 
-import { getAuthSession } from "../../shared/utils/authSession";
+import { clearAuthSession, getAuthSession } from "../../shared/utils/authSession";
 import { API_CONFIG } from "./Api.config";
 
 const API_PREFIX = "/api";
+const AUTH_PATHS = new Set([
+  "/login",
+  "/admin/auth",
+  "/user/user-login",
+  "/tech-support/tech-support-login",
+]);
 
 const normalizePath = (url = "") => {
   if (!API_CONFIG.baseURL.endsWith(API_PREFIX)) {
@@ -36,6 +42,21 @@ export const createHttpClient = (config = {}) => {
 
     return requestConfig;
   });
+
+  client.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        clearAuthSession();
+
+        if (typeof window !== "undefined" && !AUTH_PATHS.has(window.location.pathname)) {
+          window.location.replace("/login");
+        }
+      }
+
+      return Promise.reject(error);
+    },
+  );
 
   return client;
 };

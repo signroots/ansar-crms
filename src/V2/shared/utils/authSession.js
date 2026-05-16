@@ -29,6 +29,30 @@ export const getAuthSession = () => ({
   typeOfIssue: localStorage.getItem(STORAGE_KEYS.TYPE_OF_ISSUE),
 });
 
+export const getAuthenticatedHomePath = ({ role, isAdmin = false } = getAuthSession()) => {
+  if (role === USER_ROLES.SUPER_ADMIN || role === USER_ROLES.SUPER_ADMIN_LABEL) {
+    return "/admin/dashboard";
+  }
+
+  if (role === USER_ROLES.TECHNICAL_STAFF) {
+    return isAdmin ? "/tech-admin/dashboard" : "/tech-support/tech-support-home";
+  }
+
+  if (
+    role === USER_ROLES.STAFF ||
+    role === USER_ROLES.TEACHER ||
+    role === USER_ROLES.DEPARTMENT_HEAD
+  ) {
+    return "/user/user-home";
+  }
+
+  if (role === USER_ROLES.DEPARTMENT_ADMIN) {
+    return "/tech-admin/dashboard";
+  }
+
+  return "/login";
+};
+
 export const clearAuthSession = () => {
   [
     STORAGE_KEYS.ACCESS_TOKEN,

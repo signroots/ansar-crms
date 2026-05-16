@@ -28,10 +28,12 @@ import UserLayout from "../../../User/layout/UserLayout";
 import { ROLE_GROUPS, USER_ROLES } from "../../shared/constants/roles";
 import ROUTE_PATHS from "./paths";
 import ProtectedRoute from "./ProtectedRoute";
+import PublicRoute from "./PublicRoute";
 
 const withLayout = (LayoutComponent, page) => <LayoutComponent>{page}</LayoutComponent>;
 
 const protectedElement = (page, options) => <ProtectedRoute {...options}>{page}</ProtectedRoute>;
+const publicElement = (page) => <PublicRoute>{page}</PublicRoute>;
 
 const superAdminOptions = {
   allowedRoles: ROLE_GROUPS.SUPER_ADMIN,
@@ -51,10 +53,10 @@ const departmentAdminOptions = {
 };
 
 export const appRoutes = [
-  { path: ROUTE_PATHS.login, element: <Landing /> },
-  { path: ROUTE_PATHS.superAdmin.auth, element: <Authentication /> },
-  { path: ROUTE_PATHS.staffTeacher.login, element: <Auth /> },
-  { path: ROUTE_PATHS.technicalStaff.login, element: <AuthStaff /> },
+  { path: ROUTE_PATHS.login, element: publicElement(<Landing />) },
+  { path: ROUTE_PATHS.superAdmin.auth, element: publicElement(<Authentication />) },
+  { path: ROUTE_PATHS.staffTeacher.login, element: publicElement(<Auth />) },
+  { path: ROUTE_PATHS.technicalStaff.login, element: publicElement(<AuthStaff />) },
 
   {
     path: ROUTE_PATHS.superAdmin.dashboard,

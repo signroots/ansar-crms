@@ -15,7 +15,7 @@ const ROUTE_PATHS = {
   },
 
   staffTeacher: {
-    login: "/user/user-login",
+    // login: "/user/user-login",
     home: "/user/user-home",
     requests: "/user/user-requests",
     legacyRequestForm: "/user/user-/user/admin/requests",

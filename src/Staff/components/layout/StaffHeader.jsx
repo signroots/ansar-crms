@@ -1,416 +1,280 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
 import {
   AppBar,
-  Toolbar,
-  IconButton,
-  Typography,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Box,
-  CssBaseline,
-  useMediaQuery,
-  useTheme,
   Badge,
+  Box,
+  Divider,
+  IconButton,
   Menu as MuiMenu,
   MenuItem,
-  Divider,
-} from '@mui/material';
+  Stack,
+  Toolbar,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import { Notifications, SupportAgent } from "@mui/icons-material";
 
-import {
-  Menu,
-  Notifications,
-} from '@mui/icons-material';
-
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { useNavigate } from 'react-router-dom';
-import { env } from '../../../V2/config/env';
-import { clearAuthSession, getAuthSession } from '../../../V2/shared/utils/authSession';
+
+import ROUTE_PATHS from "../../../V2/app/router/paths";
+import { env } from "../../../V2/config/env";
+import { getAuthSession } from "../../../V2/shared/utils/authSession";
+
+const TECH_SUPPORT_ROUTES = ROUTE_PATHS.technicalStaff;
+
+const getNotificationText = (notification, key, fallback) =>
+  notification?.message?.[key] || fallback;
+
+const isRequestsDetailPath = (pathname) => pathname.startsWith("/tech-support/request/");
+
+const isActivePath = (pathname, path) =>
+  pathname === path ||
+  pathname.startsWith(`${path}/`) ||
+  (path === TECH_SUPPORT_ROUTES.requests && isRequestsDetailPath(pathname));
+
+const getCurrentPageTitle = (pathname) => {
+  if (isActivePath(pathname, TECH_SUPPORT_ROUTES.tasks)) {
+    return "Complaints";
+  }
+
+  if (isActivePath(pathname, TECH_SUPPORT_ROUTES.requests)) {
+    return "Requests";
+  }
+
+  if (isActivePath(pathname, TECH_SUPPORT_ROUTES.profile)) {
+    return "Profile";
+  }
+
+  return "Dashboard";
+};
 
 function StaffHeader() {
-
-  // ================= STATES =================
-  const [openSidebar, setOpenSidebar] = useState(false);
-
   const [notifications, setNotifications] = useState([]);
-
-  const [anchorEl, setAnchorEl] = useState(null);
-
-  const theme = useTheme();
-
-  const isMobile = useMediaQuery(
-    theme.breakpoints.down('sm')
-  );
+  const [notificationAnchor, setNotificationAnchor] = useState(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const openNotificationMenu = Boolean(anchorEl);
+  const pageTitle = getCurrentPageTitle(location.pathname);
+  const openNotificationMenu = Boolean(notificationAnchor);
 
-  // ================= SIDEBAR =================
-  const toggleSidebar = () => {
-    setOpenSidebar(!openSidebar);
-  };
-
-  // ================= LOGOUT =================
-  const Logout = () => {
-
-    clearAuthSession();
-
-    toast.success('Logout Successfully');
-
-    navigate('/login');
-  };
-
-  // ================= WEBSOCKET =================
   useEffect(() => {
-
     const { accessToken: token } = getAuthSession();
 
     if (!token) {
-
-      console.log("❌ No Token Found");
-
-      return;
+      return undefined;
     }
 
-    console.log("✅ TOKEN:", token);
+    const socket = new WebSocket(`${env.wsUrl}/ws/notifications/?token=${token}`);
 
-    // ✅ WEBSOCKET URL
-    const socket = new WebSocket(
-      `${env.wsUrl}/ws/notifications/?token=${token}`
-    );
-
-    // ================= CONNECT =================
-    socket.onopen = () => {
-
-      console.log("✅ WebSocket Connected");
-
-    };
-
-    // ================= RECEIVE =================
     socket.onmessage = (event) => {
-
-      console.log("🔥 RAW MESSAGE:", event.data);
-
       try {
-
         const data = JSON.parse(event.data);
 
-        console.log("✅ PARSED:", data);
-
-        // ✅ ADD NOTIFICATION
-        setNotifications((prev) => [
-          data,
-          ...prev
-        ]);
-
-        // ✅ TOAST MESSAGE
-        toast.info(
-          data?.message?.body || "New Notification"
-        );
-
+        setNotifications((prev) => [data, ...prev]);
+        toast.info(getNotificationText(data, "body", "New Notification"));
       } catch (error) {
-
-        console.log("❌ JSON ERROR:", error);
-
+        console.error("Notification parse error:", error);
       }
-
     };
 
-    // ================= ERROR =================
     socket.onerror = (error) => {
-
-      console.log("❌ SOCKET ERROR:", error);
-
+      console.error("Notification socket error:", error);
     };
 
-    // ================= CLOSE =================
-    socket.onclose = () => {
-
-      console.log("⚠️ WebSocket Closed");
-
-    };
-
-    // ================= CLEANUP =================
     return () => {
-
       socket.close();
-
     };
-
   }, []);
 
-  // ================= OPEN MENU =================
   const handleNotificationOpen = (event) => {
-
-    setAnchorEl(event.currentTarget);
-
+    setNotificationAnchor(event.currentTarget);
   };
 
-  // ================= CLOSE MENU =================
   const handleNotificationClose = () => {
-
-    setAnchorEl(null);
-
+    setNotificationAnchor(null);
   };
 
-  // ================= CLICK NOTIFICATION =================
   const handleNotificationClick = (notification) => {
-
-    console.log("🔔 CLICKED:", notification);
-
-    const requestId =
-      notification?.message?.request_id;
+    const requestId = notification?.message?.request_id;
 
     if (requestId) {
-
       navigate(`/tech-support/request/${requestId}`);
-
     } else {
-
-      navigate('/tech-support/tech-support-home');
-
+      navigate(TECH_SUPPORT_ROUTES.home);
     }
 
     handleNotificationClose();
   };
 
   return (
-
-    <Box
-      sx={{
-        display: 'flex',
-        width: '100%'
-      }}
-    >
-
-      {/* ================= SIDEBAR ================= */}
-      <Drawer
-        sx={{
-          width: 240,
-          flexShrink: 0,
-
-          '& .MuiDrawer-paper': {
-            width: 240,
-            boxSizing: 'border-box',
-          },
-        }}
-
-        variant={
-          isMobile
-            ? 'temporary'
-            : 'persistent'
-        }
-
-        anchor="left"
-
-        open={openSidebar}
-
-        onClose={() =>
-          setOpenSidebar(false)
-        }
-
-        ModalProps={{
-          keepMounted: true,
-        }}
-      >
-
-        <List>
-
-          <ListItem>
-            <ListItemText primary="Developer" />
-          </ListItem>
-
-          <ListItem>
-            <ListItemText primary="About" />
-          </ListItem>
-
-          <ListItem
-            onClick={Logout}
-            sx={{ cursor: 'pointer' }}
-          >
-            <ListItemText primary="Logout" />
-          </ListItem>
-
-        </List>
-
-      </Drawer>
-
-      {/* ================= HEADER ================= */}
-      <CssBaseline />
-
+    <>
       <AppBar
         position="sticky"
+        elevation={0}
         sx={{
-          zIndex: (theme) =>
-            theme.zIndex.drawer + 1,
-
-          backgroundColor: 'white',
-
-          boxShadow: 'none',
+          top: 0,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
+          bgcolor: alpha("#ffffff", 0.94),
+          color: "#0f172a",
+          borderBottom: "1px solid #e2e8f0",
+          backdropFilter: "blur(16px)",
         }}
       >
-
-        <Toolbar>
-
-          {/* ================= MOBILE MENU ================= */}
-          {isMobile && (
-
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={toggleSidebar}
-              sx={{
-                mr: 1,
-                color: 'black'
-              }}
-            >
-
-              <Menu />
-
-            </IconButton>
-
-          )}
-
-          {/* ================= LOGO ================= */}
-          <Typography
-            variant="h6"
-            noWrap
+        <Toolbar
+          sx={{
+            minHeight: { xs: 68, sm: 76 },
+            px: { xs: 1.5, sm: 2.5 },
+            gap: 1.25,
+          }}
+        >
+          <Box
             sx={{
-              color: 'black',
-              flexGrow: 1,
+              width: 44,
+              height: 44,
+              borderRadius: 2,
+              display: "grid",
+              placeItems: "center",
+              bgcolor: "#ecfeff",
+              color: "#0f766e",
+              border: "1px solid #cffafe",
+              flex: "0 0 auto",
             }}
           >
-            Ansar
-          </Typography>
+            <SupportAgent />
+          </Box>
 
-          {/* ================= NOTIFICATION ICON ================= */}
-          <IconButton
-            onClick={handleNotificationOpen}
-          >
-
-            <Badge
-              badgeContent={notifications.length}
-              color="error"
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography
+              variant="caption"
+              sx={{
+                display: "block",
+                color: "#64748b",
+                fontWeight: 800,
+                lineHeight: 1.1,
+              }}
             >
+              Ansar Support
+            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ minWidth: 0, mt: 0.25 }}>
+              <Typography
+                variant="h6"
+                noWrap
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: 18, sm: 22 },
+                  fontWeight: 900,
+                  letterSpacing: 0,
+                  lineHeight: 1.2,
+                }}
+              >
+                {pageTitle}
+              </Typography>
+            </Stack>
+          </Box>
 
-              <Notifications
-                sx={{ color: 'black' }}
-              />
+          <Tooltip title="Notifications">
+            <IconButton
+              aria-label="Notifications"
+              onClick={handleNotificationOpen}
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+                color: "#0f766e",
+                border: "1px solid #dbeafe",
+                "&:hover": { bgcolor: "#ecfeff" },
+              }}
+            >
+              <Badge badgeContent={notifications.length} color="error" overlap="circular">
+                <Notifications />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
-            </Badge>
-
-          </IconButton>
-
-          {/* ================= NOTIFICATION MENU ================= */}
           <MuiMenu
-            anchorEl={anchorEl}
-
+            anchorEl={notificationAnchor}
             open={openNotificationMenu}
-
             onClose={handleNotificationClose}
-
+            anchorOrigin={{
+              vertical: "bottom",
+              horizontal: "right",
+            }}
+            transformOrigin={{
+              vertical: "top",
+              horizontal: "right",
+            }}
             PaperProps={{
-              style: {
-                width: 320,
-                maxHeight: 400,
+              sx: {
+                width: 330,
+                maxWidth: "calc(100vw - 24px)",
+                maxHeight: 420,
+                mt: 1,
+                borderRadius: 3,
+                boxShadow: "0 24px 70px rgba(15, 23, 42, 0.18)",
+                border: "1px solid #e2e8f0",
               },
             }}
           >
+            <Box sx={{ px: 2, py: 1.5 }}>
+              <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 900 }}>
+                Notifications
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#64748b" }}>
+                {notifications.length} pending
+              </Typography>
+            </Box>
+            <Divider />
 
             {notifications.length === 0 ? (
-
-              <MenuItem>
+              <MenuItem disabled sx={{ py: 2 }}>
                 No Notifications
               </MenuItem>
-
             ) : (
+              notifications.map((notification, index) => (
+                <Box key={`${getNotificationText(notification, "title", "Notification")}-${index}`}>
+                  <MenuItem
+                    onClick={() => handleNotificationClick(notification)}
+                    sx={{
+                      alignItems: "flex-start",
+                      whiteSpace: "normal",
+                      px: 2,
+                      py: 1.4,
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 900 }}>
+                        {getNotificationText(notification, "title", "Notification")}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#475569", mt: 0.25 }}>
+                        {getNotificationText(notification, "body", "New Notification")}
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "#0f766e",
+                          display: "block",
+                          fontWeight: 800,
+                          mt: 0.75,
+                        }}
+                      >
+                        Priority: {getNotificationText(notification, "priority", "N/A")}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
 
-              notifications.map(
-                (notification, index) => (
-
-                  <Box key={index}>
-
-                    <MenuItem
-                      onClick={() =>
-                        handleNotificationClick(
-                          notification
-                        )
-                      }
-
-                      sx={{
-                        whiteSpace: 'normal',
-                        alignItems: 'flex-start',
-                      }}
-                    >
-
-                      <Box>
-
-                        {/* TITLE */}
-                        <Typography
-                          variant="subtitle2"
-                          fontWeight="bold"
-                        >
-                          {
-                            notification?.message?.title
-                            || "Notification"
-                          }
-                        </Typography>
-
-                        {/* BODY */}
-                        <Typography
-                          variant="body2"
-                        >
-                          {
-                            notification?.message?.body
-                            || "New Notification"
-                          }
-                        </Typography>
-
-                        {/* PRIORITY */}
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                        >
-
-                          Priority :
-                          {" "}
-
-                          {
-                            notification?.message?.priority
-                            || "N/A"
-                          }
-
-                        </Typography>
-
-                      </Box>
-
-                    </MenuItem>
-
-                    {/* DIVIDER */}
-                    {index !==
-                      notifications.length - 1 && (
-                      <Divider />
-                    )}
-
-                  </Box>
-
-                )
-              )
-
+                  {index !== notifications.length - 1 && <Divider />}
+                </Box>
+              ))
             )}
-
           </MuiMenu>
-
         </Toolbar>
-
       </AppBar>
-
-    </Box>
-
+    </>
   );
 }
 

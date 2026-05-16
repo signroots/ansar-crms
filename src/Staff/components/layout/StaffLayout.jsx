@@ -1,31 +1,40 @@
-import React from 'react';
-import { Box, ThemeProvider } from '@mui/material';
-import theme from '../../../common/theme'
-import StaffBottomBar from './StaffBottomBar';
-import StaffHeader from './StaffHeader';
+/* eslint-disable react/prop-types */
+import { Box, ThemeProvider } from "@mui/material";
+
+import theme from "../../../common/theme";
+import StaffBottomBar from "./StaffBottomBar";
+import StaffHeader from "./StaffHeader";
 
 function StaffLayout({ children }) {
   return (
-      <ThemeProvider theme={theme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: "hidden", paddingBottom: '3rem' }}>
-      {/* Header and Sidebar */}
-      <StaffHeader/>
-
-      {/* Main Content Area */}
+    <ThemeProvider theme={theme}>
       <Box
         sx={{
-          flexGrow: 1,
-          overflowY: 'auto',
-          padding: 1,
-            backgroundColor: '#fbfbfb',
+          display: "flex",
+          flexDirection: "column",
+          height: "100dvh",
+          overflow: "hidden",
+          bgcolor: "#f6f8fb",
         }}
       >
-        {children}
-      </Box>
+        <StaffHeader />
 
-      {/* Bottom Navbar */}
-      <StaffBottomBar/>
-    </Box>
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            overflowY: "auto",
+            px: { xs: 1.25, sm: 2 },
+            pt: { xs: 1.25, sm: 2 },
+            pb: "104px",
+            bgcolor: "#f6f8fb",
+          }}
+        >
+          {children}
+        </Box>
+
+        <StaffBottomBar />
+      </Box>
     </ThemeProvider>
   );
 }
