@@ -6,6 +6,13 @@ import SuperAdminFeedbackList from "../../features/superAdmin/pages/Feedback";
 import SuperAdminRequests from "../../features/superAdmin/pages/Requests";
 import SuperAdminStaffManage from "../../features/superAdmin/pages/StaffManage";
 import SuperAdminUserManage from "../../features/superAdmin/pages/UserManage";
+import StaffTeacherLayout from "../../features/staffTeacher/layout/StaffTeacherLayout";
+import StaffTeacherAllComplaints from "../../features/staffTeacher/pages/AllComplaints";
+import StaffTeacherAllRequests from "../../features/staffTeacher/pages/AllRequests";
+import StaffTeacherComplaintForm from "../../features/staffTeacher/pages/ComplaintForm";
+import StaffTeacherHome from "../../features/staffTeacher/pages/Home";
+import StaffTeacherRequestForm from "../../features/staffTeacher/pages/RequestForm";
+import StaffTeacherProfile from "../../features/staffTeacher/pages/UserProfile";
 import StaffLayout from "../../features/technicalStaff/layout/StaffLayout";
 import ComplaintHandle from "../../features/technicalStaff/pages/ComplaintHandle";
 import RequestHandle from "../../features/technicalStaff/pages/RequestHandle";
@@ -22,13 +29,6 @@ const {
   DepartmentAdminDashboard,
   DepartmentAdminRequests,
   DepartmentAdminUsers,
-  AllComplaints,
-  AllRequests,
-  ComplaintForm,
-  Home,
-  RequestForm,
-  UserProfile,
-  UserLayout,
 } = v1RouteAdapters;
 
 const withLayout = (LayoutComponent, page) => <LayoutComponent>{page}</LayoutComponent>;
@@ -111,31 +111,52 @@ export const appRoutes = [
 
   {
     path: ROUTE_PATHS.staffTeacher.home,
-    element: protectedElement(withLayout(UserLayout, <Home />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherHome />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.requests,
-    element: protectedElement(withLayout(UserLayout, <RequestForm />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherRequestForm />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.legacyRequestForm,
-    element: protectedElement(withLayout(UserLayout, <RequestForm />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherRequestForm />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.complaints,
-    element: protectedElement(withLayout(UserLayout, <ComplaintForm />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherComplaintForm />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.allRequests,
-    element: protectedElement(withLayout(UserLayout, <AllRequests />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherAllRequests />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.allComplaints,
-    element: protectedElement(withLayout(UserLayout, <AllComplaints />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherAllComplaints />),
+      staffTeacherOptions,
+    ),
   },
   {
     path: ROUTE_PATHS.staffTeacher.profile,
-    element: protectedElement(withLayout(UserLayout, <UserProfile />), staffTeacherOptions),
+    element: protectedElement(
+      withLayout(StaffTeacherLayout, <StaffTeacherProfile />),
+      staffTeacherOptions,
+    ),
   },
 
   {
