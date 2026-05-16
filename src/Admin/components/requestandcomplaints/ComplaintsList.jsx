@@ -182,7 +182,7 @@ const styles = {
   dateBlock: {
     display: "grid",
     gap: "2px",
-    marginTop: "7px",
+    // marginTop: "7px",
   },
   dateCaption: {
     color: "var(--admin-muted, #667085)",
@@ -194,7 +194,7 @@ const styles = {
   dateValue: {
     color: "var(--admin-text, #101828)",
     fontSize: "13px",
-    fontWeight: 800,
+    fontWeight: 500,
     lineHeight: 1.25,
   },
   timeValue: {
@@ -204,11 +204,11 @@ const styles = {
     lineHeight: 1.25,
   },
   dateEmpty: {
-    display: "inline-flex",
-    marginTop: "7px",
+    display: "block",
+    // marginTop: "7px",
     color: "var(--admin-muted, #667085)",
     fontSize: "12px",
-    fontWeight: 700,
+    fontWeight: 500,
   },
   iconButton: {
     width: "34px",
@@ -360,9 +360,9 @@ const renderDateTimeCell = (value, label, emptyText = "N/A") => {
 
   return (
     <div style={styles.dateBlock}>
-      <span style={styles.dateCaption}>{label}</span>
-      <span style={styles.dateValue}>{parts.date}</span>
-      <span style={styles.timeValue}>Time: {parts.time}</span>
+      {/* <span style={styles.dateCaption}>{label}</span> */}
+      <span style={styles.dateValue}>{parts.date} - {parts.time}</span>
+      {/* <span style={styles.timeValue}>Time: {parts.time}</span> */}
     </div>
   );
 };
@@ -644,7 +644,7 @@ function ComplaintsList() {
           {renderDateTimeCell(complaint.date, "Created", "Created date not found")}
         </div>
       ),
-      title: "Complaint / Created",
+      title: "ID & DATE",
       width: 190,
     },
     {
@@ -684,7 +684,7 @@ function ComplaintsList() {
           {renderDateTimeCell(complaint.resolved_date, "Resolved", "Not resolved yet")}
         </div>
       ),
-      title: "Attended / Resolved",
+      title: "User & DATE",
       width: 210,
     },
     {
