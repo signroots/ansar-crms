@@ -1,29 +1,136 @@
-import { useEffect, useState } from "react";
-import {
-  Box,
-  Tabs,
-  Tab,
-  Typography,
-  Card,
-  CardContent,
-  Stepper,
-  Step,
-  StepLabel,
-  List,
-  ListItem,
-  ListItemText,
-  Button,
-  SpeedDial,
-  SpeedDialAction,
-} from "@mui/material";
-import { FaRegEye } from "react-icons/fa6";
-import axios from "axios";
-import BASE_URL from "../../../shared/utils/baseUrl";
-import { TbMoodEmpty } from "react-icons/tb";
+import { useEffect, useMemo, useState } from "react";
+
 import Add from "@mui/icons-material/Add";
+import ArrowBack from "@mui/icons-material/ArrowBack";
 import Article from "@mui/icons-material/Article";
 import AssignmentLate from "@mui/icons-material/AssignmentLate";
+import Business from "@mui/icons-material/Business";
+import ChevronRight from "@mui/icons-material/ChevronRight";
+import EventNote from "@mui/icons-material/EventNote";
+import Inbox from "@mui/icons-material/Inbox";
+import Notes from "@mui/icons-material/Notes";
+import Schedule from "@mui/icons-material/Schedule";
+import {
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  IconButton,
+  SpeedDial,
+  SpeedDialAction,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
+
+import BASE_URL from "../../../shared/utils/baseUrl";
+
+const STEPS = ["Pending", "In Progress", "Waiting", "Completed"];
+
+const STATUS_STYLES = {
+  Pending: {
+    color: "#b45309",
+    bg: "#fffbeb",
+    border: "#fde68a",
+  },
+  "In Progress": {
+    color: "#1d4ed8",
+    bg: "#eff6ff",
+    border: "#bfdbfe",
+  },
+  Waiting: {
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+    border: "#ddd6fe",
+  },
+  Completed: {
+    color: "#15803d",
+    bg: "#f0fdf4",
+    border: "#bbf7d0",
+  },
+};
+
+const TASK_TYPE_STYLES = {
+  complaint: {
+    label: "Complaint",
+    color: "#b91c1c",
+    bg: "#fef2f2",
+    border: "#fecaca",
+    icon: AssignmentLate,
+  },
+  request: {
+    label: "Request",
+    color: "#0f766e",
+    bg: "#ecfeff",
+    border: "#bae6fd",
+    icon: Article,
+  },
+};
+
+const getStatusStyle = (status) => STATUS_STYLES[status] || STATUS_STYLES.Pending;
+
+const getTaskType = (item) => (item?.issue_complaint ? "complaint" : "request");
+
+const getTypeStyle = (item) => TASK_TYPE_STYLES[getTaskType(item)] || TASK_TYPE_STYLES.request;
+
+const getIssueName = (item) => item?.issue_request?.name || item?.issue_complaint?.name || "N/A";
+
+const formatDate = (value) => {
+  if (!value) {
+    return "N/A";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value) => {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const getDelayReasonText = (delayReason) => {
+  if (Array.isArray(delayReason)) {
+    return delayReason.map((item) => item?.reason || item?.name).filter(Boolean).join(", ");
+  }
+
+  if (typeof delayReason === "object" && delayReason !== null) {
+    return delayReason.reason || delayReason.name || "";
+  }
+
+  return delayReason || "";
+};
 
 function Home() {
   const [activeTab, setActiveTab] = useState(0);
@@ -31,8 +138,20 @@ function Home() {
   const [complaints, setComplaints] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [delayReason, setDelayReason] = useState("");
-  const steps = ["Pending", "In Progress", "Waiting", "Completed"];
   const navigate = useNavigate();
+
+  const pendingComplaints = useMemo(
+    () => complaints.filter((item) => item.status === "Pending"),
+    [complaints],
+  );
+
+  const pendingRequests = useMemo(
+    () => requests.filter((item) => item.status === "Pending"),
+    [requests],
+  );
+
+  const activeItems = activeTab === 0 ? pendingComplaints : pendingRequests;
+  const activeLabel = activeTab === 0 ? "Complaints" : "Requests";
 
   useEffect(() => {
     const staff_id = localStorage.getItem("staff_id");
@@ -51,24 +170,22 @@ function Home() {
     const config = {
       params: { staff_id },
       headers: {
-        Authorization: `Bearer ${token}`, // ✅ THIS IS THE MAIN FIX
+        Authorization: `Bearer ${token}`,
       },
     };
 
-    // ✅ Fetch Requests (FIXED URL + TOKEN)
     axios
       .get(`${BASE_URL}/api/sumbitted-request/list/`, config)
       .then((response) => setRequests(response.data))
       .catch((error) => console.error("Error fetching requests:", error));
 
-    // ✅ Fetch Complaints (FIXED URL + TOKEN)
     axios
       .get(`${BASE_URL}/api/sumbitted-complaint/list/`, config)
       .then((response) => setComplaints(response.data))
       .catch((error) => console.error("Error fetching complaints:", error));
   }, []);
+
   useEffect(() => {
-    // Update delayReason when selectedItem changes and has a delay_reason
     if (selectedItem?.delay_reason && selectedItem.status === "Waiting") {
       setDelayReason(selectedItem.delay_reason);
     } else {
@@ -78,196 +195,437 @@ function Home() {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
-    setSelectedItem(null); // Reset selected item on tab change
+    setSelectedItem(null);
   };
 
   const handleListClick = (item) => {
-    const stepIndex = steps.indexOf(item.status);
+    const stepIndex = STEPS.indexOf(item.status);
     setSelectedItem({ ...item, stepIndex });
   };
 
   const handleBackClick = () => setSelectedItem(null);
 
-  const renderList = (data) => {
-    // Filter items where status is 'pending'
-    const filteredData = data.filter((item) => item.status === "Pending");
-
-    if (filteredData.length === 0) {
-      return (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100%",
-          }}
-        >
-          <TbMoodEmpty style={{ fontSize: "50px", color: "#ccc", marginTop: "5rem" }} />
-          <Typography variant="body1" sx={{ fontSize: "16px", color: "#888" }}>
-            No items available for the selected.
-          </Typography>
-        </Box>
-      );
-    }
+  const renderStatusChip = (status) => {
+    const statusStyle = getStatusStyle(status);
 
     return (
-      <List>
-        {filteredData.map((item) => (
-          <ListItem
-            key={item.id}
-            button
-            onClick={() => handleListClick(item)}
-            sx={{
-              border: "1px solid #ccc",
-              borderRadius: "6px",
-              marginBottom: 1,
-              "&:hover": { backgroundColor: "#f0f0f0" },
-            }}
-          >
-            <ListItemText
-              primary={
-                <>
-                  <Box
-                    sx={{
-                      display: "inline-block",
-                      padding: "2px 4px",
-                      borderRadius: "4px",
-                      fontSize: "10px",
-                      fontWeight: "bold",
-                      color: "#fff",
-                      backgroundColor: "#dc3545",
-                    }}
-                  >
-                    {item.status}
-                  </Box>
-                  <br />
-                  <Typography
-                    variant="body2"
-                    sx={{ fontSize: "13px", color: "#666", marginTop: "4px" }}
-                  >
-                    {new Date(item.date).toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "numeric",
-                    })}
-                  </Typography>
-                </>
-              }
-              secondary={
-                <Typography
-                  variant="body2"
-                  sx={{ fontSize: "14px", color: "#333", marginTop: "1px" }}
-                >
-                  {item.issue_request?.name || item.issue_complaint?.name || "N/A"}
-                </Typography>
-              }
-            />
-            <FaRegEye style={{ color: "#877bdc", cursor: "pointer", fontSize: "20px" }} />
-          </ListItem>
-        ))}
-      </List>
+      <Chip
+        label={status || "Pending"}
+        size="small"
+        sx={{
+          height: 28,
+          borderRadius: 1.5,
+          bgcolor: statusStyle.bg,
+          border: `1px solid ${statusStyle.border}`,
+          color: statusStyle.color,
+          fontSize: 11,
+          fontWeight: 700,
+        }}
+      />
     );
   };
 
-  const renderDetails = () => (
-    <Card sx={{ boxShadow: 0, height: "100%" }}>
-      <CardContent>
-        <Button variant="outlined" onClick={handleBackClick} sx={{ marginBottom: 2 }}>
-          Back
-        </Button>
+  const renderTypeChip = (item) => {
+    const typeStyle = getTypeStyle(item);
+    const Icon = typeStyle.icon;
 
-        {selectedItem.issue_request ? (
-          <Typography variant="body1" textAlign="center" sx={{ marginBottom: 5, fontSize: "13px" }}>
-            {`Details of Request ${selectedItem.id}`}
+    return (
+      <Chip
+        icon={<Icon />}
+        label={typeStyle.label}
+        size="small"
+        sx={{
+          height: 28,
+          borderRadius: 1.5,
+          bgcolor: typeStyle.bg,
+          border: `1px solid ${typeStyle.border}`,
+          color: typeStyle.color,
+          fontSize: 11,
+          fontWeight: 700,
+          "& .MuiChip-icon": { color: typeStyle.color },
+        }}
+      />
+    );
+  };
+
+  const renderDetailRow = (label, value, Icon) => (
+    <Box
+      sx={{
+        display: "flex",
+        gap: 1.25,
+        alignItems: "flex-start",
+        borderRadius: 2,
+        bgcolor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        px: 1.5,
+        py: 1.25,
+      }}
+    >
+      <Avatar sx={{ width: 34, height: 34, bgcolor: "#ecfeff", color: "#0f766e" }}>
+        <Icon sx={{ fontSize: 19 }} />
+      </Avatar>
+
+      <Box sx={{ minWidth: 0, flex: 1 }}>
+        <Typography variant="caption" sx={{ color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+          {label}
+        </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "#0f172a",
+            fontSize: 13,
+            fontWeight: 700,
+            overflowWrap: "anywhere",
+          }}
+        >
+          {value || "N/A"}
+        </Typography>
+      </Box>
+    </Box>
+  );
+
+  const renderTaskCard = (item) => (
+    <Card
+      key={`${getTaskType(item)}-${item.id}`}
+      elevation={0}
+      sx={{
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        bgcolor: "#ffffff",
+        overflow: "hidden",
+        boxShadow: "0 12px 28px rgba(15, 118, 110, 0.08)",
+      }}
+    >
+      <Box sx={{ p: 1.5 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+          {renderTypeChip(item)}
+          {renderStatusChip(item.status)}
+          <Box sx={{ flex: 1 }} />
+          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+            {formatDate(item.date)}
           </Typography>
-        ) : selectedItem.issue_complaint ? (
-          <Typography variant="body1" textAlign="center" sx={{ marginBottom: 5, fontSize: "13px" }}>
-            {`Details of Complaint ${selectedItem.id}`}
-          </Typography>
-        ) : (
-          <Typography variant="body1" textAlign="center" sx={{ marginBottom: 5, fontSize: "13px" }}>
-            {"Details not available"}
-          </Typography>
-        )}
+        </Stack>
 
         <Typography
-          variant="body1"
-          textAlign="center"
-          sx={{ fontSize: "13px", fontWeight: "bold", marginBottom: 1 }}
+          variant="subtitle1"
+          sx={{
+            color: "#0f172a",
+            fontSize: 15,
+            fontWeight: 700,
+            lineHeight: 1.25,
+            mb: 1,
+            overflowWrap: "anywhere",
+          }}
         >
-          {`${new Date(selectedItem.date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })} - ${new Date(selectedItem.date).toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: true,
-          })}`}
+          {getIssueName(item)}
         </Typography>
-        <Stepper
-          activeStep={selectedItem.stepIndex}
-          orientation="vertical"
-          sx={{ paddingTop: "3rem" }}
-        >
-          {steps.map((label, index) => (
-            <Step key={index}>
-              <StepLabel>
-                {label}
-                {label === "Waiting" && selectedItem.status === "Waiting" && delayReason && (
-                  <small
-                    style={{
-                      display: "block",
-                      color: "#dc3545",
-                      marginTop: "2px",
-                      fontSize: "11px",
-                    }}
-                  >
-                    {delayReason.name}
-                  </small>
-                )}
-              </StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-      </CardContent>
+
+        <Stack spacing={0.6}>
+          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
+            {item?.institution?.name || "Submitted item"}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
+            {formatTime(item.date) || "Time not available"}
+          </Typography>
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      <Button
+        fullWidth
+        endIcon={<ChevronRight />}
+        onClick={() => handleListClick(item)}
+        sx={{
+          justifyContent: "space-between",
+          minHeight: 48,
+          px: 1.75,
+          borderRadius: 0,
+          color: "#0f766e",
+          fontWeight: 700,
+          textTransform: "none",
+          "&:hover": { bgcolor: "#f0fdfa" },
+        }}
+      >
+        View details
+      </Button>
     </Card>
   );
 
-  return (
-    <Box
+  const renderEmptyState = () => (
+    <Card
+      elevation={0}
       sx={{
-        padding: 0,
-        maxWidth: 400,
-        margin: "auto",
-        backgroundColor: "#fff",
-        borderRadius: 2,
-        boxShadow: 0,
-        minHeight: "100%",
-        position: "relative", // Added to anchor SpeedDial
+        borderRadius: 3,
+        border: "1px dashed #cbd5e1",
+        bgcolor: "#ffffff",
       }}
     >
-      <Tabs value={activeTab} onChange={handleTabChange} centered>
-        <Tab label="Complaints" />
-        <Tab label="Requests" />
-      </Tabs>
-      <CardContent sx={{ padding: 1 }}>
-        {selectedItem
-          ? renderDetails()
-          : activeTab === 0
-            ? renderList(complaints)
-            : renderList(requests)}
+      <Stack alignItems="center" spacing={1} sx={{ py: 6, px: 2, textAlign: "center" }}>
+        <Avatar sx={{ width: 56, height: 56, bgcolor: "#f8fafc", color: "#94a3b8" }}>
+          <Inbox />
+        </Avatar>
+        <Typography variant="subtitle1" sx={{ color: "#0f172a", fontWeight: 700 }}>
+          No pending {activeLabel.toLowerCase()}
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#64748b", maxWidth: 320 }}>
+          Submitted {activeLabel.toLowerCase()} waiting for action will appear here.
+        </Typography>
+      </Stack>
+    </Card>
+  );
+
+  const renderDetails = () => {
+    const TypeIcon = getTypeStyle(selectedItem).icon;
+    const delayReasonText = getDelayReasonText(delayReason);
+
+    return (
+      <Card
+        elevation={0}
+        sx={{
+          borderRadius: 3,
+          border: "1px solid #e2e8f0",
+          bgcolor: "#ffffff",
+          overflow: "hidden",
+          boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
+        }}
+      >
+        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+          <Stack direction="row" alignItems="center" spacing={1.25} sx={{ mb: 1.75 }}>
+            <IconButton
+              aria-label="Back to list"
+              onClick={handleBackClick}
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+                color: "#334155",
+                border: "1px solid #e2e8f0",
+                "&:hover": { bgcolor: "#ecfeff" },
+              }}
+            >
+              <ArrowBack />
+            </IconButton>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+                {renderTypeChip(selectedItem)}
+                {renderStatusChip(selectedItem.status)}
+              </Stack>
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: 18, sm: 20 },
+                  fontWeight: 700,
+                  letterSpacing: 0,
+                  lineHeight: 1.2,
+                  overflowWrap: "anywhere",
+                }}
+              >
+                {getIssueName(selectedItem)}
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+              gap: 1,
+            }}
+          >
+            {renderDetailRow(
+              "Date and time",
+              `${formatDate(selectedItem.date)}${formatTime(selectedItem.date) ? ` - ${formatTime(selectedItem.date)}` : ""}`,
+              Schedule,
+            )}
+            {renderDetailRow("Type", getTypeStyle(selectedItem).label, TypeIcon)}
+            {renderDetailRow("Issue", getIssueName(selectedItem), EventNote)}
+            {renderDetailRow("Notes", selectedItem?.notes, Notes)}
+            {renderDetailRow("Institution", selectedItem?.institution?.name, Business)}
+          </Box>
+
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}>
+              Status
+            </Typography>
+            <Stepper
+              activeStep={selectedItem.stepIndex}
+              orientation="vertical"
+              sx={{
+                border: "1px solid #e2e8f0",
+                borderRadius: 2,
+                bgcolor: "#f8fafc",
+                px: 1.5,
+                py: 1,
+              }}
+            >
+              {STEPS.map((label) => (
+                <Step key={label}>
+                  <StepLabel>
+                    <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+                      {label}
+                    </Typography>
+                    {label === "Waiting" && selectedItem.status === "Waiting" && delayReasonText && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          display: "block",
+                          color: "#7c3aed",
+                          mt: 0.25,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {delayReasonText}
+                      </Typography>
+                    )}
+                  </StepLabel>
+                </Step>
+              ))}
+            </Stepper>
+          </Box>
+        </Box>
+      </Card>
+    );
+  };
+
+  return (
+    <Box sx={{ maxWidth: 640, mx: "auto" }}>
+      {!selectedItem && (
+        <Card
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e2e8f0",
+            bgcolor: "#ffffff",
+            boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
+            mb: 1.5,
+          }}
+        >
+          <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+            <Stack direction="row" alignItems="center" spacing={1.25}>
+              <Avatar sx={{ width: 44, height: 44, bgcolor: "#ecfeff", color: "#0f766e" }}>
+                <Schedule />
+              </Avatar>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+                  Pending submissions
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: "#0f172a",
+                    fontSize: { xs: 18, sm: 20 },
+                    fontWeight: 700,
+                    letterSpacing: 0,
+                    lineHeight: 1.2,
+                  }}
+                >
+                  Complaints & Requests
+                </Typography>
+              </Box>
+              <Chip
+                label={pendingComplaints.length + pendingRequests.length}
+                sx={{
+                  minWidth: 42,
+                  height: 34,
+                  borderRadius: 2,
+                  bgcolor: "#f0fdfa",
+                  color: "#0f766e",
+                  fontWeight: 700,
+                  border: "1px solid #ccfbf1",
+                }}
+              />
+            </Stack>
+
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, 1fr)",
+                gap: 1,
+                mt: 1.5,
+              }}
+            >
+              {[
+                ["Total", pendingComplaints.length + pendingRequests.length],
+                ["Complaints", pendingComplaints.length],
+                ["Requests", pendingRequests.length],
+              ].map(([label, value]) => (
+                <Box
+                  key={label}
+                  sx={{
+                    borderRadius: 2,
+                    bgcolor: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    p: 1,
+                  }}
+                >
+                  <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+                    {label}
+                  </Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ color: "#0f172a", fontSize: 18, fontWeight: 700 }}
+                  >
+                    {value}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          <Divider />
+
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            variant="fullWidth"
+            sx={{
+              minHeight: 48,
+              "& .MuiTab-root": {
+                minHeight: 48,
+                color: "#64748b",
+                fontSize: 13,
+                fontWeight: 700,
+                textTransform: "none",
+              },
+              "& .Mui-selected": {
+                color: "#0f766e",
+              },
+              "& .MuiTabs-indicator": {
+                bgcolor: "#0f766e",
+              },
+            }}
+          >
+            <Tab label="Complaints" />
+            <Tab label="Requests" />
+          </Tabs>
+        </Card>
+      )}
+
+      <CardContent sx={{ p: 0 }}>
+        {selectedItem ? (
+          renderDetails()
+        ) : activeItems.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <Stack spacing={1.25}>{activeItems.map(renderTaskCard)}</Stack>
+        )}
       </CardContent>
 
-      {/* SpeedDial in the bottom-right */}
       <SpeedDial
-        ariaLabel="SpeedDial example"
+        ariaLabel="Create complaint or request"
         sx={{
-          position: "fixed", // Change to fixed to ensure it stays in the bottom-right corner
-          bottom: 65,
-          right: 19,
-          backgroundColor: "transparent", // No background color by default// Adjust the right margin if needed
+          position: "fixed",
+          right: 18,
+          bottom: 98,
+          "& .MuiFab-primary": {
+            bgcolor: "#0f766e",
+            boxShadow: "0 14px 32px rgba(15, 118, 110, 0.24)",
+            "&:hover": { bgcolor: "#115e59" },
+          },
         }}
         icon={<Add />}
       >
