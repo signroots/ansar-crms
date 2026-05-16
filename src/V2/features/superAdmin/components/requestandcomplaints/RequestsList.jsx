@@ -605,7 +605,7 @@ function RequestsList() {
           <div style={styles.muted}>{formatDate(request.resolved_date)}</div>
         </div>
       ),
-      title: "Attended By",
+      title: "Assignee & DATE",
       width: 180,
     },
     {

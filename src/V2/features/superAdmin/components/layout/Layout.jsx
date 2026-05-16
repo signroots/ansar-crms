@@ -1,5 +1,6 @@
  
 import { useEffect, useMemo, useState } from "react";
+import { useMediaQuery } from "@mui/material";
 
 import { STORAGE_KEYS } from "../../../../shared/constants/storageKeys";
 
@@ -28,11 +29,18 @@ const getInitialTheme = () => {
 const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [themeName, setThemeName] = useState(getInitialTheme);
+  const isMobile = useMediaQuery("(max-width: 899px)");
 
   const theme = useMemo(() => getAdminLayoutTheme(themeName), [themeName]);
 
   const toggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
+  };
+
+  const closeSidebar = () => {
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   };
 
   const toggleTheme = () => {
@@ -48,12 +56,19 @@ const Layout = ({ children }) => {
     document.documentElement.dataset.adminTheme = themeName;
   }, [themeName]);
 
+  useEffect(() => {
+    setIsSidebarOpen(!isMobile);
+  }, [isMobile]);
+
   return (
     <div
       style={{
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         height: "100vh",
+        width: "100%",
+        maxWidth: "100vw",
         overflow: "hidden",
         backgroundColor: theme.shellBackground,
         transition: "background-color 0.2s ease",
@@ -71,6 +86,7 @@ const Layout = ({ children }) => {
       }}
     >
       <Header
+        isMobile={isMobile}
         theme={theme}
         themeName={themeName}
         toggleSidebar={toggleSidebar}
@@ -82,17 +98,45 @@ const Layout = ({ children }) => {
           display: "flex",
           flex: 1,
           overflow: "hidden",
+          minWidth: 0,
+          position: "relative",
           backgroundColor: theme.contentBackground,
           transition: "background-color 0.2s ease",
         }}
       >
-        <Sidebar isOpen={isSidebarOpen} theme={theme} />
+        {isMobile && isSidebarOpen ? (
+          <button
+            aria-label="Close sidebar"
+            onClick={closeSidebar}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 1200,
+              border: 0,
+              padding: 0,
+              background: "rgba(15, 23, 42, 0.42)",
+              backdropFilter: "blur(4px)",
+            }}
+            type="button"
+          />
+        ) : null}
+
+        <Sidebar
+          isMobile={isMobile}
+          isOpen={isSidebarOpen}
+          onNavigate={closeSidebar}
+          theme={theme}
+        />
 
         <main
           style={{
             flex: 1,
+            minWidth: 0,
+            width: "100%",
+            maxWidth: "100%",
             overflowY: "auto",
-            padding: "24px",
+            overflowX: "hidden",
+            padding: isMobile ? "14px 10px 18px" : "24px",
             backgroundColor: theme.contentBackground,
             transition: "background-color 0.2s ease",
           }}

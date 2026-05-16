@@ -467,7 +467,7 @@ function UsersList() {
           <div style={styles.muted}>{getText(user.staff_id)}</div>
         </div>
       ),
-      title: "User",
+      title: "Name & ID",
       width: 210,
     },
     {

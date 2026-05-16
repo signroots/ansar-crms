@@ -15,38 +15,42 @@ import { ADMIN_LAYOUT_THEME_NAMES } from "./layoutTheme";
 import { clearAuthSession, getAuthSession } from "../../../../shared/utils/authSession";
 
 const styles = {
-  header: (theme) => ({
-    margin: "12px 12px 0",
-    minHeight: "72px",
-    padding: "12px 16px",
+  header: (theme, isMobile) => ({
+    margin: isMobile ? "8px 8px 0" : "12px 12px 0",
+    minHeight: isMobile ? "62px" : "72px",
+    padding: isMobile ? "10px" : "12px 16px",
     background: theme.header.background,
     border: `1px solid ${theme.header.border}`,
-    borderRadius: "18px",
+    borderRadius: isMobile ? "14px" : "18px",
     boxShadow: theme.header.shadow,
     color: theme.header.text,
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "16px",
+    gap: isMobile ? "8px" : "16px",
     transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
     zIndex: 10,
+    minWidth: 0,
+    maxWidth: "100%",
+    boxSizing: "border-box",
   }),
-  left: {
+  left: (isMobile) => ({
     display: "flex",
     alignItems: "center",
     minWidth: 0,
-    gap: "12px",
-  },
-  brand: {
+    gap: isMobile ? "8px" : "12px",
+    flexShrink: 1,
+  }),
+  brand: (isMobile) => ({
     display: "flex",
     alignItems: "center",
     minWidth: 0,
-    gap: "10px",
-  },
-  brandMark: (theme) => ({
-    width: "40px",
-    height: "40px",
-    borderRadius: "12px",
+    gap: isMobile ? "8px" : "10px",
+  }),
+  brandMark: (theme, isMobile) => ({
+    width: isMobile ? "36px" : "40px",
+    height: isMobile ? "36px" : "40px",
+    borderRadius: isMobile ? "10px" : "12px",
     display: "grid",
     placeItems: "center",
     background: theme.header.brandMark,
@@ -57,30 +61,31 @@ const styles = {
   brandCopy: {
     minWidth: 0,
   },
-  brandTitle: (theme) => ({
+  brandTitle: (theme, isMobile) => ({
     margin: 0,
     color: theme.header.text,
-    fontSize: "16px",
+    fontSize: isMobile ? "15px" : "16px",
     fontWeight: 800,
     lineHeight: 1.2,
     letterSpacing: "0",
   }),
-  brandSubtitle: (theme) => ({
-    display: "block",
+  brandSubtitle: (theme, isMobile) => ({
+    display: isMobile ? "none" : "block",
     marginTop: "2px",
     color: theme.header.muted,
     fontSize: "12px",
     fontWeight: 600,
     lineHeight: 1.2,
   }),
-  actions: {
+  actions: (isMobile) => ({
     alignItems: "center",
-    gap: "10px",
-  },
-  iconButton: (theme) => ({
-    width: "42px",
-    height: "42px",
-    borderRadius: "12px",
+    gap: isMobile ? "6px" : "10px",
+    flexShrink: 0,
+  }),
+  iconButton: (theme, isMobile) => ({
+    width: isMobile ? "38px" : "42px",
+    height: isMobile ? "38px" : "42px",
+    borderRadius: isMobile ? "10px" : "12px",
     border: `1px solid ${theme.header.buttonBorder}`,
     background: theme.header.buttonBackground,
     color: theme.header.buttonColor,
@@ -155,7 +160,7 @@ const ProfileToggle = forwardRef(({ children, onClick, style }, ref) => (
 
 ProfileToggle.displayName = "ProfileToggle";
 
-function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
+function Header({ isMobile = false, theme, themeName, toggleSidebar, toggleTheme }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -214,31 +219,31 @@ function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
   }, []);
 
   return (
-    <header style={styles.header(theme)}>
-      <div style={styles.left}>
+    <header style={styles.header(theme, isMobile)}>
+      <div style={styles.left(isMobile)}>
         <button
           aria-label="Toggle sidebar"
           onClick={toggleSidebar}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           type="button"
         >
-          <RxHamburgerMenu size={22} />
+          <RxHamburgerMenu size={isMobile ? 20 : 22} />
         </button>
 
-        <div style={styles.brand}>
-          <div style={styles.brandMark(theme)}>A</div>
+        <div style={styles.brand(isMobile)}>
+          <div style={styles.brandMark(theme, isMobile)}>A</div>
           <div style={styles.brandCopy}>
-            <p style={styles.brandTitle(theme)}>Ansar</p>
-            <span style={styles.brandSubtitle(theme)}>Admin Workspace</span>
+            <p style={styles.brandTitle(theme, isMobile)}>Ansar</p>
+            <span style={styles.brandSubtitle(theme, isMobile)}>Admin Workspace</span>
           </div>
         </div>
       </div>
 
-      <div className="d-lg-none d-flex" style={styles.actions}>
+      <div className="d-lg-none d-flex" style={styles.actions(isMobile)}>
         <button
           aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           onClick={toggleTheme}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           title={isDarkMode ? "Light mode" : "Dark mode"}
           type="button"
         >
@@ -248,7 +253,7 @@ function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
         <button
           aria-label="Open notifications"
           onClick={() => setShowNotifications(true)}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           type="button"
         >
           <BsBell size={18} />
@@ -257,18 +262,18 @@ function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
         <button
           aria-label="Open profile"
           onClick={() => setShowProfile(true)}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           type="button"
         >
           <LuUser size={20} />
         </button>
       </div>
 
-      <div className="d-none d-lg-flex" style={styles.actions}>
+      <div className="d-none d-lg-flex" style={styles.actions(isMobile)}>
         <button
           aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
           onClick={toggleTheme}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           title={isDarkMode ? "Light mode" : "Dark mode"}
           type="button"
         >
@@ -278,7 +283,7 @@ function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
         <button
           aria-label="Enter fullscreen"
           onClick={enterFullScreen}
-          style={styles.iconButton(theme)}
+          style={styles.iconButton(theme, isMobile)}
           type="button"
         >
           <MdFullscreen size={23} />
@@ -292,7 +297,7 @@ function Header({ theme, themeName, toggleSidebar, toggleTheme }) {
           <Dropdown.Toggle
             as={ProfileToggle}
             id="admin-profile-menu"
-            style={styles.iconButton(theme)}
+            style={styles.iconButton(theme, isMobile)}
           >
             <LuUser size={20} />
           </Dropdown.Toggle>

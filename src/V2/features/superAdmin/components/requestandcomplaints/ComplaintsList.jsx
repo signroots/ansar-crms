@@ -684,7 +684,7 @@ function ComplaintsList() {
           {renderDateTimeCell(complaint.resolved_date, "Resolved", "Not resolved yet")}
         </div>
       ),
-      title: "User & DATE",
+      title: "Assignee & DATE",
       width: 210,
     },
     {

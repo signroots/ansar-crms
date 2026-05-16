@@ -86,21 +86,28 @@ const getSidebarContext = () => {
 };
 
 const styles = {
-  sidebar: (isOpen, theme) => ({
-    width: isOpen ? "280px" : "88px",
-    height: "calc(100% - 24px)",
-    margin: "12px 0 12px 12px",
-    padding: isOpen ? "16px" : "14px 10px",
+  sidebar: (isOpen, theme, isMobile) => ({
+    width: isMobile ? "min(320px, calc(100vw - 24px))" : isOpen ? "280px" : "88px",
+    height: isMobile ? "auto" : "calc(100% - 24px)",
+    maxHeight: isMobile ? "calc(100vh - 24px)" : "none",
+    margin: isMobile ? 0 : "12px 0 12px 12px",
+    padding: isMobile || isOpen ? "16px" : "14px 10px",
+    position: isMobile ? "fixed" : "relative",
+    inset: isMobile ? "12px auto 12px 12px" : "auto",
+    zIndex: isMobile ? 1201 : "auto",
     background: theme.sidebar.background,
     border: `1px solid ${theme.sidebar.border}`,
     borderRadius: "18px",
     color: theme.sidebar.text,
-    transition: "width 0.22s ease, padding 0.22s ease, background 0.2s ease",
-    overflow: "hidden",
+    transform: isMobile && !isOpen ? "translateX(calc(-100% - 24px))" : "translateX(0)",
+    transition:
+      "width 0.22s ease, padding 0.22s ease, background 0.2s ease, transform 0.22s ease",
+    overflow: "auto",
     boxShadow: theme.sidebar.shadow,
     display: "flex",
     flexDirection: "column",
     flexShrink: 0,
+    boxSizing: "border-box",
   }),
   sectionLabel: (theme) => ({
     margin: "4px 8px 12px",
@@ -153,28 +160,30 @@ const styles = {
   }),
 };
 
-function Sidebar({ isOpen, theme }) {
+function Sidebar({ isMobile = false, isOpen, onNavigate, theme }) {
   const { label, caption, menuItems } = getSidebarContext();
+  const showExpandedContent = isMobile || isOpen;
 
   return (
-    <aside style={styles.sidebar(isOpen, theme)} aria-label={`${label} sidebar`}>
-      {isOpen && <div style={styles.sectionLabel(theme)}>{caption}</div>}
+    <aside style={styles.sidebar(isOpen, theme, isMobile)} aria-label={`${label} sidebar`}>
+      {showExpandedContent && <div style={styles.sectionLabel(theme)}>{caption}</div>}
 
       <nav style={styles.nav} aria-label={`${label} navigation`}>
         {menuItems.map(({ icon: Icon, label: itemLabel, path }) => (
           <NavLink
             key={path}
+            onClick={onNavigate}
             to={path}
-            title={isOpen ? undefined : itemLabel}
-            style={({ isActive }) => styles.navItem(isOpen, isActive, theme)}
+            title={showExpandedContent ? undefined : itemLabel}
+            style={({ isActive }) => styles.navItem(showExpandedContent, isActive, theme)}
           >
             <Icon style={styles.icon} aria-hidden="true" />
-            {isOpen && <span style={styles.navText}>{itemLabel}</span>}
+            {showExpandedContent && <span style={styles.navText}>{itemLabel}</span>}
           </NavLink>
         ))}
       </nav>
 
-      {isOpen && (
+      {showExpandedContent && (
         <div style={styles.footer(theme)}>
           Manage requests, complaints, users, and service workflows from one place.
         </div>
