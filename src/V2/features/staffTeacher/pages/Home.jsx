@@ -617,14 +617,45 @@ function Home() {
 
       <SpeedDial
         ariaLabel="Create complaint or request"
+        FabProps={{
+          size: "medium",
+        }}
         sx={{
           position: "fixed",
           right: 18,
           bottom: 98,
           "& .MuiFab-primary": {
             bgcolor: "#0f766e",
+            border: "1px solid #99f6e4",
             boxShadow: "0 14px 32px rgba(15, 118, 110, 0.24)",
-            "&:hover": { bgcolor: "#115e59" },
+            transition: "transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease",
+            "&:hover": {
+              bgcolor: "#115e59",
+              transform: "translateY(-2px) scale(1.04)",
+              boxShadow: "0 18px 38px rgba(15, 118, 110, 0.32)",
+            },
+          },
+          "& .MuiSpeedDialAction-fab": {
+            width: 44,
+            height: 44,
+            bgcolor: "#ffffff",
+            color: "#0f766e",
+            border: "1px solid #ccfbf1",
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
+            transition: "transform 160ms ease, background-color 160ms ease, color 160ms ease",
+            "&:hover": {
+              bgcolor: "#ecfeff",
+              color: "#0891b2",
+              transform: "translateY(-1px) scale(1.05)",
+            },
+          },
+          "& .MuiSpeedDialAction-staticTooltipLabel": {
+            borderRadius: 2,
+            border: "1px solid #e2e8f0",
+            color: "#0f172a",
+            fontSize: 12,
+            fontWeight: 700,
+            boxShadow: "0 12px 28px rgba(15, 23, 42, 0.12)",
           },
         }}
         icon={<Add />}
