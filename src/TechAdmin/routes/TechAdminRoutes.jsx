@@ -1,7 +1,7 @@
 import React from "react";
 import { Route, Routes } from "react-router-dom";
 import TechAdminProtectedRoute from "./TechAdminProtectedRoute"; // ✅ IMPORTANT
-import Layout from "../../Admin/components/layout/Layout";
+import Layout from "../../V2/features/superAdmin/components/layout/Layout";
 
 // Pages
 import Dashboard from "../pages/dashboard";

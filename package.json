@@ -13,7 +13,7 @@
     "build:staging": "vite build --mode staging",
     "build:production": "vite build --mode production",
     "lint": "eslint .",
-    "lint:v2": "eslint src/V2 src/App.jsx src/common/Landing.jsx src/Admin/pages/Authentication.jsx src/Staff/pages/AuthStaff.jsx",
+    "lint:v2": "eslint src/V2 src/App.jsx src/common/Landing.jsx",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write . --ignore-unknown --cache --log-level silent",
     "format:check": "prettier --check . --ignore-unknown --log-level silent",
