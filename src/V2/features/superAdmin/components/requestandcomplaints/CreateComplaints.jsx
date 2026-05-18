@@ -492,18 +492,7 @@ function CreateComplaints({ onCreated }) {
               </div>
 
               <div style={styles.grid}>
-                <label style={styles.field}>
-                  <span style={styles.label}>Priority</span>
-                  <Select
-                    options={priorityOptions}
-                    placeholder="Select priority"
-                    status={errors.priority ? "error" : undefined}
-                    style={styles.control}
-                    value={formData.priority || undefined}
-                    onChange={(value) => setField("priority", value)}
-                  />
-                  <FieldError>{errors.priority}</FieldError>
-                </label>
+                
 
                 <label style={styles.field}>
                   <span style={styles.label}>Location</span>
@@ -533,6 +522,19 @@ function CreateComplaints({ onCreated }) {
                     onChange={(value) => setField("subLocation", value)}
                   />
                   <FieldError>{errors.subLocation}</FieldError>
+                </label>
+
+                <label style={styles.field}>
+                  <span style={styles.label}>Priority</span>
+                  <Select
+                    options={priorityOptions}
+                    placeholder="Select priority"
+                    status={errors.priority ? "error" : undefined}
+                    style={styles.control}
+                    value={formData.priority || undefined}
+                    onChange={(value) => setField("priority", value)}
+                  />
+                  <FieldError>{errors.priority}</FieldError>
                 </label>
               </div>
             </section>
