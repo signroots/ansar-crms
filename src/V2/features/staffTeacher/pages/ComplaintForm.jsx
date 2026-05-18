@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 
 import AssignmentLate from "@mui/icons-material/AssignmentLate";
 import Category from "@mui/icons-material/Category";
+import LocationOn from "@mui/icons-material/LocationOn";
 import Notes from "@mui/icons-material/Notes";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 import Schedule from "@mui/icons-material/Schedule";
 import Send from "@mui/icons-material/Send";
 import {
@@ -22,42 +24,131 @@ import axios from "axios";
 
 import BASE_URL from "../../../shared/utils/baseUrl";
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("access_token");
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 function ComplaintForm() {
   const [formData, setFormData] = useState({
     typeOfIssue: "",
+    typeOfIssueName: "",
     issue: "",
+    priority: "",
+    location: "",
+    subLocation: "",
     notes: "",
   });
   const [typesOfIssue, setTypesOfIssue] = useState([]);
   const [issues, setIssues] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [subLocations, setSubLocations] = useState([]);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isMaintenance = ["maintenance", "maintanance"].includes(
+    formData.typeOfIssueName.trim().toLowerCase(),
+  );
+
+  const normalizeApiList = (data) => {
+    if (Array.isArray(data)) {
+      return data;
+    }
+
+    if (Array.isArray(data?.results)) {
+      return data.results;
+    }
+
+    if (Array.isArray(data?.data)) {
+      return data.data;
+    }
+
+    return [];
+  };
+
   useEffect(() => {
     axios
-      .get(`${BASE_URL}/api/types-of-issue/`)
-      .then((response) => setTypesOfIssue(response.data))
+      .get(`${BASE_URL}/api/types-of-issue/`, { headers: getAuthHeaders() })
+      .then((response) => setTypesOfIssue(normalizeApiList(response.data)))
       .catch(() => setTypesOfIssue([]));
+
+    axios
+      .get(`${BASE_URL}/api/institutions/`, { headers: getAuthHeaders() })
+      .then((response) => setLocations(normalizeApiList(response.data)))
+      .catch(() => setLocations([]));
   }, []);
 
   const handleTypeOfIssueChange = (event) => {
     const typeOfIssueId = event.target.value;
-    setFormData({ ...formData, typeOfIssue: typeOfIssueId, issue: "" });
+    const selectedType = typesOfIssue.find((type) => type.id === typeOfIssueId);
+
+    setFormData({
+      ...formData,
+      typeOfIssue: typeOfIssueId,
+      typeOfIssueName: selectedType?.name || "",
+      issue: "",
+      priority: "",
+      location: "",
+      subLocation: "",
+    });
+    setFieldErrors({});
+    setSubLocations([]);
 
     axios
-      .get(`${BASE_URL}/api/issues/${typeOfIssueId}/`)
-      .then((response) => setIssues(response.data))
+      .get(`${BASE_URL}/api/issues/${typeOfIssueId}/`, { headers: getAuthHeaders() })
+      .then((response) => setIssues(normalizeApiList(response.data)))
       .catch(() => setIssues([]));
   };
 
   const handleInputChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });
+    setFieldErrors((currentErrors) => ({ ...currentErrors, [event.target.name]: "" }));
+  };
+
+  const handleLocationChange = (event) => {
+    const locationId = event.target.value;
+
+    setFormData({ ...formData, location: locationId, subLocation: "" });
+    setFieldErrors((currentErrors) => ({ ...currentErrors, location: "", subLocation: "" }));
+
+    axios
+      .get(`${BASE_URL}/api/sublocation/${locationId}/`, { headers: getAuthHeaders() })
+      .then((response) => setSubLocations(normalizeApiList(response.data)))
+      .catch(() => setSubLocations([]));
+  };
+
+  const handleSubLocationChange = (event) => {
+    setFormData({ ...formData, subLocation: event.target.value });
+    setFieldErrors((currentErrors) => ({ ...currentErrors, subLocation: "" }));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const nextFieldErrors = {};
+
+    if (isMaintenance) {
+      if (!formData.priority) {
+        nextFieldErrors.priority = "Required";
+      }
+
+      if (!formData.location) {
+        nextFieldErrors.location = "Required";
+      }
+
+      if (!formData.subLocation) {
+        nextFieldErrors.subLocation = "Required";
+      }
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
 
     const payload = {
       staff_id: localStorage.getItem("staff_id"),
@@ -65,6 +156,12 @@ function ComplaintForm() {
       notes: formData.notes,
       type_of_issue: formData.typeOfIssue,
     };
+
+    if (isMaintenance) {
+      payload.priority = formData.priority;
+      payload.location = formData.location;
+      payload.sub_location = formData.subLocation;
+    }
 
     setIsSubmitting(true);
 
@@ -84,9 +181,15 @@ function ComplaintForm() {
         setOpenSnackbar(true);
         setFormData({
           typeOfIssue: "",
+          typeOfIssueName: "",
           issue: "",
+          priority: "",
+          location: "",
+          subLocation: "",
           notes: "",
         });
+        setFieldErrors({});
+        setSubLocations([]);
       } else {
         setSnackbarSeverity("error");
         setSnackbarMessage("Failed to submit the Complaint.");
@@ -220,6 +323,103 @@ function ComplaintForm() {
                   ))}
                 </Select>
               </Box>
+
+              {isMaintenance && (
+                <>
+                  <Box>
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                      <LocationOn sx={{ color: "#64748b", fontSize: 18 }} />
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+                        Location
+                      </Typography>
+                    </Stack>
+                    <Select
+                      value={formData.location}
+                      onChange={handleLocationChange}
+                      fullWidth
+                      displayEmpty
+                      error={Boolean(fieldErrors.location)}
+                      sx={selectSx}
+                    >
+                      <MenuItem value="" disabled hidden>
+                        Select Location
+                      </MenuItem>
+                      {locations.map((location) => (
+                        <MenuItem key={location.id} value={location.id}>
+                          {location.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldErrors.location && (
+                      <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                        {fieldErrors.location}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                    >
+                      Sub Location
+                    </Typography>
+                    <Select
+                      value={formData.subLocation}
+                      onChange={handleSubLocationChange}
+                      fullWidth
+                      displayEmpty
+                      disabled={!formData.location}
+                      error={Boolean(fieldErrors.subLocation)}
+                      sx={selectSx}
+                    >
+                      <MenuItem value="" disabled hidden>
+                        Select Sub Location
+                      </MenuItem>
+                      {subLocations.map((subLocation) => (
+                        <MenuItem key={subLocation.id} value={subLocation.id}>
+                          {subLocation.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldErrors.subLocation && (
+                      <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                        {fieldErrors.subLocation}
+                      </Typography>
+                    )}
+                  </Box>
+
+                       <Box>
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                      <PriorityHigh sx={{ color: "#64748b", fontSize: 18 }} />
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+                        Priority
+                      </Typography>
+                    </Stack>
+                    <Select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleInputChange}
+                      fullWidth
+                      displayEmpty
+                      error={Boolean(fieldErrors.priority)}
+                      sx={selectSx}
+                    >
+                      <MenuItem value="" disabled hidden>
+                        Select Priority
+                      </MenuItem>
+                      <MenuItem value="low">Low</MenuItem>
+                      <MenuItem value="medium">Medium</MenuItem>
+                      <MenuItem value="emergency">Emergency</MenuItem>
+                    </Select>
+                    {fieldErrors.priority && (
+                      <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                        {fieldErrors.priority}
+                      </Typography>
+                    )}
+                  </Box>
+                </>
+              )}
 
               <Box>
                 <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>

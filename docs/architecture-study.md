@@ -40,7 +40,7 @@ src/
 3. `src/App.jsx` imports `TechAdminRoutes` from `TechAdminProtectedRoute.jsx`, so `/tech-admin/*` does not load the route tree.
 4. `TechAdminProtectedRoute.jsx` has a nested duplicate function and never completes its loading state.
 5. Auth token keys are inconsistent: `access_token`, `admin_access_token`, `user_access_token`, `ts_access_token`, `tech_access_token`, plus mixed `role` and `user_role`.
-6. API URLs are hardcoded through `BASE_URL = "https://support.ansar.in/api"` and many callers append another `/api`, creating inconsistent endpoint composition.
+6. API URLs are hardcoded through `BASE_URL = "https://it.ansar.in/api"` and many callers append another `/api`, creating inconsistent endpoint composition.
 7. WebSocket URLs are hardcoded to `ws://127.0.0.1:8001`.
 8. API calls, response shaping, loading/error state, and rendering are mixed in large components.
 9. Admin and User component folders contain copied or near-copied files.
