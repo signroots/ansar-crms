@@ -161,6 +161,12 @@ const normalizeApiList = (data) => {
 const getIssueLabel = (item) =>
   item.name || item.issue || item.title || item.issue_name || item.complaint || "Untitled";
 
+const priorityOptions = [
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "Emergency", value: "emergency" },
+];
+
 function FieldError({ children }) {
   if (!children) {
     return null;
@@ -183,7 +189,9 @@ function CreateComplaints({ onCreated }) {
   const [userRole, setUserRole] = useState("");
 
   const isTechSupport = userRole === "Tech Support";
-  const isMaintenance = formData.complaintTypeName === "Maintenance";
+  const isMaintenance = ["maintenance", "maintanance"].includes(
+    formData.complaintTypeName.trim().toLowerCase(),
+  );
 
   const staffOptions = useMemo(
     () =>
@@ -325,6 +333,10 @@ function CreateComplaints({ onCreated }) {
     }
 
     if (isMaintenance) {
+      if (!formData.priority) {
+        nextErrors.priority = "Required";
+      }
+
       if (!formData.location) {
         nextErrors.location = "Required";
       }
@@ -476,10 +488,23 @@ function CreateComplaints({ onCreated }) {
           {isMaintenance && (
             <section style={styles.section}>
               <div style={styles.sectionHeader}>
-                <h3 style={styles.sectionTitle}>Maintenance Location</h3>
+                <h3 style={styles.sectionTitle}>Maintenance Details</h3>
               </div>
 
               <div style={styles.grid}>
+                <label style={styles.field}>
+                  <span style={styles.label}>Priority</span>
+                  <Select
+                    options={priorityOptions}
+                    placeholder="Select priority"
+                    status={errors.priority ? "error" : undefined}
+                    style={styles.control}
+                    value={formData.priority || undefined}
+                    onChange={(value) => setField("priority", value)}
+                  />
+                  <FieldError>{errors.priority}</FieldError>
+                </label>
+
                 <label style={styles.field}>
                   <span style={styles.label}>Location</span>
                   <Select
