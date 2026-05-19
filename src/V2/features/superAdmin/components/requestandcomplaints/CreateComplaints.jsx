@@ -1,5 +1,5 @@
  
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Drawer, Input, Select, Tag } from "antd";
 import axios from "axios";
 import { FiPlus } from "react-icons/fi";
@@ -238,7 +238,7 @@ function CreateComplaints({ onCreated }) {
     resetForm();
   };
 
-  const loadLookups = async () => {
+  const loadLookups = useCallback(async () => {
     if (lookupsLoaded || lookupsLoading) {
       return;
     }
@@ -265,12 +265,11 @@ function CreateComplaints({ onCreated }) {
     } finally {
       setLookupsLoading(false);
     }
-  };
+  }, [lookupsLoaded, lookupsLoading]);
 
   const openComplaintDrawer = () => {
     resetForm();
     setOpenDrawer(true);
-    loadLookups();
   };
 
   useEffect(() => {
@@ -279,7 +278,7 @@ function CreateComplaints({ onCreated }) {
   }, []);
 
   useEffect(() => {
-    if (!isTechSupport) {
+    if (!openDrawer || !isTechSupport) {
       return;
     }
 
@@ -293,10 +292,18 @@ function CreateComplaints({ onCreated }) {
         complaintTypeName: storedTypeName || "",
       }));
     }
-  }, [isTechSupport]);
+  }, [isTechSupport, openDrawer]);
 
   useEffect(() => {
-    if (!formData.complaintType) {
+    if (!openDrawer) {
+      return;
+    }
+
+    loadLookups();
+  }, [loadLookups, openDrawer]);
+
+  useEffect(() => {
+    if (!openDrawer || !formData.complaintType) {
       setIssues([]);
       return;
     }
@@ -312,7 +319,7 @@ function CreateComplaints({ onCreated }) {
       .finally(() => {
         setIssuesLoading(false);
       });
-  }, [formData.complaintType]);
+  }, [formData.complaintType, openDrawer]);
 
   const handleStaffChange = (value) => {
     const selectedStaff = staffIds.find((staff) => staff.id === value);

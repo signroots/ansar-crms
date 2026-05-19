@@ -1,5 +1,5 @@
  
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Checkbox, Drawer, Input, Select } from "antd";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
@@ -160,6 +160,8 @@ function UserAdd({ onUserAdded }) {
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState(initialFormData);
   const [institutions, setInstitutions] = useState([]);
+  const [lookupsLoaded, setLookupsLoaded] = useState(false);
+  const [lookupsLoading, setLookupsLoading] = useState(false);
   const [mobileNumberError, setMobileNumberError] = useState("");
   const [openDrawer, setOpenDrawer] = useState(false);
   const [staffIdError, setStaffIdError] = useState("");
@@ -199,20 +201,42 @@ function UserAdd({ onUserAdded }) {
     resetForm();
   };
 
-  useEffect(() => {
-    apiService
-      .get(INSTITUTIONS_ENDPOINT)
-      .then((data) => setInstitutions(normalizeApiList(data)))
-      .catch(() => setInstitutions([]));
+  const loadLookups = useCallback(async () => {
+    if (lookupsLoaded || lookupsLoading) {
+      return;
+    }
 
-    apiService
-      .get(TYPES_OF_ISSUE_ENDPOINT)
-      .then((data) => setTypesOfIssue(normalizeApiList(data)))
-      .catch(() => setTypesOfIssue([]));
-  }, []);
+    setLookupsLoading(true);
+
+    try {
+      const [institutionsData, issueTypesData] = await Promise.all([
+        apiService.get(INSTITUTIONS_ENDPOINT),
+        apiService.get(TYPES_OF_ISSUE_ENDPOINT),
+      ]);
+
+      setInstitutions(normalizeApiList(institutionsData));
+      setTypesOfIssue(normalizeApiList(issueTypesData));
+      setLookupsLoaded(true);
+    } catch (error) {
+      console.error("User form lookup fetch error:", error);
+      setInstitutions([]);
+      setTypesOfIssue([]);
+      toast.error("Unable to load user form data");
+    } finally {
+      setLookupsLoading(false);
+    }
+  }, [lookupsLoaded, lookupsLoading]);
 
   useEffect(() => {
-    if (!formData.institution || !needsInstitution) {
+    if (!openDrawer) {
+      return;
+    }
+
+    loadLookups();
+  }, [loadLookups, openDrawer]);
+
+  useEffect(() => {
+    if (!openDrawer || !formData.institution || !needsInstitution) {
       setDepartments([]);
       return;
     }
@@ -221,7 +245,7 @@ function UserAdd({ onUserAdded }) {
       .get(DEPARTMENTS_ENDPOINT(formData.institution, formData.role))
       .then((data) => setDepartments(normalizeApiList(data)))
       .catch(() => setDepartments([]));
-  }, [formData.institution, formData.role, needsInstitution]);
+  }, [formData.institution, formData.role, needsInstitution, openDrawer]);
 
   const checkStaffIdExists = async (staffId) => {
     if (!staffId || staffIdError) {
@@ -434,6 +458,7 @@ function UserAdd({ onUserAdded }) {
                     options={institutionOptions}
                     placeholder="Select institution"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.institution ? "error" : undefined}
                     style={styles.control}
                     value={formData.institution || undefined}
@@ -450,6 +475,7 @@ function UserAdd({ onUserAdded }) {
                   <span style={styles.label}>Department</span>
                   <Select
                     disabled={!formData.institution}
+                    loading={lookupsLoading}
                     optionFilterProp="label"
                     options={departmentOptions}
                     placeholder="Select department"
@@ -475,6 +501,7 @@ function UserAdd({ onUserAdded }) {
                     options={issueTypeOptions}
                     placeholder="Select section"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.typeofissue ? "error" : undefined}
                     style={styles.control}
                     value={formData.typeofissue || undefined}

@@ -1,5 +1,5 @@
  
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Checkbox, Drawer, Input, Select } from "antd";
 import { toast } from "react-toastify";
 
@@ -157,6 +157,8 @@ function UserEdit({ onClose, onUpdate, open, user }) {
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState(initialFormData);
   const [institutions, setInstitutions] = useState([]);
+  const [lookupsLoaded, setLookupsLoaded] = useState(false);
+  const [lookupsLoading, setLookupsLoading] = useState(false);
   const [mobileNumberError, setMobileNumberError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [typesOfIssue, setTypesOfIssue] = useState([]);
@@ -181,17 +183,39 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     }));
   };
 
-  useEffect(() => {
-    apiService
-      .get(INSTITUTIONS_ENDPOINT)
-      .then((data) => setInstitutions(normalizeApiList(data)))
-      .catch(() => setInstitutions([]));
+  const loadLookups = useCallback(async () => {
+    if (lookupsLoaded || lookupsLoading) {
+      return;
+    }
 
-    apiService
-      .get(TYPES_OF_ISSUE_ENDPOINT)
-      .then((data) => setTypesOfIssue(normalizeApiList(data)))
-      .catch(() => setTypesOfIssue([]));
-  }, []);
+    setLookupsLoading(true);
+
+    try {
+      const [institutionsData, issueTypesData] = await Promise.all([
+        apiService.get(INSTITUTIONS_ENDPOINT),
+        apiService.get(TYPES_OF_ISSUE_ENDPOINT),
+      ]);
+
+      setInstitutions(normalizeApiList(institutionsData));
+      setTypesOfIssue(normalizeApiList(issueTypesData));
+      setLookupsLoaded(true);
+    } catch (error) {
+      console.error("User edit lookup fetch error:", error);
+      setInstitutions([]);
+      setTypesOfIssue([]);
+      toast.error("Unable to load user form data");
+    } finally {
+      setLookupsLoading(false);
+    }
+  }, [lookupsLoaded, lookupsLoading]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    loadLookups();
+  }, [loadLookups, open]);
 
   useEffect(() => {
     if (!open || !user) {
@@ -213,7 +237,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
   }, [open, user]);
 
   useEffect(() => {
-    if (!formData.institution || !needsInstitution) {
+    if (!open || !formData.institution || !needsInstitution) {
       setDepartments([]);
       return;
     }
@@ -222,7 +246,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
       .get(DEPARTMENTS_ENDPOINT(formData.institution, formData.role))
       .then((data) => setDepartments(normalizeApiList(data)))
       .catch(() => setDepartments([]));
-  }, [formData.institution, formData.role, needsInstitution]);
+  }, [formData.institution, formData.role, needsInstitution, open]);
 
   useEffect(() => {
     if (
@@ -421,6 +445,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                   options={institutionOptions}
                   placeholder="Select institution"
                   showSearch
+                  loading={lookupsLoading}
                   status={errors.institution ? "error" : undefined}
                   style={styles.control}
                   value={formData.institution || undefined}
@@ -437,6 +462,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                 <span style={styles.label}>Department</span>
                 <Select
                   disabled={!formData.institution}
+                  loading={lookupsLoading}
                   optionFilterProp="label"
                   options={departmentOptions}
                   placeholder="Select department"
@@ -462,6 +488,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                   options={issueTypeOptions}
                   placeholder="Select section"
                   showSearch
+                  loading={lookupsLoading}
                   status={errors.typeofissue ? "error" : undefined}
                   style={styles.control}
                   value={formData.typeofissue || undefined}

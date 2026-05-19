@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Empty, Input, Pagination, Popconfirm, Select, Table, Tag, Tooltip } from "antd";
+import { Button, Empty, Input, Popconfirm, Select, Table, Tag, Tooltip } from "antd";
 import { FiCopy, FiEdit2, FiSearch, FiTrash2, FiUsers } from "react-icons/fi";
 import { LuRefreshCw, LuShieldCheck, LuUserCog, LuUserRoundCheck } from "react-icons/lu";
 import { toast } from "react-toastify";
@@ -12,7 +12,6 @@ import UserEdit from "./UserEdit";
 const USERS_ENDPOINT = "/api/api/users/";
 const USER_DELETE_ENDPOINT = (id) => `/api/api/users/delete/${id}/`;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
-const USERS_FETCH_PAGE_SIZE = 100;
 
 const ROLE_FILTER_OPTIONS = [
   { label: "All roles", value: "all" },
@@ -203,47 +202,6 @@ const normalizeUsersResponse = (data) => {
   };
 };
 
-const getUserKey = (user) => user.id || user.staff_id || user.mobile_number || user.name;
-
-const dedupeUsers = (items) => {
-  const seen = new Set();
-
-  return items.filter((item) => {
-    const key = getUserKey(item);
-
-    if (!key || seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-};
-
-const getUserSearchText = (user) =>
-  [
-    user.name,
-    user.staff_id,
-    user.role,
-    user.mobile_number,
-    user.institution?.name,
-    user.department?.name,
-    user.section_for_staff,
-    user.typeofissue?.name,
-    user.type_of_issue?.name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-const matchesUserRole = (user, roleFilter) => {
-  if (roleFilter === "all") {
-    return true;
-  }
-
-  return user.role === roleFilter;
-};
-
 const roleContext = {
   eyebrow: "Access Control",
   title: "User Management",
@@ -260,6 +218,7 @@ function UsersList() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
+  const [totalCount, setTotalCount] = useState(0);
   const [users, setUsers] = useState([]);
 
   const fetchUsers = useCallback(async () => {
@@ -267,38 +226,25 @@ function UsersList() {
     setLoading(true);
 
     try {
-      const firstPageData = await apiService.get(USERS_ENDPOINT, {
-        params: {
-          page: 1,
-          page_size: USERS_FETCH_PAGE_SIZE,
-        },
-      });
-      const firstPage = normalizeUsersResponse(firstPageData);
-      const totalFromApi = firstPage.count;
-      const effectivePageSize = firstPage.results.length || USERS_FETCH_PAGE_SIZE;
-      const totalPages =
-        totalFromApi > firstPage.results.length ? Math.ceil(totalFromApi / effectivePageSize) : 1;
+      const params = {
+        page: currentPage,
+        page_size: pageSize,
+      };
+      const searchTerm = search.trim();
 
-      let allUsers = firstPage.results;
-
-      if (totalPages > 1) {
-        const pageRequests = Array.from({ length: totalPages - 1 }, (_, index) =>
-          apiService.get(USERS_ENDPOINT, {
-            params: {
-              page: index + 2,
-              page_size: USERS_FETCH_PAGE_SIZE,
-            },
-          }),
-        );
-        const pageResponses = await Promise.all(pageRequests);
-
-        allUsers = [
-          ...firstPage.results,
-          ...pageResponses.flatMap((response) => normalizeUsersResponse(response).results),
-        ];
+      if (searchTerm) {
+        params.search = searchTerm;
       }
 
-      setUsers(dedupeUsers(allUsers));
+      if (roleFilter !== "all") {
+        params.role = roleFilter;
+      }
+
+      const data = await apiService.get(USERS_ENDPOINT, { params });
+      const normalizedData = normalizeUsersResponse(data);
+
+      setUsers(normalizedData.results);
+      setTotalCount(normalizedData.count);
     } catch (fetchError) {
       console.error("Error fetching users:", fetchError);
       setError("Unable to load users right now.");
@@ -306,40 +252,11 @@ function UsersList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, roleFilter, search]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [roleFilter, search]);
-
-  const filteredUsers = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    return users.filter((user) => {
-      const matchesRole = matchesUserRole(user, roleFilter);
-      const matchesSearch = !searchTerm || getUserSearchText(user).includes(searchTerm);
-
-      return matchesRole && matchesSearch;
-    });
-  }, [roleFilter, search, users]);
-
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-
-    return filteredUsers.slice(startIndex, startIndex + pageSize);
-  }, [currentPage, filteredUsers, pageSize]);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredUsers.length / pageSize));
-
-    if (currentPage > maxPage) {
-      setCurrentPage(maxPage);
-    }
-  }, [currentPage, filteredUsers.length, pageSize]);
 
   const metrics = useMemo(() => {
     const loadedCounts = users.reduce(
@@ -359,7 +276,7 @@ function UsersList() {
         accent: "#0cb899",
         icon: FiUsers,
         label: "Total users",
-        value: users.length,
+        value: totalCount,
       },
       {
         accent: "#3b82f6",
@@ -380,7 +297,7 @@ function UsersList() {
         value: loadedCounts[USER_ROLES.TEACHER],
       },
     ];
-  }, [users]);
+  }, [totalCount, users]);
 
   const copyMobileNumber = async (mobileNumber) => {
     if (!mobileNumber) {
@@ -408,6 +325,7 @@ function UsersList() {
       await apiService.delete(USER_DELETE_ENDPOINT(user.id));
       toast.success("User deleted successfully");
       setUsers((currentUsers) => currentUsers.filter((currentUser) => currentUser.id !== user.id));
+      setTotalCount((currentTotal) => Math.max(0, currentTotal - 1));
     } catch (deleteError) {
       console.error("Error deleting user:", deleteError);
       toast.error("Unable to delete user");
@@ -427,8 +345,12 @@ function UsersList() {
   };
 
   const refreshFirstPage = () => {
+    if (currentPage === 1) {
+      fetchUsers();
+      return;
+    }
+
     setCurrentPage(1);
-    fetchUsers();
   };
 
   const columns = [
@@ -566,17 +488,26 @@ function UsersList() {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setCurrentPage(1);
+              setSearch(event.target.value);
+            }}
             placeholder="Search users"
             prefix={<FiSearch />}
             value={search}
           />
 
-          <Select onChange={setRoleFilter} options={ROLE_FILTER_OPTIONS} value={roleFilter} />
+          <Select
+            onChange={(value) => {
+              setCurrentPage(1);
+              setRoleFilter(value);
+            }}
+            options={ROLE_FILTER_OPTIONS}
+            value={roleFilter}
+          />
 
           <span style={styles.muted}>
-            Showing {formatNumber(paginatedUsers.length)} of {formatNumber(filteredUsers.length)}{" "}
-            filtered
+            Showing {formatNumber(users.length)} of {formatNumber(totalCount)} users
           </span>
         </div>
 
@@ -588,41 +519,27 @@ function UsersList() {
           <div style={styles.tableWrap}>
             <Table
               columns={columns}
-              dataSource={paginatedUsers}
+              dataSource={users}
               loading={loading}
               locale={{ emptyText: <Empty description="No users found" /> }}
-              pagination={false}
+              pagination={{
+                current: currentPage,
+                pageSize,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                showSizeChanger: true,
+                total: totalCount,
+              }}
+              onChange={(pagination) => {
+                const nextPageSize = pagination.pageSize || 10;
+
+                setPageSize(nextPageSize);
+                setCurrentPage(nextPageSize === pageSize ? pagination.current || 1 : 1);
+              }}
               rowKey={(record) => record.id || record.staff_id}
               scroll={{ x: 1060 }}
             />
           </div>
         )}
-
-        <div style={styles.pagination}>
-          <Pagination
-            current={currentPage}
-            onChange={(page) => setCurrentPage(page)}
-            pageSize={pageSize}
-            showSizeChanger={false}
-            total={filteredUsers.length}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={styles.muted}>Rows</span>
-            <Select
-              onChange={(value) => {
-                setPageSize(value);
-                setCurrentPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS.map((value) => ({
-                label: `${value} / page`,
-                value,
-              }))}
-              style={{ width: 128 }}
-              value={pageSize}
-            />
-          </div>
-        </div>
       </section>
 
       <UserEdit open={editOpen} user={selectedUser} onClose={closeEdit} onUpdate={fetchUsers} />

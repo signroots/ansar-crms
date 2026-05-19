@@ -1,5 +1,5 @@
  
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, DatePicker, Drawer, Input, Select, Tag, TimePicker } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -267,7 +267,7 @@ function CreateRequests({ fetchRequests }) {
     resetForm();
   };
 
-  const loadLookups = async () => {
+  const loadLookups = useCallback(async () => {
     if (lookupsLoaded || lookupsLoading) {
       return;
     }
@@ -294,12 +294,11 @@ function CreateRequests({ fetchRequests }) {
     } finally {
       setLookupsLoading(false);
     }
-  };
+  }, [lookupsLoaded, lookupsLoading]);
 
   const openRequestDrawer = () => {
     resetForm();
     setOpenDrawer(true);
-    loadLookups();
   };
 
   useEffect(() => {
@@ -308,7 +307,7 @@ function CreateRequests({ fetchRequests }) {
   }, []);
 
   useEffect(() => {
-    if (!isTechSupport) {
+    if (!openDrawer || !isTechSupport) {
       return;
     }
 
@@ -322,10 +321,18 @@ function CreateRequests({ fetchRequests }) {
       }));
       setRequestTypeName(storedTypeName || "");
     }
-  }, [isTechSupport]);
+  }, [isTechSupport, openDrawer]);
 
   useEffect(() => {
-    if (!formData.typeOfRequest) {
+    if (!openDrawer) {
+      return;
+    }
+
+    loadLookups();
+  }, [loadLookups, openDrawer]);
+
+  useEffect(() => {
+    if (!openDrawer || !formData.typeOfRequest) {
       setAllRequests([]);
       return;
     }
@@ -336,7 +343,7 @@ function CreateRequests({ fetchRequests }) {
       .then((res) => setAllRequests(normalizeApiList(res.data)))
       .catch(() => setAllRequests([]))
       .finally(() => setRequestCategoriesLoading(false));
-  }, [formData.typeOfRequest]);
+  }, [formData.typeOfRequest, openDrawer]);
 
   const handleStaffChange = (value) => {
     const selectedStaff = findById(staffIds, value);
