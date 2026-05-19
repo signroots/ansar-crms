@@ -27,6 +27,7 @@ import CreateRequests from "./CreateRequests";
 const { RangePicker } = DatePicker;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const SEARCH_DEBOUNCE_DELAY = 500;
 const REQUESTS_LIST_ENDPOINT = "/api/api/requests-list/";
 const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
 
@@ -328,6 +329,7 @@ function RequestsList() {
   const [requests, setRequests] = useState([]);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -346,7 +348,7 @@ function RequestsList() {
         page: currentPage,
         page_size: rowsPerPage,
       };
-      const searchTerm = search.trim();
+      const searchTerm = debouncedSearch.trim();
 
       if (searchTerm) {
         params.search = searchTerm;
@@ -368,7 +370,16 @@ function RequestsList() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, rowsPerPage, search, statusFilter]);
+  }, [currentPage, debouncedSearch, rowsPerPage, statusFilter]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(search);
+    }, SEARCH_DEBOUNCE_DELAY);
+
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   useEffect(() => {
     fetchRequests();
@@ -652,10 +663,7 @@ function RequestsList() {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => {
-              setCurrentPage(1);
-              setSearch(event.target.value);
-            }}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search requests"
             prefix={<FiSearch />}
             value={search}

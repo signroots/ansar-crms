@@ -12,6 +12,7 @@ import UserEdit from "./UserEdit";
 const USERS_ENDPOINT = "/api/api/users/";
 const USER_DELETE_ENDPOINT = (id) => `/api/api/users/delete/${id}/`;
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const SEARCH_DEBOUNCE_DELAY = 500;
 
 const ROLE_FILTER_OPTIONS = [
   { label: "All roles", value: "all" },
@@ -217,6 +218,7 @@ function UsersList() {
   const [pageSize, setPageSize] = useState(10);
   const [roleFilter, setRoleFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
   const [users, setUsers] = useState([]);
@@ -230,7 +232,7 @@ function UsersList() {
         page: currentPage,
         page_size: pageSize,
       };
-      const searchTerm = search.trim();
+      const searchTerm = debouncedSearch.trim();
 
       if (searchTerm) {
         params.search = searchTerm;
@@ -252,7 +254,16 @@ function UsersList() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, roleFilter, search]);
+  }, [currentPage, debouncedSearch, pageSize, roleFilter]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(search);
+    }, SEARCH_DEBOUNCE_DELAY);
+
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   useEffect(() => {
     fetchUsers();
@@ -488,10 +499,7 @@ function UsersList() {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => {
-              setCurrentPage(1);
-              setSearch(event.target.value);
-            }}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search users"
             prefix={<FiSearch />}
             value={search}

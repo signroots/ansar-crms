@@ -27,6 +27,7 @@ import CreateComplaints from "./CreateComplaints";
 const { RangePicker } = DatePicker;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const SEARCH_DEBOUNCE_DELAY = 500;
 const COMPLAINTS_LIST_ENDPOINT = "/api/api/complaints-list/";
 const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
 
@@ -417,6 +418,7 @@ function ComplaintsList() {
   const [loading, setLoading] = useState(true);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -436,7 +438,7 @@ function ComplaintsList() {
         page_size: rowsPerPage,
       };
 
-      const searchTerm = search.trim();
+      const searchTerm = debouncedSearch.trim();
 
       if (searchTerm) {
         params.search = searchTerm;
@@ -458,7 +460,16 @@ function ComplaintsList() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, rowsPerPage, search, statusFilter]);
+  }, [currentPage, debouncedSearch, rowsPerPage, statusFilter]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(search);
+    }, SEARCH_DEBOUNCE_DELAY);
+
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   useEffect(() => {
     fetchComplaints();
@@ -734,10 +745,7 @@ function ComplaintsList() {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => {
-              setCurrentPage(1);
-              setSearch(event.target.value);
-            }}
+            onChange={(event) => setSearch(event.target.value)}
             placeholder="Search complaints"
             prefix={<FiSearch />}
             value={search}
