@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
 import { USER_ROLES } from "../../../../shared/constants/roles";
-import { getAuthSession } from "../../../../shared/utils/authSession";
 import UserAdd from "./UserAdd";
 import UserEdit from "./UserEdit";
 
@@ -251,27 +250,13 @@ const matchesUserRole = (user, roleFilter) => {
   return user.role === roleFilter;
 };
 
-const getRoleContext = () => {
-  const { isAdmin, role, typeOfIssue } = getAuthSession();
-  const isDepartmentAdmin =
-    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
-
-  if (isDepartmentAdmin) {
-    return {
-      eyebrow: typeOfIssue || "Department Team",
-      title: "Department Users",
-      subtitle: "Manage the staff and technical users connected with your department workflow.",
-    };
-  }
-
-  return {
-    eyebrow: "Access Control",
-    title: "User Management",
-    subtitle: "Create users, review role access, maintain staff IDs, and keep contact data clean.",
-  };
+const superAdminUsersContext = {
+  eyebrow: "Access Control",
+  title: "User Management",
+  subtitle: "Create users, review role access, maintain staff IDs, and keep contact data clean.",
 };
 
-function UsersList() {
+function UsersList({ roleContext = superAdminUsersContext }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -282,8 +267,6 @@ function UsersList() {
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [users, setUsers] = useState([]);
-
-  const roleContext = useMemo(() => getRoleContext(), []);
 
   const fetchUsers = useCallback(async () => {
     setError("");

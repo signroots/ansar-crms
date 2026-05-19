@@ -16,7 +16,7 @@ const numberFormatter = new Intl.NumberFormat("en-IN");
 
 const formatNumber = (value) => numberFormatter.format(Number(value || 0));
 
-const roleContext = {
+const superAdminDashboardContext = {
   eyebrow: "Control Center",
   title: "Super Admin Dashboard",
   subtitle: "Monitor school-wide operations, request movement, and complaint resolution health.",
@@ -219,7 +219,7 @@ const styles = {
   },
 };
 
-function Dashboard() {
+function Dashboard({ roleContext = superAdminDashboardContext }) {
   const { error, loading, monthlyData, refreshedAt, refetch, stats } = useDashboardData();
 
   const complaintCompletion = getCompletionRate(stats.complaints);

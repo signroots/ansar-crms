@@ -381,7 +381,7 @@ const normalizeListResponse = (data) => {
   };
 };
 
-const roleContext = {
+const superAdminComplaintsContext = {
   eyebrow: "Complaint Desk",
   title: "Complaints",
   subtitle: "Track institution complaints, priorities, assigned staff, and resolution movement.",
@@ -424,7 +424,7 @@ const mapComplaintForExport = (complaint) => ({
   "Completed Note": getText(complaint.completed_note),
 });
 
-function ComplaintsList() {
+function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
   const [complaints, setComplaints] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState("");

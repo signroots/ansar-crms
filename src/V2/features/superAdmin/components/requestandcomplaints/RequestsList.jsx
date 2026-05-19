@@ -294,7 +294,7 @@ const normalizeListResponse = (data) => {
   };
 };
 
-const roleContext = {
+const superAdminRequestsContext = {
   eyebrow: "Request Desk",
   title: "Requests",
   subtitle: "Track service requests, program needs, assigned staff, and completion status.",
@@ -335,7 +335,7 @@ const mapRequestForExport = (request) => ({
   Notes: getText(request.notes),
 });
 
-function RequestsList() {
+function RequestsList({ roleContext = superAdminRequestsContext }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState("");
   const [exportRange, setExportRange] = useState(null);
