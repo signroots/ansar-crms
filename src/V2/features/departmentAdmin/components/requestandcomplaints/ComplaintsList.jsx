@@ -6,7 +6,6 @@ import {
   Empty,
   Input,
   Modal,
-  Pagination,
   Popconfirm,
   Select,
   Table,
@@ -28,6 +27,7 @@ import CreateComplaints from "./CreateComplaints";
 const { RangePicker } = DatePicker;
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+const SEARCH_DEBOUNCE_DELAY = 500;
 const COMPLAINTS_LIST_ENDPOINT = "/api/api/complaints-list/";
 const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
 
@@ -389,21 +389,6 @@ const departmentAdminComplaintsContext = {
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
 
-const getComplaintSearchText = (complaint) =>
-  [
-    complaint.complaint_id,
-    complaint.institution?.name,
-    complaint.issue_complaint?.name,
-    complaint.type_of_issue?.name,
-    complaint.status,
-    complaint.priority,
-    complaint.complainted_by?.name,
-    complaint.resolved_by?.name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
 const mapComplaintForExport = (complaint) => ({
   "Complaint ID": getText(complaint.complaint_id || complaint.id),
   Date: formatDate(complaint.date, true),
@@ -432,24 +417,41 @@ function ComplaintsList() {
   const [loading, setLoading] = useState(true);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
 
   const { role } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
-  const totalCount = complaints.length;
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const data = await apiService.get(COMPLAINTS_LIST_ENDPOINT);
+      const params = {
+        page: currentPage,
+        page_size: rowsPerPage,
+      };
+
+      const searchTerm = debouncedSearch.trim();
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (statusFilter !== "all") {
+        params.status = statusFilter;
+      }
+
+      const data = await apiService.get(COMPLAINTS_LIST_ENDPOINT, { params });
       const normalizedData = normalizeListResponse(data);
 
       setComplaints(normalizedData.results);
+      setTotalCount(normalizedData.count);
     } catch (fetchError) {
       console.error("Error fetching complaints:", fetchError);
       setError("Unable to load complaints right now.");
@@ -457,40 +459,20 @@ function ComplaintsList() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearch, rowsPerPage, statusFilter]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(search);
+    }, SEARCH_DEBOUNCE_DELAY);
+
+    return () => clearTimeout(debounceTimer);
+  }, [search]);
 
   useEffect(() => {
     fetchComplaints();
   }, [fetchComplaints]);
-
-  const filteredComplaints = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    return complaints.filter((complaint) => {
-      const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
-      const matchesSearch = !searchTerm || getComplaintSearchText(complaint).includes(searchTerm);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [complaints, search, statusFilter]);
-
-  const paginatedComplaints = useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-
-    return filteredComplaints.slice(startIndex, startIndex + rowsPerPage);
-  }, [currentPage, filteredComplaints, rowsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter]);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredComplaints.length / rowsPerPage));
-
-    if (currentPage > maxPage) {
-      setCurrentPage(maxPage);
-    }
-  }, [currentPage, filteredComplaints.length, rowsPerPage]);
 
   const metrics = useMemo(() => {
     const pageStatusCounts = complaints.reduce(
@@ -572,6 +554,15 @@ function ComplaintsList() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const refreshFirstPage = () => {
+    if (currentPage === 1) {
+      fetchComplaints();
+      return;
+    }
+
+    setCurrentPage(1);
   };
 
   const openComplaintDetails = (complaint) => {
@@ -721,7 +712,7 @@ function ComplaintsList() {
         </div>
 
         <div style={styles.actions}>
-          <CreateComplaints onCreated={fetchComplaints} />
+          <CreateComplaints onCreated={refreshFirstPage} />
           <Button icon={<BiExport size={18} />} onClick={() => setIsExportModalOpen(true)}>
             Export
           </Button>
@@ -750,13 +741,16 @@ function ComplaintsList() {
           <Input
             allowClear
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search loaded complaints"
+            placeholder="Search complaints"
             prefix={<FiSearch />}
             value={search}
           />
 
           <Select
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setCurrentPage(1);
+              setStatusFilter(value);
+            }}
             options={[
               { label: "All statuses", value: "all" },
               { label: "Pending", value: "Pending" },
@@ -768,8 +762,7 @@ function ComplaintsList() {
           />
 
           <span style={styles.muted}>
-            Showing {formatNumber(paginatedComplaints.length)} of{" "}
-            {formatNumber(filteredComplaints.length)} filtered
+            Showing {formatNumber(complaints.length)} of {formatNumber(totalCount)} complaints
           </span>
         </div>
 
@@ -781,41 +774,27 @@ function ComplaintsList() {
           <div style={styles.tableWrap}>
             <Table
               columns={columns}
-              dataSource={paginatedComplaints}
+              dataSource={complaints}
               loading={loading}
               locale={{ emptyText: <Empty description="No complaints found" /> }}
-              pagination={false}
+              pagination={{
+                current: currentPage,
+                pageSize: rowsPerPage,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                showSizeChanger: true,
+                total: totalCount,
+              }}
+              onChange={(pagination) => {
+                const nextPageSize = pagination.pageSize || 10;
+
+                setRowsPerPage(nextPageSize);
+                setCurrentPage(nextPageSize === rowsPerPage ? pagination.current || 1 : 1);
+              }}
               rowKey={(record) => record.id || record.complaint_id}
               scroll={{ x: 1130 }}
             />
           </div>
         )}
-
-        <div style={styles.pagination}>
-          <Pagination
-            current={currentPage}
-            onChange={(page) => setCurrentPage(page)}
-            pageSize={rowsPerPage}
-            showSizeChanger={false}
-            total={filteredComplaints.length}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={styles.muted}>Rows</span>
-            <Select
-              onChange={(value) => {
-                setRowsPerPage(value);
-                setCurrentPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS.map((value) => ({
-                label: `${value} / page`,
-                value,
-              }))}
-              style={{ width: 128 }}
-              value={rowsPerPage}
-            />
-          </div>
-        </div>
       </section>
 
       <Drawer

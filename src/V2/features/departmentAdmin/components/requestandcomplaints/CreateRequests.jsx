@@ -1,5 +1,5 @@
  
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, DatePicker, Drawer, Input, Select, TimePicker } from "antd";
 import axios from "axios";
 import dayjs from "dayjs";
@@ -205,6 +205,8 @@ function CreateRequests({ fetchRequests }) {
   const [requestTypeName, setRequestTypeName] = useState("");
   const [staffIds, setStaffIds] = useState([]);
   const [subLocations, setSubLocations] = useState([]);
+  const [lookupsLoaded, setLookupsLoaded] = useState(false);
+  const [lookupsLoading, setLookupsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [typesOfRequest, setTypesOfRequest] = useState([]);
   const [userRole, setUserRole] = useState("");
@@ -266,27 +268,47 @@ function CreateRequests({ fetchRequests }) {
     resetForm();
   };
 
+  const loadLookups = useCallback(async () => {
+    if (lookupsLoaded || lookupsLoading) {
+      return;
+    }
+
+    setLookupsLoading(true);
+
+    try {
+      const [staffResponse, institutionsResponse, requestTypesResponse] = await Promise.all([
+        apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead"),
+        apiRequest("GET", "/api/institutions/"),
+        apiRequest("GET", "/api/types-of-request/"),
+      ]);
+
+      setStaffIds(staffResponse.data.staff_ids || []);
+      setInstitutions(normalizeApiList(institutionsResponse.data));
+      setTypesOfRequest(normalizeApiList(requestTypesResponse.data));
+      setLookupsLoaded(true);
+    } catch (error) {
+      console.error("Request form lookup fetch error:", error);
+      setStaffIds([]);
+      setInstitutions([]);
+      setTypesOfRequest([]);
+      toast.error("Unable to load request form data");
+    } finally {
+      setLookupsLoading(false);
+    }
+  }, [lookupsLoaded, lookupsLoading]);
+
+  const openRequestDrawer = () => {
+    resetForm();
+    setOpenDrawer(true);
+  };
+
   useEffect(() => {
     const role = localStorage.getItem("user_role") || localStorage.getItem("role") || "";
     setUserRole(role);
   }, []);
 
   useEffect(() => {
-    apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead")
-      .then((res) => setStaffIds(res.data.staff_ids || []))
-      .catch(() => setStaffIds([]));
-
-    apiRequest("GET", "/api/institutions/")
-      .then((res) => setInstitutions(normalizeApiList(res.data)))
-      .catch(() => setInstitutions([]));
-
-    apiRequest("GET", "/api/types-of-request/")
-      .then((res) => setTypesOfRequest(normalizeApiList(res.data)))
-      .catch(() => setTypesOfRequest([]));
-  }, []);
-
-  useEffect(() => {
-    if (!isDepartmentAdmin) {
+    if (!openDrawer || !isDepartmentAdmin) {
       return;
     }
 
@@ -300,10 +322,18 @@ function CreateRequests({ fetchRequests }) {
       }));
       setRequestTypeName(storedTypeName || "");
     }
-  }, [isDepartmentAdmin]);
+  }, [isDepartmentAdmin, openDrawer]);
 
   useEffect(() => {
-    if (!formData.typeOfRequest) {
+    if (!openDrawer) {
+      return;
+    }
+
+    loadLookups();
+  }, [loadLookups, openDrawer]);
+
+  useEffect(() => {
+    if (!openDrawer || !formData.typeOfRequest) {
       setAllRequests([]);
       return;
     }
@@ -314,7 +344,7 @@ function CreateRequests({ fetchRequests }) {
       .then((res) => setAllRequests(normalizeApiList(res.data)))
       .catch(() => setAllRequests([]))
       .finally(() => setRequestCategoriesLoading(false));
-  }, [formData.typeOfRequest]);
+  }, [formData.typeOfRequest, openDrawer]);
 
   const handleStaffChange = (value) => {
     const selectedStaff = findById(staffIds, value);
@@ -435,10 +465,7 @@ function CreateRequests({ fetchRequests }) {
     <>
       <Button
         icon={<FiPlus size={17} />}
-        onClick={() => {
-          resetForm();
-          setOpenDrawer(true);
-        }}
+        onClick={openRequestDrawer}
         style={styles.trigger}
         type="primary"
       >
@@ -468,6 +495,7 @@ function CreateRequests({ fetchRequests }) {
                   options={staffOptions}
                   placeholder="Select staff"
                   showSearch
+                  loading={lookupsLoading}
                   status={errors.staffId ? "error" : undefined}
                   style={styles.control}
                   value={formData.staffId || undefined}
@@ -488,6 +516,7 @@ function CreateRequests({ fetchRequests }) {
                     options={requestTypeOptions}
                     placeholder="Select type"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.typeOfRequest ? "error" : undefined}
                     style={styles.control}
                     value={formData.typeOfRequest || undefined}
@@ -508,6 +537,7 @@ function CreateRequests({ fetchRequests }) {
                         value: formData.typeOfRequest,
                       },
                     ]}
+                    loading={lookupsLoading}
                     style={styles.control}
                     value={formData.typeOfRequest || undefined}
                   />
@@ -550,6 +580,7 @@ function CreateRequests({ fetchRequests }) {
                     options={institutionOptions}
                     placeholder="Select location"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.location ? "error" : undefined}
                     style={styles.control}
                     value={formData.location || undefined}
