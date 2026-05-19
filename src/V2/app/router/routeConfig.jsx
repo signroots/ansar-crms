@@ -18,18 +18,10 @@ import ComplaintHandle from "../../features/technicalStaff/pages/ComplaintHandle
 import RequestHandle from "../../features/technicalStaff/pages/RequestHandle";
 import StaffHome from "../../features/technicalStaff/pages/StaffHome";
 import StaffProfile from "../../features/technicalStaff/pages/StaffProfile";
-import { ROLE_GROUPS, USER_ROLES } from "../../shared/constants/roles";
+import { ROLE_GROUPS } from "../../shared/constants/roles";
 import ROUTE_PATHS from "./paths";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
-import { v1RouteAdapters } from "./v1RouteAdapters";
-
-const {
-  DepartmentAdminComplaints,
-  DepartmentAdminDashboard,
-  DepartmentAdminRequests,
-  DepartmentAdminUsers,
-} = v1RouteAdapters;
 
 const withLayout = (LayoutComponent, page) => <LayoutComponent>{page}</LayoutComponent>;
 
@@ -46,11 +38,6 @@ const staffTeacherOptions = {
 
 const technicalStaffOptions = {
   allowedRoles: ROLE_GROUPS.TECHNICAL_STAFF,
-};
-
-const departmentAdminOptions = {
-  allowedRoles: [...ROLE_GROUPS.DEPARTMENT_ADMIN, USER_ROLES.TECHNICAL_STAFF],
-  requireAdmin: true,
 };
 
 export const appRoutes = [
@@ -174,34 +161,5 @@ export const appRoutes = [
   {
     path: ROUTE_PATHS.technicalStaff.profile,
     element: protectedElement(withLayout(StaffLayout, <StaffProfile />), technicalStaffOptions),
-  },
-
-  {
-    path: ROUTE_PATHS.departmentAdmin.dashboard,
-    element: protectedElement(
-      withLayout(SuperAdminLayout, <DepartmentAdminDashboard />),
-      departmentAdminOptions,
-    ),
-  },
-  {
-    path: ROUTE_PATHS.departmentAdmin.complaints,
-    element: protectedElement(
-      withLayout(SuperAdminLayout, <DepartmentAdminComplaints />),
-      departmentAdminOptions,
-    ),
-  },
-  {
-    path: ROUTE_PATHS.departmentAdmin.requests,
-    element: protectedElement(
-      withLayout(SuperAdminLayout, <DepartmentAdminRequests />),
-      departmentAdminOptions,
-    ),
-  },
-  {
-    path: ROUTE_PATHS.departmentAdmin.users,
-    element: protectedElement(
-      withLayout(SuperAdminLayout, <DepartmentAdminUsers />),
-      departmentAdminOptions,
-    ),
   },
 ];

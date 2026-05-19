@@ -6,8 +6,6 @@ import { TbFileSymlink } from "react-icons/tb";
 import { NavLink } from "react-router-dom";
 
 import ROUTE_PATHS from "../../../../app/router/paths";
-import { USER_ROLES } from "../../../../shared/constants/roles";
-import { getAuthSession } from "../../../../shared/utils/authSession";
 
 const superAdminMenu = [
   {
@@ -42,47 +40,10 @@ const superAdminMenu = [
   },
 ];
 
-const departmentAdminMenu = [
-  {
-    label: "Dashboard",
-    path: ROUTE_PATHS.departmentAdmin.dashboard,
-    icon: MdDashboard,
-  },
-  {
-    label: "Complaints",
-    path: ROUTE_PATHS.departmentAdmin.complaints,
-    icon: PiWarningCircle,
-  },
-  {
-    label: "Requests",
-    path: ROUTE_PATHS.departmentAdmin.requests,
-    icon: TbFileSymlink,
-  },
-  {
-    label: "Users",
-    path: ROUTE_PATHS.departmentAdmin.users,
-    icon: LuUsers,
-  },
-];
-
-const getSidebarContext = () => {
-  const { role, isAdmin } = getAuthSession();
-  const isDepartmentAdmin =
-    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
-
-  if (isDepartmentAdmin) {
-    return {
-      label: "Department Admin",
-      caption: "Operations",
-      menuItems: departmentAdminMenu,
-    };
-  }
-
-  return {
-    label: "Super Admin",
-    caption: "Control Center",
-    menuItems: superAdminMenu,
-  };
+const sidebarContext = {
+  label: "Super Admin",
+  caption: "Control Center",
+  menuItems: superAdminMenu,
 };
 
 const styles = {
@@ -161,7 +122,7 @@ const styles = {
 };
 
 function Sidebar({ isMobile = false, isOpen, onNavigate, theme }) {
-  const { label, caption, menuItems } = getSidebarContext();
+  const { label, caption, menuItems } = sidebarContext;
   const showExpandedContent = isMobile || isOpen;
 
   return (

@@ -21,7 +21,7 @@ import { LuCalendarClock, LuClock3, LuFileSymlink, LuListChecks } from "react-ic
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
-import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
+import { ROLE_GROUPS } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateRequests from "./CreateRequests";
 
@@ -294,24 +294,10 @@ const normalizeListResponse = (data) => {
   };
 };
 
-const getRoleContext = () => {
-  const { isAdmin, role, typeOfIssue } = getAuthSession();
-  const isDepartmentAdmin =
-    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
-
-  if (isDepartmentAdmin) {
-    return {
-      eyebrow: typeOfIssue || "Department Desk",
-      title: "Department Requests",
-      subtitle: "Review assigned service requests, event needs, and request resolution movement.",
-    };
-  }
-
-  return {
-    eyebrow: "Request Desk",
-    title: "Requests",
-    subtitle: "Track service requests, program needs, assigned staff, and completion status.",
-  };
+const roleContext = {
+  eyebrow: "Request Desk",
+  title: "Requests",
+  subtitle: "Track service requests, program needs, assigned staff, and completion status.",
 };
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default" };
@@ -364,7 +350,6 @@ function RequestsList() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
 
-  const roleContext = useMemo(() => getRoleContext(), []);
   const { role } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
   const totalCount = requests.length;

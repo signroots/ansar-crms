@@ -21,7 +21,7 @@ import { LuBuilding2, LuClock3, LuListChecks } from "react-icons/lu";
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
-import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
+import { ROLE_GROUPS } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateComplaints from "./CreateComplaints";
 
@@ -381,25 +381,10 @@ const normalizeListResponse = (data) => {
   };
 };
 
-const getRoleContext = () => {
-  const { isAdmin, role, typeOfIssue } = getAuthSession();
-  const isDepartmentAdmin =
-    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
-
-  if (isDepartmentAdmin) {
-    return {
-      eyebrow: typeOfIssue || "Department Desk",
-      title: "Department Complaints",
-      subtitle:
-        "Review assigned complaints, inspect resolution status, and track department workload.",
-    };
-  }
-
-  return {
-    eyebrow: "Complaint Desk",
-    title: "Complaints",
-    subtitle: "Track institution complaints, priorities, assigned staff, and resolution movement.",
-  };
+const roleContext = {
+  eyebrow: "Complaint Desk",
+  title: "Complaints",
+  subtitle: "Track institution complaints, priorities, assigned staff, and resolution movement.",
 };
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
@@ -454,7 +439,6 @@ function ComplaintsList() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
 
-  const roleContext = useMemo(() => getRoleContext(), []);
   const { role } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
   const totalCount = complaints.length;

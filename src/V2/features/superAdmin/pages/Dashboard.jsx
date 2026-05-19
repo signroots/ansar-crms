@@ -11,31 +11,15 @@ import {
   getOpenCount,
   useDashboardData,
 } from "../components/dashboard/useDashboardData";
-import { USER_ROLES } from "../../../shared/constants/roles";
-import { getAuthSession } from "../../../shared/utils/authSession";
 
 const numberFormatter = new Intl.NumberFormat("en-IN");
 
 const formatNumber = (value) => numberFormatter.format(Number(value || 0));
 
-const getRoleContext = () => {
-  const { isAdmin, role, typeOfIssue } = getAuthSession();
-  const isDepartmentAdmin =
-    role === USER_ROLES.DEPARTMENT_ADMIN || (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
-
-  if (isDepartmentAdmin) {
-    return {
-      eyebrow: typeOfIssue || "Department Desk",
-      title: "Department Admin Dashboard",
-      subtitle: "Track assigned complaints, service requests, and team workload in one view.",
-    };
-  }
-
-  return {
-    eyebrow: "Control Center",
-    title: "Super Admin Dashboard",
-    subtitle: "Monitor school-wide operations, request movement, and complaint resolution health.",
-  };
+const roleContext = {
+  eyebrow: "Control Center",
+  title: "Super Admin Dashboard",
+  subtitle: "Monitor school-wide operations, request movement, and complaint resolution health.",
 };
 
 const styles = {
@@ -237,7 +221,6 @@ const styles = {
 
 function Dashboard() {
   const { error, loading, monthlyData, refreshedAt, refetch, stats } = useDashboardData();
-  const roleContext = getRoleContext();
 
   const complaintCompletion = getCompletionRate(stats.complaints);
   const requestCompletion = getCompletionRate(stats.requests);
