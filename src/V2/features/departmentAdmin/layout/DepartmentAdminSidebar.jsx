@@ -1,0 +1,141 @@
+import { LuUsers } from "react-icons/lu";
+import { MdDashboard } from "react-icons/md";
+import { PiWarningCircle } from "react-icons/pi";
+import { TbFileSymlink } from "react-icons/tb";
+import { NavLink } from "react-router-dom";
+
+import ROUTE_PATHS from "../../../app/router/paths";
+
+const menuItems = [
+  {
+    label: "Dashboard",
+    path: ROUTE_PATHS.departmentAdmin.dashboard,
+    icon: MdDashboard,
+  },
+  {
+    label: "Complaints",
+    path: ROUTE_PATHS.departmentAdmin.complaints,
+    icon: PiWarningCircle,
+  },
+  {
+    label: "Requests",
+    path: ROUTE_PATHS.departmentAdmin.requests,
+    icon: TbFileSymlink,
+  },
+  {
+    label: "Users",
+    path: ROUTE_PATHS.departmentAdmin.users,
+    icon: LuUsers,
+  },
+];
+
+const styles = {
+  sidebar: (isOpen, theme, isMobile) => ({
+    width: isMobile ? "min(320px, calc(100vw - 24px))" : isOpen ? "280px" : "88px",
+    height: isMobile ? "auto" : "calc(100% - 24px)",
+    maxHeight: isMobile ? "calc(100vh - 24px)" : "none",
+    margin: isMobile ? 0 : "12px 0 12px 12px",
+    padding: isMobile || isOpen ? "16px" : "14px 10px",
+    position: isMobile ? "fixed" : "relative",
+    inset: isMobile ? "12px auto 12px 12px" : "auto",
+    zIndex: isMobile ? 1201 : "auto",
+    background: theme.sidebar.background,
+    border: `1px solid ${theme.sidebar.border}`,
+    borderRadius: "18px",
+    color: theme.sidebar.text,
+    transform: isMobile && !isOpen ? "translateX(calc(-100% - 24px))" : "translateX(0)",
+    transition:
+      "width 0.22s ease, padding 0.22s ease, background 0.2s ease, transform 0.22s ease",
+    overflow: "auto",
+    boxShadow: theme.sidebar.shadow,
+    display: "flex",
+    flexDirection: "column",
+    flexShrink: 0,
+    boxSizing: "border-box",
+  }),
+  sectionLabel: (theme) => ({
+    margin: "4px 8px 12px",
+    color: theme.sidebar.muted,
+    fontSize: "11px",
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase",
+  }),
+  nav: {
+    display: "grid",
+    gap: "8px",
+  },
+  navItem: (isOpen, isActive, theme) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: isOpen ? "flex-start" : "center",
+    gap: "12px",
+    minHeight: "46px",
+    padding: isOpen ? "0 12px" : "0",
+    borderRadius: "14px",
+    background: isActive ? theme.sidebar.navActiveBackground : theme.sidebar.navBackground,
+    color: isActive ? theme.sidebar.navActiveText : theme.sidebar.navText,
+    border: `1px solid ${isActive ? theme.sidebar.navActiveBorder : theme.sidebar.navBorder}`,
+    textDecoration: "none",
+    transition: "background 0.18s ease, color 0.18s ease, transform 0.18s ease",
+    boxShadow: isActive ? theme.sidebar.navActiveShadow : "none",
+  }),
+  icon: {
+    width: "20px",
+    height: "20px",
+    flexShrink: 0,
+  },
+  navText: {
+    overflow: "hidden",
+    whiteSpace: "nowrap",
+    fontSize: "14px",
+    fontWeight: 600,
+    letterSpacing: "0",
+  },
+  footer: (theme) => ({
+    marginTop: "auto",
+    padding: "12px",
+    borderRadius: "14px",
+    background: theme.sidebar.footerBackground,
+    border: `1px solid ${theme.sidebar.footerBorder}`,
+    color: theme.sidebar.footerText,
+    fontSize: "12px",
+    lineHeight: 1.45,
+  }),
+};
+
+function DepartmentAdminSidebar({ isMobile = false, isOpen, onNavigate, theme }) {
+  const showExpandedContent = isMobile || isOpen;
+
+  return (
+    <aside
+      aria-label="Department Admin sidebar"
+      style={styles.sidebar(isOpen, theme, isMobile)}
+    >
+      {showExpandedContent && <div style={styles.sectionLabel(theme)}>Operations</div>}
+
+      <nav aria-label="Department Admin navigation" style={styles.nav}>
+        {menuItems.map(({ icon: Icon, label, path }) => (
+          <NavLink
+            key={path}
+            onClick={onNavigate}
+            style={({ isActive }) => styles.navItem(showExpandedContent, isActive, theme)}
+            title={showExpandedContent ? undefined : label}
+            to={path}
+          >
+            <Icon aria-hidden="true" style={styles.icon} />
+            {showExpandedContent && <span style={styles.navText}>{label}</span>}
+          </NavLink>
+        ))}
+      </nav>
+
+      {showExpandedContent && (
+        <div style={styles.footer(theme)}>
+          Manage assigned requests, complaints, users, and department workflows.
+        </div>
+      )}
+    </aside>
+  );
+}
+
+export default DepartmentAdminSidebar;

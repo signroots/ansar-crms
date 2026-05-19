@@ -1,4 +1,5 @@
 import { Navigate } from "react-router-dom";
+import { USER_ROLES } from "../../shared/constants/roles";
 import { getAuthSession } from "../../shared/utils/authSession";
 
 function ProtectedRoute({
@@ -17,7 +18,7 @@ function ProtectedRoute({
     return <Navigate to={redirectTo} replace />;
   }
 
-  if (requireAdmin && !session.isAdmin) {
+  if (requireAdmin && !session.isAdmin && session.role !== USER_ROLES.DEPARTMENT_ADMIN) {
     return <Navigate to={redirectTo} replace />;
   }
 

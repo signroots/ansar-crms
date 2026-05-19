@@ -16,14 +16,12 @@ const USERS_FETCH_PAGE_SIZE = 100;
 
 const ROLE_FILTER_OPTIONS = [
   { label: "All roles", value: "all" },
-  { label: "Admin", value: USER_ROLES.DEPARTMENT_ADMIN },
   { label: "Staff", value: USER_ROLES.STAFF },
   { label: "Teacher", value: USER_ROLES.TEACHER },
   { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
 ];
 
 const roleTagColors = {
-  [USER_ROLES.DEPARTMENT_ADMIN]: "gold",
   [USER_ROLES.STAFF]: "blue",
   [USER_ROLES.TEACHER]: "cyan",
   [USER_ROLES.TECHNICAL_STAFF]: "purple",
@@ -243,20 +241,16 @@ const matchesUserRole = (user, roleFilter) => {
     return true;
   }
 
-  if (roleFilter === USER_ROLES.DEPARTMENT_ADMIN) {
-    return user.role === USER_ROLES.DEPARTMENT_ADMIN || Boolean(user.is_admin);
-  }
-
   return user.role === roleFilter;
 };
 
-const superAdminUsersContext = {
+const roleContext = {
   eyebrow: "Access Control",
   title: "User Management",
   subtitle: "Create users, review role access, maintain staff IDs, and keep contact data clean.",
 };
 
-function UsersList({ roleContext = superAdminUsersContext }) {
+function UsersList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -351,16 +345,12 @@ function UsersList({ roleContext = superAdminUsersContext }) {
     const loadedCounts = users.reduce(
       (acc, user) => {
         acc[user.role] = (acc[user.role] || 0) + 1;
-        if (user.is_admin) {
-          acc.adminUsers += 1;
-        }
         return acc;
       },
       {
         [USER_ROLES.STAFF]: 0,
         [USER_ROLES.TEACHER]: 0,
         [USER_ROLES.TECHNICAL_STAFF]: 0,
-        adminUsers: 0,
       },
     );
 
@@ -386,8 +376,8 @@ function UsersList({ roleContext = superAdminUsersContext }) {
       {
         accent: "#f59e0b",
         icon: LuShieldCheck,
-        label: "Loaded admins",
-        value: loadedCounts.adminUsers,
+        label: "Loaded teachers",
+        value: loadedCounts[USER_ROLES.TEACHER],
       },
     ];
   }, [users]);
@@ -456,13 +446,12 @@ function UsersList({ roleContext = superAdminUsersContext }) {
     {
       dataIndex: "role",
       key: "role",
-      render: (role, user) => (
+      render: (role) => (
         <div style={{ display: "grid", gap: "6px" }}>
           <Tag color={roleTagColors[role] || "default"} className="w-fit"             styles={{ root: { width: "fit-content" } }}
 >
             {getText(role)}
           </Tag>
-          {user.is_admin ? <Tag color="gold">Department Admin</Tag> : null}
         </div>
       ),
       title: "Role",

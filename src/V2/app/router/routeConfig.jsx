@@ -1,4 +1,9 @@
 import Landing from "../../features/auth/pages/Landing";
+import DepartmentAdminLayout from "../../features/departmentAdmin/layout/DepartmentAdminLayout";
+import DepartmentAdminComplaints from "../../features/departmentAdmin/pages/Complaints";
+import DepartmentAdminDashboard from "../../features/departmentAdmin/pages/Dashboard";
+import DepartmentAdminRequests from "../../features/departmentAdmin/pages/Requests";
+import DepartmentAdminUsers from "../../features/departmentAdmin/pages/Users";
 import SuperAdminLayout from "../../features/superAdmin/components/layout/Layout";
 import SuperAdminComplaints from "../../features/superAdmin/pages/Complaints";
 import SuperAdminDashboard from "../../features/superAdmin/pages/Dashboard";
@@ -18,7 +23,7 @@ import ComplaintHandle from "../../features/technicalStaff/pages/ComplaintHandle
 import RequestHandle from "../../features/technicalStaff/pages/RequestHandle";
 import StaffHome from "../../features/technicalStaff/pages/StaffHome";
 import StaffProfile from "../../features/technicalStaff/pages/StaffProfile";
-import { ROLE_GROUPS } from "../../shared/constants/roles";
+import { ROLE_GROUPS, USER_ROLES } from "../../shared/constants/roles";
 import ROUTE_PATHS from "./paths";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
@@ -38,6 +43,11 @@ const staffTeacherOptions = {
 
 const technicalStaffOptions = {
   allowedRoles: ROLE_GROUPS.TECHNICAL_STAFF,
+};
+
+const departmentAdminOptions = {
+  allowedRoles: [...ROLE_GROUPS.DEPARTMENT_ADMIN, USER_ROLES.TECHNICAL_STAFF],
+  requireAdmin: true,
 };
 
 export const appRoutes = [
@@ -161,5 +171,34 @@ export const appRoutes = [
   {
     path: ROUTE_PATHS.technicalStaff.profile,
     element: protectedElement(withLayout(StaffLayout, <StaffProfile />), technicalStaffOptions),
+  },
+
+  {
+    path: ROUTE_PATHS.departmentAdmin.dashboard,
+    element: protectedElement(
+      withLayout(DepartmentAdminLayout, <DepartmentAdminDashboard />),
+      departmentAdminOptions,
+    ),
+  },
+  {
+    path: ROUTE_PATHS.departmentAdmin.complaints,
+    element: protectedElement(
+      withLayout(DepartmentAdminLayout, <DepartmentAdminComplaints />),
+      departmentAdminOptions,
+    ),
+  },
+  {
+    path: ROUTE_PATHS.departmentAdmin.requests,
+    element: protectedElement(
+      withLayout(DepartmentAdminLayout, <DepartmentAdminRequests />),
+      departmentAdminOptions,
+    ),
+  },
+  {
+    path: ROUTE_PATHS.departmentAdmin.users,
+    element: protectedElement(
+      withLayout(DepartmentAdminLayout, <DepartmentAdminUsers />),
+      departmentAdminOptions,
+    ),
   },
 ];
