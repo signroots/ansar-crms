@@ -6,7 +6,6 @@ import {
   Empty,
   Input,
   Modal,
-  Pagination,
   Popconfirm,
   Select,
   Table,
@@ -389,22 +388,6 @@ const superAdminComplaintsContext = {
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
 
-const getComplaintSearchText = (complaint) =>
-  [
-    complaint.complaint_id,
-    complaint.department?.name,
-    complaint.institution?.name,
-    complaint.issue_complaint?.name,
-    complaint.type_of_issue?.name,
-    complaint.status,
-    complaint.priority,
-    complaint.complainted_by?.name,
-    complaint.resolved_by?.name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
 const mapComplaintForExport = (complaint) => ({
   "Complaint ID": getText(complaint.complaint_id || complaint.id),
   Date: formatDate(complaint.date, true),
@@ -424,7 +407,7 @@ const mapComplaintForExport = (complaint) => ({
   "Completed Note": getText(complaint.completed_note),
 });
 
-function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
+function ComplaintsList() {
   const [complaints, setComplaints] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState("");
@@ -438,20 +421,36 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
 
   const { role } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
-  const totalCount = complaints.length;
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const data = await apiService.get(COMPLAINTS_LIST_ENDPOINT);
+      const params = {
+        page: currentPage,
+        page_size: rowsPerPage,
+      };
+
+      const searchTerm = search.trim();
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (statusFilter !== "all") {
+        params.status = statusFilter;
+      }
+
+      const data = await apiService.get(COMPLAINTS_LIST_ENDPOINT, { params });
       const normalizedData = normalizeListResponse(data);
 
       setComplaints(normalizedData.results);
+      setTotalCount(normalizedData.count);
     } catch (fetchError) {
       console.error("Error fetching complaints:", fetchError);
       setError("Unable to load complaints right now.");
@@ -459,40 +458,11 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, rowsPerPage, search, statusFilter]);
 
   useEffect(() => {
     fetchComplaints();
   }, [fetchComplaints]);
-
-  const filteredComplaints = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    return complaints.filter((complaint) => {
-      const matchesStatus = statusFilter === "all" || complaint.status === statusFilter;
-      const matchesSearch = !searchTerm || getComplaintSearchText(complaint).includes(searchTerm);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [complaints, search, statusFilter]);
-
-  const paginatedComplaints = useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-
-    return filteredComplaints.slice(startIndex, startIndex + rowsPerPage);
-  }, [currentPage, filteredComplaints, rowsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter]);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredComplaints.length / rowsPerPage));
-
-    if (currentPage > maxPage) {
-      setCurrentPage(maxPage);
-    }
-  }, [currentPage, filteredComplaints.length, rowsPerPage]);
 
   const metrics = useMemo(() => {
     const pageStatusCounts = complaints.reduce(
@@ -574,6 +544,15 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
     } finally {
       setExporting(false);
     }
+  };
+
+  const refreshFirstPage = () => {
+    if (currentPage === 1) {
+      fetchComplaints();
+      return;
+    }
+
+    setCurrentPage(1);
   };
 
   const openComplaintDetails = (complaint) => {
@@ -720,14 +699,14 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
         <div>
           <p style={styles.eyebrow}>
             <LuBuilding2 size={14} />
-            {roleContext.eyebrow}
+            {superAdminComplaintsContext.eyebrow}
           </p>
-          <h1 style={styles.title}>{roleContext.title}</h1>
-          <p style={styles.subtitle}>{roleContext.subtitle}</p>
+          <h1 style={styles.title}>{superAdminComplaintsContext.title}</h1>
+          <p style={styles.subtitle}>{superAdminComplaintsContext.subtitle}</p>
         </div>
 
         <div style={styles.actions}>
-          <CreateComplaints onCreated={fetchComplaints} />
+          <CreateComplaints onCreated={refreshFirstPage} />
           <Button icon={<BiExport size={18} />} onClick={() => setIsExportModalOpen(true)}>
             Export
           </Button>
@@ -755,14 +734,20 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search loaded complaints"
+            onChange={(event) => {
+              setCurrentPage(1);
+              setSearch(event.target.value);
+            }}
+            placeholder="Search complaints"
             prefix={<FiSearch />}
             value={search}
           />
 
           <Select
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setCurrentPage(1);
+              setStatusFilter(value);
+            }}
             options={[
               { label: "All statuses", value: "all" },
               { label: "Pending", value: "Pending" },
@@ -774,8 +759,7 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
           />
 
           <span style={styles.muted}>
-            Showing {formatNumber(paginatedComplaints.length)} of{" "}
-            {formatNumber(filteredComplaints.length)} filtered
+            Showing {formatNumber(complaints.length)} of {formatNumber(totalCount)} complaints
           </span>
         </div>
 
@@ -787,41 +771,27 @@ function ComplaintsList({ roleContext = superAdminComplaintsContext }) {
           <div style={styles.tableWrap}>
             <Table
               columns={columns}
-              dataSource={paginatedComplaints}
+              dataSource={complaints}
               loading={loading}
               locale={{ emptyText: <Empty description="No complaints found" /> }}
-              pagination={false}
+              pagination={{
+                current: currentPage,
+                pageSize: rowsPerPage,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                showSizeChanger: true,
+                total: totalCount,
+              }}
+              onChange={(pagination) => {
+                const nextPageSize = pagination.pageSize || 10;
+
+                setRowsPerPage(nextPageSize);
+                setCurrentPage(nextPageSize === rowsPerPage ? pagination.current || 1 : 1);
+              }}
               rowKey={(record) => record.id || record.complaint_id}
               scroll={{ x: 1130 }}
             />
           </div>
         )}
-
-        <div style={styles.pagination}>
-          <Pagination
-            current={currentPage}
-            onChange={(page) => setCurrentPage(page)}
-            pageSize={rowsPerPage}
-            showSizeChanger={false}
-            total={filteredComplaints.length}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={styles.muted}>Rows</span>
-            <Select
-              onChange={(value) => {
-                setRowsPerPage(value);
-                setCurrentPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS.map((value) => ({
-                label: `${value} / page`,
-                value,
-              }))}
-              style={{ width: 128 }}
-              value={rowsPerPage}
-            />
-          </div>
-        </div>
       </section>
 
       <Drawer
