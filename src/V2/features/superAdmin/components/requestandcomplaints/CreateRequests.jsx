@@ -205,6 +205,8 @@ function CreateRequests({ fetchRequests }) {
   const [requestTypeName, setRequestTypeName] = useState("");
   const [staffIds, setStaffIds] = useState([]);
   const [subLocations, setSubLocations] = useState([]);
+  const [lookupsLoaded, setLookupsLoaded] = useState(false);
+  const [lookupsLoading, setLookupsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [typesOfRequest, setTypesOfRequest] = useState([]);
   const [userRole, setUserRole] = useState("");
@@ -265,23 +267,44 @@ function CreateRequests({ fetchRequests }) {
     resetForm();
   };
 
+  const loadLookups = async () => {
+    if (lookupsLoaded || lookupsLoading) {
+      return;
+    }
+
+    setLookupsLoading(true);
+
+    try {
+      const [staffResponse, institutionsResponse, requestTypesResponse] = await Promise.all([
+        apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead"),
+        apiRequest("GET", "/api/institutions/"),
+        apiRequest("GET", "/api/types-of-request/"),
+      ]);
+
+      setStaffIds(staffResponse.data.staff_ids || []);
+      setInstitutions(normalizeApiList(institutionsResponse.data));
+      setTypesOfRequest(normalizeApiList(requestTypesResponse.data));
+      setLookupsLoaded(true);
+    } catch (error) {
+      console.error("Request form lookup fetch error:", error);
+      setStaffIds([]);
+      setInstitutions([]);
+      setTypesOfRequest([]);
+      toast.error("Unable to load request form data");
+    } finally {
+      setLookupsLoading(false);
+    }
+  };
+
+  const openRequestDrawer = () => {
+    resetForm();
+    setOpenDrawer(true);
+    loadLookups();
+  };
+
   useEffect(() => {
     const role = localStorage.getItem("user_role") || localStorage.getItem("role") || "";
     setUserRole(role);
-  }, []);
-
-  useEffect(() => {
-    apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead")
-      .then((res) => setStaffIds(res.data.staff_ids || []))
-      .catch(() => setStaffIds([]));
-
-    apiRequest("GET", "/api/institutions/")
-      .then((res) => setInstitutions(normalizeApiList(res.data)))
-      .catch(() => setInstitutions([]));
-
-    apiRequest("GET", "/api/types-of-request/")
-      .then((res) => setTypesOfRequest(normalizeApiList(res.data)))
-      .catch(() => setTypesOfRequest([]));
   }, []);
 
   useEffect(() => {
@@ -434,10 +457,7 @@ function CreateRequests({ fetchRequests }) {
     <>
       <Button
         icon={<FiPlus size={17} />}
-        onClick={() => {
-          resetForm();
-          setOpenDrawer(true);
-        }}
+        onClick={openRequestDrawer}
         style={styles.trigger}
         type="primary"
       >
@@ -467,6 +487,7 @@ function CreateRequests({ fetchRequests }) {
                   options={staffOptions}
                   placeholder="Select staff"
                   showSearch
+                  loading={lookupsLoading}
                   status={errors.staffId ? "error" : undefined}
                   style={styles.control}
                   value={formData.staffId || undefined}
@@ -487,6 +508,7 @@ function CreateRequests({ fetchRequests }) {
                     options={requestTypeOptions}
                     placeholder="Select type"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.typeOfRequest ? "error" : undefined}
                     style={styles.control}
                     value={formData.typeOfRequest || undefined}
@@ -539,6 +561,7 @@ function CreateRequests({ fetchRequests }) {
                     options={institutionOptions}
                     placeholder="Select location"
                     showSearch
+                    loading={lookupsLoading}
                     status={errors.location ? "error" : undefined}
                     style={styles.control}
                     value={formData.location || undefined}

@@ -6,7 +6,6 @@ import {
   Empty,
   Input,
   Modal,
-  Pagination,
   Popconfirm,
   Select,
   Table,
@@ -302,22 +301,6 @@ const superAdminRequestsContext = {
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default" };
 
-
-const getRequestSearchText = (request) =>
-  [
-    request.request_id,
-    request.department?.name,
-    request.institution?.name,
-    request.issue_request?.name,
-    request.status,
-    request.requested_by?.name,
-    request.resolved_by?.name,
-    request.program_name,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
 const mapRequestForExport = (request) => ({
   "Request ID": getText(request.request_id || request.id),
   Date: formatDate(request.date, true),
@@ -335,7 +318,7 @@ const mapRequestForExport = (request) => ({
   Notes: getText(request.notes),
 });
 
-function RequestsList({ roleContext = superAdminRequestsContext }) {
+function RequestsList() {
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState("");
   const [exportRange, setExportRange] = useState(null);
@@ -349,20 +332,35 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
 
   const { role } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
-  const totalCount = requests.length;
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
     setError("");
 
     try {
-      const data = await apiService.get(REQUESTS_LIST_ENDPOINT);
+      const params = {
+        page: currentPage,
+        page_size: rowsPerPage,
+      };
+      const searchTerm = search.trim();
+
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+
+      if (statusFilter !== "all") {
+        params.status = statusFilter;
+      }
+
+      const data = await apiService.get(REQUESTS_LIST_ENDPOINT, { params });
       const normalizedData = normalizeListResponse(data);
 
       setRequests(normalizedData.results);
+      setTotalCount(normalizedData.count);
     } catch (fetchError) {
       console.error("Error fetching requests:", fetchError);
       setError("Unable to load requests right now.");
@@ -370,40 +368,11 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, rowsPerPage, search, statusFilter]);
 
   useEffect(() => {
     fetchRequests();
   }, [fetchRequests]);
-
-  const filteredRequests = useMemo(() => {
-    const searchTerm = search.trim().toLowerCase();
-
-    return requests.filter((request) => {
-      const matchesStatus = statusFilter === "all" || request.status === statusFilter;
-      const matchesSearch = !searchTerm || getRequestSearchText(request).includes(searchTerm);
-
-      return matchesStatus && matchesSearch;
-    });
-  }, [requests, search, statusFilter]);
-
-  const paginatedRequests = useMemo(() => {
-    const startIndex = (currentPage - 1) * rowsPerPage;
-
-    return filteredRequests.slice(startIndex, startIndex + rowsPerPage);
-  }, [currentPage, filteredRequests, rowsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, statusFilter]);
-
-  useEffect(() => {
-    const maxPage = Math.max(1, Math.ceil(filteredRequests.length / rowsPerPage));
-
-    if (currentPage > maxPage) {
-      setCurrentPage(maxPage);
-    }
-  }, [currentPage, filteredRequests.length, rowsPerPage]);
 
   const metrics = useMemo(() => {
     const statusCounts = requests.reduce(
@@ -485,6 +454,15 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
     } finally {
       setExporting(false);
     }
+  };
+
+  const refreshFirstPage = () => {
+    if (currentPage === 1) {
+      fetchRequests();
+      return;
+    }
+
+    setCurrentPage(1);
   };
 
   const markAsViewed = async (request) => {
@@ -639,14 +617,14 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
         <div>
           <p style={styles.eyebrow}>
             <LuCalendarClock size={14} />
-            {roleContext.eyebrow}
+            {superAdminRequestsContext.eyebrow}
           </p>
-          <h1 style={styles.title}>{roleContext.title}</h1>
-          <p style={styles.subtitle}>{roleContext.subtitle}</p>
+          <h1 style={styles.title}>{superAdminRequestsContext.title}</h1>
+          <p style={styles.subtitle}>{superAdminRequestsContext.subtitle}</p>
         </div>
 
         <div style={styles.actions}>
-          <CreateRequests fetchRequests={fetchRequests} />
+          <CreateRequests fetchRequests={refreshFirstPage} />
           <Button icon={<BiExport size={18} />} onClick={() => setIsExportModalOpen(true)}>
             Export
           </Button>
@@ -674,14 +652,20 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
         <div style={styles.toolbar}>
           <Input
             allowClear
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search loaded requests"
+            onChange={(event) => {
+              setCurrentPage(1);
+              setSearch(event.target.value);
+            }}
+            placeholder="Search requests"
             prefix={<FiSearch />}
             value={search}
           />
 
           <Select
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setCurrentPage(1);
+              setStatusFilter(value);
+            }}
             options={[
               { label: "All statuses", value: "all" },
               { label: "Pending", value: "Pending" },
@@ -693,8 +677,7 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
           />
 
           <span style={styles.muted}>
-            Showing {formatNumber(paginatedRequests.length)} of{" "}
-            {formatNumber(filteredRequests.length)} filtered
+            Showing {formatNumber(requests.length)} of {formatNumber(totalCount)} requests
           </span>
         </div>
 
@@ -706,41 +689,27 @@ function RequestsList({ roleContext = superAdminRequestsContext }) {
           <div style={styles.tableWrap}>
             <Table
               columns={columns}
-              dataSource={paginatedRequests}
+              dataSource={requests}
               loading={loading}
               locale={{ emptyText: <Empty description="No requests found" /> }}
-              pagination={false}
+              pagination={{
+                current: currentPage,
+                pageSize: rowsPerPage,
+                pageSizeOptions: PAGE_SIZE_OPTIONS,
+                showSizeChanger: true,
+                total: totalCount,
+              }}
+              onChange={(pagination) => {
+                const nextPageSize = pagination.pageSize || 10;
+
+                setRowsPerPage(nextPageSize);
+                setCurrentPage(nextPageSize === rowsPerPage ? pagination.current || 1 : 1);
+              }}
               rowKey={(record) => record.id || record.request_id}
               scroll={{ x: 1130 }}
             />
           </div>
         )}
-
-        <div style={styles.pagination}>
-          <Pagination
-            current={currentPage}
-            onChange={(page) => setCurrentPage(page)}
-            pageSize={rowsPerPage}
-            showSizeChanger={false}
-            total={filteredRequests.length}
-          />
-
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={styles.muted}>Rows</span>
-            <Select
-              onChange={(value) => {
-                setRowsPerPage(value);
-                setCurrentPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS.map((value) => ({
-                label: `${value} / page`,
-                value,
-              }))}
-              style={{ width: 128 }}
-              value={rowsPerPage}
-            />
-          </div>
-        </div>
       </section>
 
       <Drawer
