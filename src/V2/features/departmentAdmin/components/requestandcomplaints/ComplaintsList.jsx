@@ -752,7 +752,7 @@ function ComplaintsList() {
               setStatusFilter(value);
             }}
             options={[
-              { label: "All statuses", value: "all" },
+              { label: "All status", value: "all" },
               { label: "Pending", value: "Pending" },
               { label: "In Progress", value: "In Progress" },
               { label: "Waiting", value: "Waiting" },
