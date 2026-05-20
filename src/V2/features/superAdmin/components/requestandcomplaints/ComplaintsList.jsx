@@ -371,12 +371,20 @@ const normalizeListResponse = (data) => {
   if (Array.isArray(data)) {
     return {
       count: data.length,
+      completedCount: 0,
+      inProgressCount: 0,
+      onHoldCount: 0,
+      pendingCount: 0,
       results: data,
     };
   }
 
   return {
     count: Number(data?.count || data?.results?.length || 0),
+    completedCount: Number(data?.completed_count || 0),
+    inProgressCount: Number(data?.in_progress_count || 0),
+    onHoldCount: Number(data?.on_hold_count || 0),
+    pendingCount: Number(data?.pending_count || 0),
     results: Array.isArray(data?.results) ? data.results : [],
   };
 };
@@ -388,6 +396,49 @@ const superAdminComplaintsContext = {
 };
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default", accent: "#64748b" };
+
+const getCountKeyFromStatus = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  if (normalizedStatus === "pending") {
+    return "pending";
+  }
+
+  if (normalizedStatus === "in progress") {
+    return "inProgress";
+  }
+
+  if (normalizedStatus === "completed") {
+    return "completed";
+  }
+
+  if (normalizedStatus === "waiting" || normalizedStatus === "on hold") {
+    return "onHold";
+  }
+
+  return "";
+};
+
+const updateCountForStatusChange = (currentCounts, previousStatus, nextStatus) => {
+  const previousKey = getCountKeyFromStatus(previousStatus);
+  const nextKey = getCountKeyFromStatus(nextStatus);
+
+  if (!previousKey && !nextKey) {
+    return currentCounts;
+  }
+
+  const nextCounts = { ...currentCounts };
+
+  if (previousKey) {
+    nextCounts[previousKey] = Math.max(0, nextCounts[previousKey] - 1);
+  }
+
+  if (nextKey) {
+    nextCounts[nextKey] += 1;
+  }
+
+  return nextCounts;
+};
 
 const mapComplaintForExport = (complaint) => ({
   "Complaint ID": getText(complaint.complaint_id || complaint.id),
@@ -423,6 +474,13 @@ function ComplaintsList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
+  const [summaryCountsLoaded, setSummaryCountsLoaded] = useState(false);
+  const [summaryCounts, setSummaryCounts] = useState({
+    completed: 0,
+    inProgress: 0,
+    onHold: 0,
+    pending: 0,
+  });
   const [totalCount, setTotalCount] = useState(0);
 
   const { role } = useMemo(() => getAuthSession(), []);
@@ -453,6 +511,22 @@ function ComplaintsList() {
 
       setComplaints(normalizedData.results);
       setTotalCount(normalizedData.count);
+      setSummaryCounts((currentCounts) => {
+        const nextCounts = {
+          completed: normalizedData.completedCount,
+          inProgress: normalizedData.inProgressCount,
+          onHold: normalizedData.onHoldCount,
+          pending: normalizedData.pendingCount,
+        };
+
+        return currentCounts.completed === nextCounts.completed &&
+          currentCounts.inProgress === nextCounts.inProgress &&
+          currentCounts.onHold === nextCounts.onHold &&
+          currentCounts.pending === nextCounts.pending
+          ? currentCounts
+          : nextCounts;
+      });
+      setSummaryCountsLoaded(true);
     } catch (fetchError) {
       console.error("Error fetching complaints:", fetchError);
       setError("Unable to load complaints right now.");
@@ -476,19 +550,6 @@ function ComplaintsList() {
   }, [fetchComplaints]);
 
   const metrics = useMemo(() => {
-    const pageStatusCounts = complaints.reduce(
-      (acc, complaint) => {
-        acc[complaint.status] = (acc[complaint.status] || 0) + 1;
-        return acc;
-      },
-      {
-        Completed: 0,
-        "In Progress": 0,
-        Pending: 0,
-        Waiting: 0,
-      },
-    );
-
     return [
       {
         accent: "#ef4444",
@@ -500,22 +561,28 @@ function ComplaintsList() {
         accent: "#f59e0b",
         icon: LuClock3,
         label: "Pending",
-        value: pageStatusCounts.Pending,
+        value: summaryCounts.pending,
       },
       {
         accent: "#3b82f6",
         icon: LuListChecks,
         label: "In progress",
-        value: pageStatusCounts["In Progress"],
+        value: summaryCounts.inProgress,
+      },
+      {
+        accent: "#f97316",
+        icon: LuClock3,
+        label: "Waiting",
+        value: summaryCounts.onHold,
       },
       {
         accent: "#0cb899",
         icon: FaCheckCircle,
         label: "Completed",
-        value: pageStatusCounts.Completed,
+        value: summaryCounts.completed,
       },
     ];
-  }, [complaints, totalCount]);
+  }, [summaryCounts, totalCount]);
 
   const exportComplaints = async () => {
     if (!exportRange?.[0] || !exportRange?.[1]) {
@@ -597,6 +664,9 @@ function ComplaintsList() {
         ...currentComplaint,
         status: statusValue,
       }));
+      setSummaryCounts((currentCounts) =>
+        updateCountForStatusChange(currentCounts, selectedComplaint.status, statusValue),
+      );
       toast.success("Complaint status updated");
     } catch (statusError) {
       console.error("Error updating complaint status:", statusError);
@@ -732,7 +802,9 @@ function ComplaintsList() {
           <article key={label} style={styles.metric(accent)}>
             <div>
               <p style={styles.metricLabel}>{label}</p>
-              <h2 style={styles.metricValue}>{loading ? "-" : formatNumber(value)}</h2>
+              <h2 style={styles.metricValue}>
+                {loading && !summaryCountsLoaded ? "-" : formatNumber(value)}
+              </h2>
             </div>
             <div style={styles.metricIcon}>
               <Icon size={22} />

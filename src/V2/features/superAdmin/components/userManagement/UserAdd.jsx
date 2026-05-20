@@ -1,6 +1,6 @@
  
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, Drawer, Input, Select } from "antd";
+import { Button, Checkbox, Drawer, Form, Input, Select } from "antd";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
@@ -30,6 +30,10 @@ const initialFormData = {
   role: "",
   staff_id: "",
   typeofissue: "",
+};
+
+const formItemStyle = {
+  marginBottom: 0,
 };
 
 const styles = {
@@ -82,11 +86,6 @@ const styles = {
     fontSize: "14px",
     fontWeight: 500,
     letterSpacing: "0",
-  },
-  error: {
-    color: "#ef4444",
-    fontSize: "13px",
-    fontWeight: 700,
   },
   control: {
     height: "48px",
@@ -147,18 +146,9 @@ const normalizeExistingValues = (items, key) =>
       : String(item),
   );
 
-function FieldError({ children }) {
-  if (!children) {
-    return null;
-  }
-
-  return <span style={styles.error}>{children}</span>;
-}
-
 function UserAdd({ onUserAdded }) {
+  const [form] = Form.useForm();
   const [departments, setDepartments] = useState([]);
-  const [errors, setErrors] = useState({});
-  const [formData, setFormData] = useState(initialFormData);
   const [institutions, setInstitutions] = useState([]);
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
   const [lookupsLoading, setLookupsLoading] = useState(false);
@@ -168,29 +158,19 @@ function UserAdd({ onUserAdded }) {
   const [submitting, setSubmitting] = useState(false);
   const [typesOfIssue, setTypesOfIssue] = useState([]);
 
+  const selectedInstitution = Form.useWatch("institution", form);
+  const selectedRole = Form.useWatch("role", form);
+
   const needsInstitution =
-    formData.role === USER_ROLES.STAFF || formData.role === USER_ROLES.TEACHER;
-  const isTechSupport = formData.role === USER_ROLES.TECHNICAL_STAFF;
+    selectedRole === USER_ROLES.STAFF || selectedRole === USER_ROLES.TEACHER;
+  const isTechSupport = selectedRole === USER_ROLES.TECHNICAL_STAFF;
 
   const institutionOptions = useMemo(() => toOptions(institutions), [institutions]);
   const departmentOptions = useMemo(() => toOptions(departments), [departments]);
   const issueTypeOptions = useMemo(() => toOptions(typesOfIssue), [typesOfIssue]);
 
-  const setField = (name, value, extra = {}) => {
-    setFormData((currentFormData) => ({
-      ...currentFormData,
-      [name]: value,
-      ...extra,
-    }));
-    setErrors((currentErrors) => ({
-      ...currentErrors,
-      [name]: "",
-    }));
-  };
-
   const resetForm = () => {
-    setFormData(initialFormData);
-    setErrors({});
+    form.resetFields();
     setDepartments([]);
     setMobileNumberError("");
     setStaffIdError("");
@@ -236,50 +216,58 @@ function UserAdd({ onUserAdded }) {
   }, [loadLookups, openDrawer]);
 
   useEffect(() => {
-    if (!openDrawer || !formData.institution || !needsInstitution) {
+    if (!openDrawer || !selectedInstitution || !needsInstitution) {
       setDepartments([]);
       return;
     }
 
     apiService
-      .get(DEPARTMENTS_ENDPOINT(formData.institution, formData.role))
+      .get(DEPARTMENTS_ENDPOINT(selectedInstitution, selectedRole))
       .then((data) => setDepartments(normalizeApiList(data)))
       .catch(() => setDepartments([]));
-  }, [formData.institution, formData.role, needsInstitution, openDrawer]);
+  }, [needsInstitution, openDrawer, selectedInstitution, selectedRole]);
 
   const checkStaffIdExists = async (staffId) => {
-    if (!staffId || staffIdError) {
-      return;
+    if (!staffId || !/^[A-Z][0-9]{0,5}$/.test(staffId)) {
+      return false;
     }
 
     try {
       const data = await apiService.get(CHECK_STAFF_ID_ENDPOINT);
       const existingStaffIds = normalizeExistingValues(data?.staff_ids, "staff_id");
+      const message = existingStaffIds.includes(String(staffId))
+        ? "This Staff ID is already used."
+        : "";
 
-      setStaffIdError(
-        existingStaffIds.includes(String(staffId)) ? "This Staff ID is already used." : "",
-      );
+      setStaffIdError(message);
+      form.setFields([{ name: "staff_id", errors: message ? [message] : [] }]);
+
+      return !message;
     } catch (error) {
       console.error("Error checking Staff ID:", error);
+      return true;
     }
   };
 
   const checkMobileNumberExists = async (mobileNumber) => {
     if (!mobileNumber || mobileNumber.length !== 10) {
-      return;
+      return false;
     }
 
     try {
       const data = await apiService.get(CHECK_MOBILE_ENDPOINT);
       const existingMobileNumbers = normalizeExistingValues(data?.mobile_numbers, "mobile_number");
+      const message = existingMobileNumbers.includes(String(mobileNumber))
+        ? "This mobile number is already used."
+        : "";
 
-      setMobileNumberError(
-        existingMobileNumbers.includes(String(mobileNumber))
-          ? "This mobile number is already used."
-          : "",
-      );
+      setMobileNumberError(message);
+      form.setFields([{ name: "mobile_number", errors: message ? [message] : [] }]);
+
+      return !message;
     } catch (error) {
       console.error("Error checking mobile number:", error);
+      return true;
     }
   };
 
@@ -287,23 +275,26 @@ function UserAdd({ onUserAdded }) {
     const value = event.target.value.trim().toUpperCase();
 
     if (value && !/^[A-Z][0-9]{0,5}$/.test(value)) {
-      setStaffIdError("Staff ID must start with a letter and use numbers after it.");
+      const message = "Staff ID must start with a letter and use numbers after it.";
+      setStaffIdError(message);
+      form.setFields([{ name: "staff_id", errors: [message] }]);
       return;
     }
 
     setStaffIdError("");
-    setField("staff_id", value);
+    form.setFields([{ name: "staff_id", value, errors: [] }]);
   };
 
   const handleMobileChange = (event) => {
     const value = event.target.value.replace(/\D/g, "").slice(0, 10);
 
     setMobileNumberError("");
-    setField("mobile_number", value);
+    form.setFields([{ name: "mobile_number", value, errors: [] }]);
   };
 
   const handleRoleChange = (value) => {
-    setField("role", value, {
+    form.setFieldsValue({
+      role: value,
       department: "",
       institution: "",
       is_admin: false,
@@ -311,41 +302,35 @@ function UserAdd({ onUserAdded }) {
     });
   };
 
-  const validateForm = () => {
-    const nextErrors = {
-      department: needsInstitution && !formData.department ? "Department is required" : "",
-      institution: needsInstitution && !formData.institution ? "Institution is required" : "",
-      mobile_number: !formData.mobile_number
-        ? "Mobile number is required"
-        : formData.mobile_number.length !== 10
-          ? "Enter a 10 digit mobile number"
-          : "",
-      name: !formData.name.trim() ? "Name is required" : "",
-      role: !formData.role ? "Role is required" : "",
-      staff_id: !formData.staff_id ? "Staff ID is required" : staffIdError,
-      typeofissue: isTechSupport && !formData.typeofissue ? "Section is required" : "",
-    };
-
-    setErrors(nextErrors);
-
-    return !Object.values(nextErrors).some(Boolean) && !mobileNumberError;
-  };
-
   const saveUser = async () => {
-    if (!validateForm()) {
+    let values;
+
+    try {
+      values = await form.validateFields();
+    } catch {
       toast.warning("Please complete the required fields");
       return;
     }
 
+    const [isStaffIdAvailable, isMobileAvailable] = await Promise.all([
+      checkStaffIdExists(values.staff_id),
+      checkMobileNumberExists(values.mobile_number),
+    ]);
+
+    if (!isStaffIdAvailable || !isMobileAvailable || staffIdError || mobileNumberError) {
+      toast.warning("Please fix the highlighted fields");
+      return;
+    }
+
     const payload = {
-      department_id: needsInstitution ? formData.department : null,
-      institution_id: needsInstitution ? formData.institution : null,
-      is_admin: isTechSupport ? formData.is_admin : false,
-      mobile_number: formData.mobile_number,
-      name: formData.name.trim(),
-      role: formData.role,
-      staff_id: formData.staff_id,
-      typeofissue_id: isTechSupport ? formData.typeofissue : null,
+      department_id: needsInstitution ? values.department : null,
+      institution_id: needsInstitution ? values.institution : null,
+      is_admin: isTechSupport ? Boolean(values.is_admin) : false,
+      mobile_number: values.mobile_number,
+      name: values.name.trim(),
+      role: values.role,
+      staff_id: values.staff_id,
+      typeofissue_id: isTechSupport ? values.typeofissue : null,
     };
 
     setSubmitting(true);
@@ -392,101 +377,121 @@ function UserAdd({ onUserAdded }) {
         }
         width={720}
       >
-        <div style={styles.form}>
+        <Form
+          form={form}
+          initialValues={initialFormData}
+          layout="vertical"
+          requiredMark={false}
+          style={styles.form}
+        >
           <section style={styles.section}>
             <div style={styles.grid}>
-              <label style={styles.field}>
-                <span style={styles.label}>Name</span>
+              <Form.Item
+                label={<span style={styles.label}>Name</span>}
+                name="name"
+                rules={[{ required: true, whitespace: true, message: "Name is required" }]}
+                style={formItemStyle}
+              >
                 <Input
                   placeholder="Full name"
-                  status={errors.name ? "error" : undefined}
                   style={styles.control}
-                  value={formData.name}
-                  onChange={(event) => setField("name", event.target.value)}
                 />
-                <FieldError>{errors.name}</FieldError>
-              </label>
+              </Form.Item>
 
-              <label style={styles.field}>
-                <span style={styles.label}>Staff ID</span>
+              <Form.Item
+                label={<span style={styles.label}>Staff ID</span>}
+                name="staff_id"
+                rules={[
+                  { required: true, message: "Staff ID is required" },
+                  {
+                    pattern: /^[A-Z][0-9]{0,5}$/,
+                    message: "Staff ID must start with a letter and use numbers after it.",
+                  },
+                ]}
+                style={formItemStyle}
+              >
                 <Input
                   placeholder="A12345"
-                  status={errors.staff_id || staffIdError ? "error" : undefined}
                   style={styles.control}
-                  value={formData.staff_id}
-                  onBlur={() => checkStaffIdExists(formData.staff_id)}
+                  onBlur={() => checkStaffIdExists(form.getFieldValue("staff_id"))}
                   onChange={handleStaffIdChange}
                 />
-                <FieldError>{errors.staff_id || staffIdError}</FieldError>
-              </label>
+              </Form.Item>
 
-              <label style={styles.field}>
-                <span style={styles.label}>Role</span>
+              <Form.Item
+                label={<span style={styles.label}>Role</span>}
+                name="role"
+                rules={[{ required: true, message: "Role is required" }]}
+                style={formItemStyle}
+              >
                 <Select
                   options={roleOptions}
                   placeholder="Select role"
-                  status={errors.role ? "error" : undefined}
                   style={styles.control}
-                  value={formData.role || undefined}
                   onChange={handleRoleChange}
                 />
-                <FieldError>{errors.role}</FieldError>
-              </label>
+              </Form.Item>
 
-              <label style={styles.field}>
-                <span style={styles.label}>Mobile Number</span>
+              <Form.Item
+                label={<span style={styles.label}>Mobile Number</span>}
+                name="mobile_number"
+                rules={[
+                  { required: true, message: "Mobile number is required" },
+                  { len: 10, message: "Enter a 10 digit mobile number" },
+                ]}
+                style={formItemStyle}
+              >
                 <Input
                   placeholder="10 digit mobile number"
-                  status={errors.mobile_number || mobileNumberError ? "error" : undefined}
                   style={styles.control}
-                  value={formData.mobile_number}
-                  onBlur={() => checkMobileNumberExists(formData.mobile_number)}
+                  onBlur={() => checkMobileNumberExists(form.getFieldValue("mobile_number"))}
                   onChange={handleMobileChange}
                 />
-                <FieldError>{errors.mobile_number || mobileNumberError}</FieldError>
-              </label>
+              </Form.Item>
             </div>
           </section>
 
           {needsInstitution ? (
             <section style={styles.section}>
               <div style={styles.grid}>
-                <label style={styles.field}>
-                  <span style={styles.label}>Institution</span>
+                <Form.Item
+                  label={<span style={styles.label}>Institution</span>}
+                  name="institution"
+                  rules={[{ required: true, message: "Institution is required" }]}
+                  style={formItemStyle}
+                >
                   <Select
                     optionFilterProp="label"
                     options={institutionOptions}
                     placeholder="Select institution"
                     showSearch
                     loading={lookupsLoading}
-                    status={errors.institution ? "error" : undefined}
                     style={styles.control}
-                    value={formData.institution || undefined}
                     onChange={(value) =>
-                      setField("institution", value, {
+                      form.setFieldsValue({
+                        institution: value,
                         department: "",
                       })
                     }
                   />
-                  <FieldError>{errors.institution}</FieldError>
-                </label>
+                </Form.Item>
 
-                <label style={styles.field}>
-                  <span style={styles.label}>Department</span>
+                <Form.Item
+                  label={<span style={styles.label}>Department</span>}
+                  name="department"
+                  rules={[{ required: false, message: "Department is required" }]}
+                  style={formItemStyle}
+                >
                   <Select
-                    disabled={!formData.institution}
+                    disabled={!selectedInstitution}
                     loading={lookupsLoading}
                     optionFilterProp="label"
                     options={departmentOptions}
                     placeholder="Select department"
                     showSearch
-                    status={errors.department ? "error" : undefined}
                     style={styles.control}
-                    value={formData.department || undefined}
-                    onChange={(value) => setField("department", value)}
                   />
-                  <FieldError>{errors.department}</FieldError>
-                </label>
+                </Form.Item>
               </div>
             </section>
           ) : null}
@@ -494,34 +499,36 @@ function UserAdd({ onUserAdded }) {
           {isTechSupport ? (
             <section style={styles.section}>
               <div style={styles.grid}>
-                <label style={styles.field}>
-                  <span style={styles.label}>Section</span>
+                <Form.Item
+                  label={<span style={styles.label}>Section</span>}
+                  name="typeofissue"
+                  rules={[{ required: true, message: "Section is required" }]}
+                  style={formItemStyle}
+                >
                   <Select
                     optionFilterProp="label"
                     options={issueTypeOptions}
                     placeholder="Select section"
                     showSearch
                     loading={lookupsLoading}
-                    status={errors.typeofissue ? "error" : undefined}
                     style={styles.control}
-                    value={formData.typeofissue || undefined}
-                    onChange={(value) => setField("typeofissue", value)}
                   />
-                  <FieldError>{errors.typeofissue}</FieldError>
-                </label>
+                </Form.Item>
 
-                <label style={{ ...styles.field, alignContent: "end" }}>
+                <Form.Item
+                  name="is_admin"
+                  style={{ ...formItemStyle, alignContent: "end" }}
+                  valuePropName="checked"
+                >
                   <Checkbox
-                    checked={formData.is_admin}
-                    onChange={(event) => setField("is_admin", event.target.checked)}
                   >
                     Department Admin
                   </Checkbox>
-                </label>
+                </Form.Item>
               </div>
             </section>
           ) : null}
-        </div>
+        </Form>
 
         <div style={styles.footer}>
           <Button onClick={closeDrawer} style={styles.cancelButton}>
