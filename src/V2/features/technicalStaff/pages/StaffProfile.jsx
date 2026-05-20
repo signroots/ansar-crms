@@ -21,7 +21,7 @@ import { useNavigate } from "react-router-dom";
 
 import ROUTE_PATHS from "../../../app/router/paths";
 import { clearAuthSession, getAuthSession } from "../../../shared/utils/authSession";
-import BASE_URL from "../../../shared/utils/baseUrl";
+import { apiService } from "../../../services/api/Api.service";
 
 const getInitial = (name) => name?.trim()?.charAt(0)?.toUpperCase() || "?";
 
@@ -48,13 +48,7 @@ function StaffProfile() {
       }
 
       try {
-        const response = await fetch(`${BASE_URL}/api/get-user-details/${staffId}/`);
-
-        if (!response.ok) {
-          throw new Error("Unable to fetch profile details.");
-        }
-
-        const data = await response.json();
+        const data = await apiService.get(`/api/get-user-details/${staffId}/`);
 
         if (isMounted) {
           setUser(data);

@@ -18,13 +18,24 @@ import BASE_URL from "../../utils/baseUrl";
 // import { Button } from 'bootstrap';
 import { useNavigate } from "react-router-dom";
 
+const getAccessToken = () =>
+  localStorage.getItem("access_token") ||
+  localStorage.getItem("user_access_token") ||
+  localStorage.getItem("admin_access_token") ||
+  localStorage.getItem("ts_access_token") ||
+  localStorage.getItem("tech_access_token");
+
 function UserProfile() {
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
   useEffect(() => {
     const staffId = localStorage.getItem("staff_id") || "";
+    const accessToken = getAccessToken();
+
     if (staffId) {
-      fetch(`${BASE_URL}/api/get-user-details/${staffId}/`)
+      fetch(`${BASE_URL}/api/get-user-details/${staffId}/`, {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+      })
         .then((response) => response.json())
         .then((data) => setUser(data))
         .catch((error) => console.error("Error fetching user details:", error));
