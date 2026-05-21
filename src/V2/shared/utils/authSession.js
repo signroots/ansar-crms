@@ -23,6 +23,7 @@ const getFirstStoredValue = (keys) => {
 export const getAuthSession = () => ({
   accessToken: getFirstStoredValue([STORAGE_KEYS.ACCESS_TOKEN, ...LEGACY_TOKEN_KEYS]),
   role: getFirstStoredValue([STORAGE_KEYS.ROLE, STORAGE_KEYS.USER_ROLE]),
+  profileName: localStorage.getItem(STORAGE_KEYS.PROFILE_NAME),
   staffId: localStorage.getItem(STORAGE_KEYS.STAFF_ID),
   isAdmin: readBoolean(STORAGE_KEYS.IS_ADMIN),
   typeOfIssueId: localStorage.getItem(STORAGE_KEYS.TYPE_OF_ISSUE_ID),
@@ -59,6 +60,7 @@ export const clearAuthSession = () => {
     STORAGE_KEYS.REFRESH_TOKEN,
     STORAGE_KEYS.ROLE,
     STORAGE_KEYS.USER_ROLE,
+    STORAGE_KEYS.PROFILE_NAME,
     STORAGE_KEYS.STAFF_ID,
     STORAGE_KEYS.IS_ADMIN,
     STORAGE_KEYS.TYPE_OF_ISSUE_ID,
@@ -71,6 +73,7 @@ export const clearAuthSession = () => {
 export const setAuthSession = ({
   accessToken,
   role,
+  profileName,
   staffId,
   isAdmin = false,
   typeOfIssueId,
@@ -100,6 +103,10 @@ export const setAuthSession = ({
 
   if (role) {
     localStorage.setItem(STORAGE_KEYS.ROLE, role);
+  }
+
+  if (profileName) {
+    localStorage.setItem(STORAGE_KEYS.PROFILE_NAME, profileName);
   }
 
   if (staffId) {

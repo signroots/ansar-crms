@@ -372,7 +372,7 @@ function UsersList() {
       render: (_, user) => (
         <div>
           <strong>{getText(user.name)}</strong>
-          <div style={styles.muted}>{getText(user.staff_id)}</div>
+          <div style={styles.muted}>{getText(user.staff_id || user.username)}</div>
         </div>
       ),
       title: "Name & ID",
@@ -397,16 +397,16 @@ function UsersList() {
       render: (_, user) => (
         <div>
           <strong>{getText(user.institution?.name)}</strong>
-          <div style={styles.muted}>{getText(user.department?.name)}</div>
+          {/* <div style={styles.muted}>{getText(user.section_for_staff || user.typeofissue?.name)}</div> */}
         </div>
       ),
-      title: "Institution & Department",
+      title: "Institution",
       width: 260,
     },
     {
-      key: "section",
-      render: (_, user) => getText(user.section_for_staff || user.typeofissue?.name),
-      title: "Section",
+      key: "department",
+      render: (_, user) => getText(user.department?.name || user.section_for_staff),
+      title: "Department",
       width: 160,
     },
     {

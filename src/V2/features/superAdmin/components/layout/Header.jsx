@@ -95,6 +95,31 @@ const styles = {
     lineHeight: 1,
     transition: "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
   }),
+  profileButton: (theme, isMobile) => ({
+    minWidth: isMobile ? "38px" : "auto",
+    height: isMobile ? "38px" : "42px",
+    maxWidth: isMobile ? "38px" : "220px",
+    borderRadius: isMobile ? "10px" : "12px",
+    border: `1px solid ${theme.header.buttonBorder}`,
+    background: theme.header.buttonBackground,
+    color: theme.header.buttonColor,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    padding: isMobile ? 0 : "0 12px",
+    lineHeight: 1,
+    transition: "background 0.18s ease, color 0.18s ease, border-color 0.18s ease",
+  }),
+  profileName: (isMobile) => ({
+    display: isMobile ? "none" : "inline-block",
+    maxWidth: "150px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontSize: "13px",
+    fontWeight: 800,
+  }),
   notificationSlot: (theme) => ({
     width: "42px",
     height: "42px",
@@ -167,6 +192,9 @@ function Header({ isMobile = false, theme, themeName, toggleSidebar, toggleTheme
 
   const navigate = useNavigate();
   const isDarkMode = themeName === ADMIN_LAYOUT_THEME_NAMES.DARK;
+  const session = getAuthSession();
+  const profileName =
+    session.profileName || (session.role === "admin" ? "Super Admin" : session.role) || "Admin";
 
   const enterFullScreen = () => {
     const el = document.documentElement;
@@ -297,12 +325,16 @@ function Header({ isMobile = false, theme, themeName, toggleSidebar, toggleTheme
           <Dropdown.Toggle
             as={ProfileToggle}
             id="admin-profile-menu"
-            style={styles.iconButton(theme, isMobile)}
+            style={styles.profileButton(theme, isMobile)}
           >
             <LuUser size={20} />
+            {/* <span style={styles.profileName(isMobile)} title={profileName}>
+              {profileName}
+            </span> */}
           </Dropdown.Toggle>
 
           <Dropdown.Menu style={styles.dropdownMenu(theme)}>
+            <Dropdown.ItemText style={styles.dropdownItem}>{profileName}</Dropdown.ItemText>
             <Dropdown.Item onClick={adminLogout} style={styles.dropdownItem}>
               Logout <FaPowerOff />
             </Dropdown.Item>
@@ -357,6 +389,7 @@ function Header({ isMobile = false, theme, themeName, toggleSidebar, toggleTheme
         </Offcanvas.Header>
 
         <Offcanvas.Body>
+          <p style={styles.notificationTitle(theme)}>{profileName}</p>
           <Button onClick={adminLogout} variant="danger">
             Logout <FaPowerOff />
           </Button>

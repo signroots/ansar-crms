@@ -39,7 +39,6 @@ function Login() {
 
     try {
       const data = await authApi.login({
-        is_admin: true,
         username: username.trim(),
         mobile_number: mobileNumber.trim(),
       });
@@ -49,12 +48,24 @@ function Login() {
         return;
       }
 
-      const { access_token, role, staff_id, is_admin, type_of_issue_id, type_of_issue } = data;
+      const {
+        access_token,
+        role,
+        staff_id,
+        is_admin,
+        type_of_issue_id,
+        type_of_issue,
+        profile_name,
+        name,
+        full_name,
+        username: responseUsername,
+      } = data;
       const isTechnicalAdmin = role === USER_ROLES.TECHNICAL_STAFF && is_admin === true;
 
       setAuthSession({
         accessToken: access_token,
         role,
+        profileName: profile_name || name || full_name || responseUsername || username.trim(),
         staffId: staff_id,
         isAdmin: isTechnicalAdmin,
         typeOfIssueId: type_of_issue_id,

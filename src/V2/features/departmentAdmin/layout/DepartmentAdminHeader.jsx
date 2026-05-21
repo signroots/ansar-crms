@@ -90,6 +90,30 @@ const styles = {
     padding: 0,
     lineHeight: 1,
   }),
+  profileButton: (theme, isMobile) => ({
+    minWidth: isMobile ? "38px" : "auto",
+    height: isMobile ? "38px" : "42px",
+    maxWidth: isMobile ? "38px" : "220px",
+    borderRadius: isMobile ? "10px" : "12px",
+    border: `1px solid ${theme.header.buttonBorder}`,
+    background: theme.header.buttonBackground,
+    color: theme.header.buttonColor,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    padding: isMobile ? 0 : "0 12px",
+    lineHeight: 1,
+  }),
+  profileName: (isMobile) => ({
+    display: isMobile ? "none" : "inline-block",
+    maxWidth: "150px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    fontSize: "13px",
+    fontWeight: 800,
+  }),
   dropdownMenu: (theme) => ({
     marginTop: "10px",
     padding: "8px",
@@ -127,8 +151,9 @@ ProfileToggle.displayName = "ProfileToggle";
 
 function DepartmentAdminHeader({ isMobile = false, theme, themeName, toggleSidebar, toggleTheme }) {
   const navigate = useNavigate();
-  const { typeOfIssue } = getAuthSession();
+  const { profileName, role, typeOfIssue } = getAuthSession();
   const isDarkMode = themeName === ADMIN_LAYOUT_THEME_NAMES.DARK;
+  const displayName = profileName || typeOfIssue || role || "Tech Admin";
 
   const enterFullScreen = () => {
     const el = document.documentElement;
@@ -197,12 +222,16 @@ function DepartmentAdminHeader({ isMobile = false, theme, themeName, toggleSideb
           <Dropdown.Toggle
             as={ProfileToggle}
             id="department-admin-profile-menu"
-            style={styles.iconButton(theme, isMobile)}
+            style={styles.profileButton(theme, isMobile)}
           >
             <LuUser size={20} />
+            {/* <span style={styles.profileName(isMobile)} title={displayName}>
+              {displayName}
+            </span> */}
           </Dropdown.Toggle>
 
           <Dropdown.Menu style={styles.dropdownMenu(theme)}>
+            <Dropdown.ItemText style={styles.dropdownItem}>{displayName}</Dropdown.ItemText>
             <Dropdown.Item onClick={logout} style={styles.dropdownItem}>
               Logout <FaPowerOff />
             </Dropdown.Item>

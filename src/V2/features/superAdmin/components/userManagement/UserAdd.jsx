@@ -337,16 +337,28 @@ function UserAdd({ onUserAdded }) {
     }
 
     const payload = {
-      department_id: needsInstitution ? values.department : null,
-      institution_id: needsInstitution ? values.institution : null,
       is_admin: isDepartmentAdmin,
-      mobile_number: needsStaffContact ? values.mobile_number : undefined,
       name: values.name.trim(),
-      password: isDepartmentAdmin ? values.password : undefined,
       role: values.role,
-      staff_id: needsStaffContact ? values.staff_id : undefined,
-      typeofissue_id: needsSection ? values.typeofissue : null,
-      username: isDepartmentAdmin ? values.username.trim() : undefined,
+      ...(isDepartmentAdmin
+        ? {
+            password: values.password,
+            username: values.username.trim(),
+          }
+        : {}),
+      ...(needsInstitution
+        ? {
+            institution_id: values.institution,
+            ...(values.department ? { department_id: values.department } : {}),
+          }
+        : {}),
+      ...(needsSection ? { typeofissue_id: values.typeofissue } : {}),
+      ...(needsStaffContact
+        ? {
+            mobile_number: values.mobile_number,
+            staff_id: values.staff_id,
+          }
+        : {}),
     };
 
     setSubmitting(true);
@@ -476,7 +488,7 @@ function UserAdd({ onUserAdded }) {
                   >
                     <Input
                       autoComplete="username"
-                      placeholder="Admin username"
+                      placeholder="Tech admin username"
                       style={styles.control}
                     />
                   </Form.Item>
@@ -489,7 +501,7 @@ function UserAdd({ onUserAdded }) {
                   >
                     <Input.Password
                       autoComplete="new-password"
-                      placeholder="Admin password"
+                      placeholder="Tech admin password"
                       style={styles.control}
                     />
                   </Form.Item>

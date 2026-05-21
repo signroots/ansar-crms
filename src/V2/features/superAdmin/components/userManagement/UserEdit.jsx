@@ -19,6 +19,8 @@ const roleOptions = [
   { label: "Tech Admin", value: USER_ROLES.DEPARTMENT_ADMIN },
 ];
 
+const LEGACY_DEPARTMENT_ADMIN_ROLE = "Admin";
+
 const initialFormData = {
   department: undefined,
   institution: undefined,
@@ -144,6 +146,9 @@ const getUserIssueId = (user) =>
   user?.typeofissue_id ||
   undefined;
 
+const isDepartmentAdminRole = (role) =>
+  role === USER_ROLES.DEPARTMENT_ADMIN || role === LEGACY_DEPARTMENT_ADMIN_ROLE;
+
 function UserEdit({ onClose, onUpdate, open, user }) {
   const [form] = Form.useForm();
   const [departments, setDepartments] = useState([]);
@@ -213,7 +218,10 @@ function UserEdit({ onClose, onUpdate, open, user }) {
       mobile_number: user.mobile_number || "",
       name: user.name || "",
       password: "",
-      role: user.is_admin ? USER_ROLES.DEPARTMENT_ADMIN : user.role || undefined,
+      role:
+        user.is_admin || isDepartmentAdminRole(user.role)
+          ? USER_ROLES.DEPARTMENT_ADMIN
+          : user.role || undefined,
       staff_id: user.staff_id || "",
       typeofissue: getUserIssueId(user),
       username: user.username || "",
@@ -335,20 +343,35 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     }
 
     const selectedIssue = findById(typesOfIssue, values.typeofissue);
+    const selectedIssueName = selectedIssue?.name || user.section_for_staff;
     const payload = {
-      department_id: needsInstitution ? values.department : null,
-      institution_id: needsInstitution ? values.institution : null,
       is_admin: isDepartmentAdmin,
-      mobile_number: needsStaffContact ? values.mobile_number : undefined,
       name: values.name.trim(),
-      password: isDepartmentAdmin && values.password ? values.password : undefined,
       role: values.role,
-      section_for_staff: needsSection
-        ? selectedIssue?.name || user.section_for_staff || null
-        : null,
-      staff_id: needsStaffContact ? values.staff_id : undefined,
-      typeofissue_id: needsSection ? values.typeofissue : null,
-      username: isDepartmentAdmin ? values.username.trim() : undefined,
+      ...(isDepartmentAdmin
+        ? {
+            ...(values.password ? { password: values.password } : {}),
+            username: values.username.trim(),
+          }
+        : {}),
+      ...(needsInstitution
+        ? {
+            institution_id: values.institution,
+            ...(values.department ? { department_id: values.department } : {}),
+          }
+        : {}),
+      ...(needsSection
+        ? {
+            ...(selectedIssueName ? { section_for_staff: selectedIssueName } : {}),
+            typeofissue_id: values.typeofissue,
+          }
+        : {}),
+      ...(needsStaffContact
+        ? {
+            mobile_number: values.mobile_number,
+            staff_id: values.staff_id,
+          }
+        : {}),
     };
 
     setSubmitting(true);
@@ -467,7 +490,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                 >
                   <Input
                     autoComplete="username"
-                    placeholder="Admin username"
+                    placeholder="Tech admin username"
                     style={styles.control}
                   />
                 </Form.Item>
