@@ -48,7 +48,7 @@ function StaffProfile() {
       }
 
       try {
-        const data = await apiService.get(`/api/get-user-details/${staffId}/`);
+        const data = await apiService.get(`/api/api/get-user-details/${staffId}/`);
 
         if (isMounted) {
           setUser(data);

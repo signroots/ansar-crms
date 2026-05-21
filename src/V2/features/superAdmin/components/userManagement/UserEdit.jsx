@@ -20,14 +20,14 @@ const roleOptions = [
 ];
 
 const initialFormData = {
-  department: "",
-  institution: "",
+  department: undefined,
+  institution: undefined,
   mobile_number: "",
   name: "",
   password: "",
-  role: "",
+  role: undefined,
   staff_id: "",
-  typeofissue: "",
+  typeofissue: undefined,
   username: "",
 };
 
@@ -142,7 +142,7 @@ const getUserIssueId = (user) =>
   user?.type_of_issue?.id ||
   user?.type_of_issue_id ||
   user?.typeofissue_id ||
-  "";
+  undefined;
 
 function UserEdit({ onClose, onUpdate, open, user }) {
   const [form] = Form.useForm();
@@ -208,12 +208,12 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     }
 
     form.setFieldsValue({
-      department: user.department?.id || "",
-      institution: user.institution?.id || "",
+      department: user.department?.id || undefined,
+      institution: user.institution?.id || undefined,
       mobile_number: user.mobile_number || "",
       name: user.name || "",
       password: "",
-      role: user.is_admin ? USER_ROLES.DEPARTMENT_ADMIN : user.role || "",
+      role: user.is_admin ? USER_ROLES.DEPARTMENT_ADMIN : user.role || undefined,
       staff_id: user.staff_id || "",
       typeofissue: getUserIssueId(user),
       username: user.username || "",
@@ -300,12 +300,12 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     ]);
     form.setFieldsValue({
       role: value,
-      department: "",
-      institution: "",
+      department: undefined,
+      institution: undefined,
       mobile_number: "",
       password: "",
       staff_id: "",
-      typeofissue: "",
+      typeofissue: undefined,
       username: "",
     });
   };
@@ -507,7 +507,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                   onChange={(value) =>
                     form.setFieldsValue({
                       institution: value,
-                      department: "",
+                      department: undefined,
                     })
                   }
                 />
@@ -516,7 +516,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
               <Form.Item
                 label={<span style={styles.label}>Department</span>}
                 name="department"
-                rules={[{ required: true, message: "Department is required" }]}
+                rules={[{ required: false, message: "Department is required" }]}
                 style={formItemStyle}
               >
                 <Select

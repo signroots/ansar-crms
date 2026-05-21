@@ -22,14 +22,14 @@ const roleOptions = [
 ];
 
 const initialFormData = {
-  department: "",
-  institution: "",
+  department: undefined,
+  institution: undefined,
   mobile_number: "",
   name: "",
   password: "",
-  role: "",
+  role: undefined,
   staff_id: "",
-  typeofissue: "",
+  typeofissue: undefined,
   username: "",
 };
 
@@ -304,12 +304,12 @@ function UserAdd({ onUserAdded }) {
     ]);
     form.setFieldsValue({
       role: value,
-      department: "",
-      institution: "",
+      department: undefined,
+      institution: undefined,
       mobile_number: "",
       password: "",
       staff_id: "",
-      typeofissue: "",
+      typeofissue: undefined,
       username: "",
     });
   };
@@ -517,7 +517,7 @@ function UserAdd({ onUserAdded }) {
                     onChange={(value) =>
                       form.setFieldsValue({
                         institution: value,
-                        department: "",
+                        department: undefined,
                       })
                     }
                   />
@@ -526,7 +526,7 @@ function UserAdd({ onUserAdded }) {
                 <Form.Item
                   label={<span style={styles.label}>Department</span>}
                   name="department"
-                  rules={[{ required: true, message: "Department is required" }]}
+                  rules={[{ required: false, message: "Department is required" }]}
                   style={formItemStyle}
                 >
                   <Select

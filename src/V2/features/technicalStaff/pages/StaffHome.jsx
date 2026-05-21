@@ -912,7 +912,7 @@ function StaffHome() {
                 Complaints & Requests
               </Typography>
             </Box>
-            <Chip
+            {/* <Chip
               label={isInitialLoading ? "..." : pendingTasks.length}
               sx={{
                 minWidth: 42,
@@ -923,7 +923,7 @@ function StaffHome() {
                 fontWeight: 700,
                 border: "1px solid #ccfbf1",
               }}
-            />
+            /> */}
           </Stack>
 
           <Box

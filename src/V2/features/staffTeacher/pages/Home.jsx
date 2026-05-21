@@ -526,7 +526,7 @@ function Home() {
                   Complaints & Requests
                 </Typography>
               </Box>
-              <Chip
+              {/* <Chip
                 label={pendingComplaints.length + pendingRequests.length}
                 sx={{
                   minWidth: 42,
@@ -537,7 +537,7 @@ function Home() {
                   fontWeight: 700,
                   border: "1px solid #ccfbf1",
                 }}
-              />
+              /> */}
             </Stack>
 
             <Box
