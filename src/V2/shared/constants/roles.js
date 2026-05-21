@@ -5,7 +5,7 @@ export const USER_ROLES = {
   TECHNICAL_STAFF: "Tech Support",
   SUPER_ADMIN: "admin",
   SUPER_ADMIN_LABEL: "Super Admin",
-  DEPARTMENT_ADMIN: "Admin",
+  DEPARTMENT_ADMIN: "Tech Admin",
 };
 
 export const ROLE_GROUPS = {

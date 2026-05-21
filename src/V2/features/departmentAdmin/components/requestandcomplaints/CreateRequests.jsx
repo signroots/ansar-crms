@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
+import { USER_ROLES } from "../../../../shared/constants/roles";
 import BASE_URL from "../../../../shared/utils/baseUrl";
 
 const initialFormData = {
@@ -211,8 +212,8 @@ function CreateRequests({ fetchRequests }) {
   const [typesOfRequest, setTypesOfRequest] = useState([]);
   const [userRole, setUserRole] = useState("");
 
-  const isTechSupport = userRole === "Tech Support";
-  const isDepartmentAdmin = userRole === "Admin" || isTechSupport;
+  const isTechSupport = userRole === USER_ROLES.TECHNICAL_STAFF;
+  const isDepartmentAdmin = userRole === USER_ROLES.DEPARTMENT_ADMIN || isTechSupport;
   const selectedCategoryName = getSelectedLabel(allRequests, formData.allRequest);
   const selectedRequestTypeName =
     requestTypeName || getSelectedLabel(typesOfRequest, formData.typeOfRequest);
@@ -251,7 +252,8 @@ function CreateRequests({ fetchRequests }) {
     const storedTypeId = localStorage.getItem("type_of_issue_id") || "";
     const storedTypeName = localStorage.getItem("type_of_issue") || "";
     const storedRole = localStorage.getItem("user_role") || localStorage.getItem("role") || "";
-    const shouldUseStoredType = storedRole === "Admin" || storedRole === "Tech Support";
+    const shouldUseStoredType =
+      storedRole === USER_ROLES.DEPARTMENT_ADMIN || storedRole === USER_ROLES.TECHNICAL_STAFF;
 
     setFormData({
       ...initialFormData,

@@ -5,6 +5,7 @@ import axios from "axios";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
+import { USER_ROLES } from "../../../../shared/constants/roles";
 import BASE_URL from "../../../../shared/utils/baseUrl";
 
 const initialFormData = {
@@ -190,8 +191,8 @@ function CreateComplaints({ onCreated }) {
   const [submitting, setSubmitting] = useState(false);
   const [userRole, setUserRole] = useState("");
 
-  const isTechSupport = userRole === "Tech Support";
-  const isDepartmentAdmin = userRole === "Admin" || isTechSupport;
+  const isTechSupport = userRole === USER_ROLES.TECHNICAL_STAFF;
+  const isDepartmentAdmin = userRole === USER_ROLES.DEPARTMENT_ADMIN || isTechSupport;
   const isMaintenance = ["maintenance", "maintanance"].includes(
     formData.complaintTypeName.trim().toLowerCase(),
   );

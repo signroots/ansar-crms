@@ -19,12 +19,14 @@ const ROLE_FILTER_OPTIONS = [
   { label: "Staff", value: USER_ROLES.STAFF },
   { label: "Teacher", value: USER_ROLES.TEACHER },
   { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
+  { label: "Tech Admin", value: USER_ROLES.DEPARTMENT_ADMIN },
 ];
 
 const roleTagColors = {
   [USER_ROLES.STAFF]: "blue",
   [USER_ROLES.TEACHER]: "cyan",
   [USER_ROLES.TECHNICAL_STAFF]: "purple",
+  [USER_ROLES.DEPARTMENT_ADMIN]: "green",
 };
 
 const styles = {

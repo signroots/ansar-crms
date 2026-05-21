@@ -1,6 +1,5 @@
- 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, Drawer, Form, Input, Select } from "antd";
+import { Button, Drawer, Form, Input, Select } from "antd";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
@@ -19,17 +18,19 @@ const roleOptions = [
   { label: "Staff", value: USER_ROLES.STAFF },
   { label: "Teacher", value: USER_ROLES.TEACHER },
   { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
+  { label: "Tech Admin", value: USER_ROLES.DEPARTMENT_ADMIN },
 ];
 
 const initialFormData = {
   department: "",
   institution: "",
-  is_admin: false,
   mobile_number: "",
   name: "",
+  password: "",
   role: "",
   staff_id: "",
   typeofissue: "",
+  username: "",
 };
 
 const formItemStyle = {
@@ -161,9 +162,11 @@ function UserAdd({ onUserAdded }) {
   const selectedInstitution = Form.useWatch("institution", form);
   const selectedRole = Form.useWatch("role", form);
 
-  const needsInstitution =
-    selectedRole === USER_ROLES.STAFF || selectedRole === USER_ROLES.TEACHER;
+  const needsInstitution = selectedRole === USER_ROLES.STAFF || selectedRole === USER_ROLES.TEACHER;
   const isTechSupport = selectedRole === USER_ROLES.TECHNICAL_STAFF;
+  const isDepartmentAdmin = selectedRole === USER_ROLES.DEPARTMENT_ADMIN;
+  const needsSection = isTechSupport || isDepartmentAdmin;
+  const needsStaffContact = Boolean(selectedRole) && !isDepartmentAdmin;
 
   const institutionOptions = useMemo(() => toOptions(institutions), [institutions]);
   const departmentOptions = useMemo(() => toOptions(departments), [departments]);
@@ -293,12 +296,21 @@ function UserAdd({ onUserAdded }) {
   };
 
   const handleRoleChange = (value) => {
+    setMobileNumberError("");
+    setStaffIdError("");
+    form.setFields([
+      { name: "mobile_number", errors: [] },
+      { name: "staff_id", errors: [] },
+    ]);
     form.setFieldsValue({
       role: value,
       department: "",
       institution: "",
-      is_admin: false,
+      mobile_number: "",
+      password: "",
+      staff_id: "",
       typeofissue: "",
+      username: "",
     });
   };
 
@@ -312,10 +324,12 @@ function UserAdd({ onUserAdded }) {
       return;
     }
 
-    const [isStaffIdAvailable, isMobileAvailable] = await Promise.all([
-      checkStaffIdExists(values.staff_id),
-      checkMobileNumberExists(values.mobile_number),
-    ]);
+    const [isStaffIdAvailable, isMobileAvailable] = needsStaffContact
+      ? await Promise.all([
+          checkStaffIdExists(values.staff_id),
+          checkMobileNumberExists(values.mobile_number),
+        ])
+      : [true, true];
 
     if (!isStaffIdAvailable || !isMobileAvailable || staffIdError || mobileNumberError) {
       toast.warning("Please fix the highlighted fields");
@@ -325,12 +339,14 @@ function UserAdd({ onUserAdded }) {
     const payload = {
       department_id: needsInstitution ? values.department : null,
       institution_id: needsInstitution ? values.institution : null,
-      is_admin: isTechSupport ? Boolean(values.is_admin) : false,
-      mobile_number: values.mobile_number,
+      is_admin: isDepartmentAdmin,
+      mobile_number: needsStaffContact ? values.mobile_number : undefined,
       name: values.name.trim(),
+      password: isDepartmentAdmin ? values.password : undefined,
       role: values.role,
-      staff_id: values.staff_id,
-      typeofissue_id: isTechSupport ? values.typeofissue : null,
+      staff_id: needsStaffContact ? values.staff_id : undefined,
+      typeofissue_id: needsSection ? values.typeofissue : null,
+      username: isDepartmentAdmin ? values.username.trim() : undefined,
     };
 
     setSubmitting(true);
@@ -392,30 +408,7 @@ function UserAdd({ onUserAdded }) {
                 rules={[{ required: true, whitespace: true, message: "Name is required" }]}
                 style={formItemStyle}
               >
-                <Input
-                  placeholder="Full name"
-                  style={styles.control}
-                />
-              </Form.Item>
-
-              <Form.Item
-                label={<span style={styles.label}>Staff ID</span>}
-                name="staff_id"
-                rules={[
-                  { required: true, message: "Staff ID is required" },
-                  {
-                    pattern: /^[A-Z][0-9]{0,5}$/,
-                    message: "Staff ID must start with a letter and use numbers after it.",
-                  },
-                ]}
-                style={formItemStyle}
-              >
-                <Input
-                  placeholder="A12345"
-                  style={styles.control}
-                  onBlur={() => checkStaffIdExists(form.getFieldValue("staff_id"))}
-                  onChange={handleStaffIdChange}
-                />
+                <Input placeholder="Full name" style={styles.control} />
               </Form.Item>
 
               <Form.Item
@@ -432,22 +425,76 @@ function UserAdd({ onUserAdded }) {
                 />
               </Form.Item>
 
-              <Form.Item
-                label={<span style={styles.label}>Mobile Number</span>}
-                name="mobile_number"
-                rules={[
-                  { required: true, message: "Mobile number is required" },
-                  { len: 10, message: "Enter a 10 digit mobile number" },
-                ]}
-                style={formItemStyle}
-              >
-                <Input
-                  placeholder="10 digit mobile number"
-                  style={styles.control}
-                  onBlur={() => checkMobileNumberExists(form.getFieldValue("mobile_number"))}
-                  onChange={handleMobileChange}
-                />
-              </Form.Item>
+              {needsStaffContact ? (
+                <>
+                  <Form.Item
+                    label={<span style={styles.label}>Staff ID</span>}
+                    name="staff_id"
+                    rules={[
+                      { required: true, message: "Staff ID is required" },
+                      {
+                        pattern: /^[A-Z][0-9]{0,5}$/,
+                        message: "Staff ID must start with a letter and use numbers after it.",
+                      },
+                    ]}
+                    style={formItemStyle}
+                  >
+                    <Input
+                      placeholder="A12345"
+                      style={styles.control}
+                      onBlur={() => checkStaffIdExists(form.getFieldValue("staff_id"))}
+                      onChange={handleStaffIdChange}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label={<span style={styles.label}>Mobile Number</span>}
+                    name="mobile_number"
+                    rules={[
+                      { required: true, message: "Mobile number is required" },
+                      { len: 10, message: "Enter a 10 digit mobile number" },
+                    ]}
+                    style={formItemStyle}
+                  >
+                    <Input
+                      placeholder="10 digit mobile number"
+                      style={styles.control}
+                      onBlur={() => checkMobileNumberExists(form.getFieldValue("mobile_number"))}
+                      onChange={handleMobileChange}
+                    />
+                  </Form.Item>
+                </>
+              ) : null}
+
+              {isDepartmentAdmin ? (
+                <>
+                  <Form.Item
+                    label={<span style={styles.label}>Username</span>}
+                    name="username"
+                    rules={[{ required: true, whitespace: true, message: "Username is required" }]}
+                    style={formItemStyle}
+                  >
+                    <Input
+                      autoComplete="username"
+                      placeholder="Admin username"
+                      style={styles.control}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    label={<span style={styles.label}>Password</span>}
+                    name="password"
+                    rules={[{ required: true, message: "Password is required" }]}
+                    style={formItemStyle}
+                  >
+                    <Input.Password
+                      autoComplete="new-password"
+                      placeholder="Admin password"
+                      style={styles.control}
+                    />
+                  </Form.Item>
+                </>
+              ) : null}
             </div>
           </section>
 
@@ -479,7 +526,7 @@ function UserAdd({ onUserAdded }) {
                 <Form.Item
                   label={<span style={styles.label}>Department</span>}
                   name="department"
-                  rules={[{ required: false, message: "Department is required" }]}
+                  rules={[{ required: true, message: "Department is required" }]}
                   style={formItemStyle}
                 >
                   <Select
@@ -496,7 +543,7 @@ function UserAdd({ onUserAdded }) {
             </section>
           ) : null}
 
-          {isTechSupport ? (
+          {needsSection ? (
             <section style={styles.section}>
               <div style={styles.grid}>
                 <Form.Item
@@ -513,17 +560,6 @@ function UserAdd({ onUserAdded }) {
                     loading={lookupsLoading}
                     style={styles.control}
                   />
-                </Form.Item>
-
-                <Form.Item
-                  name="is_admin"
-                  style={{ ...formItemStyle, alignContent: "end" }}
-                  valuePropName="checked"
-                >
-                  <Checkbox
-                  >
-                    Department Admin
-                  </Checkbox>
                 </Form.Item>
               </div>
             </section>

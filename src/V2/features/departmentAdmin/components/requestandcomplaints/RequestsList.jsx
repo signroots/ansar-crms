@@ -284,12 +284,20 @@ const normalizeListResponse = (data) => {
   if (Array.isArray(data)) {
     return {
       count: data.length,
+      completedCount: 0,
+      inProgressCount: 0,
+      onHoldCount: 0,
+      pendingCount: 0,
       results: data,
     };
   }
 
   return {
     count: Number(data?.count || data?.results?.length || 0),
+    completedCount: Number(data?.completed_count || 0),
+    inProgressCount: Number(data?.in_progress_count || 0),
+    onHoldCount: Number(data?.on_hold_count || 0),
+    pendingCount: Number(data?.pending_count || 0),
     results: Array.isArray(data?.results) ? data.results : [],
   };
 };
@@ -301,6 +309,49 @@ const departmentAdminRequestsContext = {
 };
 
 const getStatusMeta = (status) => statusMeta[status] || { color: "default" };
+
+const getCountKeyFromStatus = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  if (normalizedStatus === "pending") {
+    return "pending";
+  }
+
+  if (normalizedStatus === "in progress") {
+    return "inProgress";
+  }
+
+  if (normalizedStatus === "completed") {
+    return "completed";
+  }
+
+  if (normalizedStatus === "waiting" || normalizedStatus === "on hold") {
+    return "onHold";
+  }
+
+  return "";
+};
+
+const updateCountForStatusChange = (currentCounts, previousStatus, nextStatus) => {
+  const previousKey = getCountKeyFromStatus(previousStatus);
+  const nextKey = getCountKeyFromStatus(nextStatus);
+
+  if (!previousKey && !nextKey) {
+    return currentCounts;
+  }
+
+  const nextCounts = { ...currentCounts };
+
+  if (previousKey) {
+    nextCounts[previousKey] = Math.max(0, nextCounts[previousKey] - 1);
+  }
+
+  if (nextKey) {
+    nextCounts[nextKey] += 1;
+  }
+
+  return nextCounts;
+};
 
 const mapRequestForExport = (request) => ({
   "Request ID": getText(request.request_id || request.id),
@@ -333,6 +384,13 @@ function RequestsList() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
+  const [summaryCountsLoaded, setSummaryCountsLoaded] = useState(false);
+  const [summaryCounts, setSummaryCounts] = useState({
+    completed: 0,
+    inProgress: 0,
+    onHold: 0,
+    pending: 0,
+  });
   const [totalCount, setTotalCount] = useState(0);
 
   const { role } = useMemo(() => getAuthSession(), []);
@@ -363,6 +421,22 @@ function RequestsList() {
 
       setRequests(normalizedData.results);
       setTotalCount(normalizedData.count);
+      setSummaryCounts((currentCounts) => {
+        const nextCounts = {
+          completed: normalizedData.completedCount,
+          inProgress: normalizedData.inProgressCount,
+          onHold: normalizedData.onHoldCount,
+          pending: normalizedData.pendingCount,
+        };
+
+        return currentCounts.completed === nextCounts.completed &&
+          currentCounts.inProgress === nextCounts.inProgress &&
+          currentCounts.onHold === nextCounts.onHold &&
+          currentCounts.pending === nextCounts.pending
+          ? currentCounts
+          : nextCounts;
+      });
+      setSummaryCountsLoaded(true);
     } catch (fetchError) {
       console.error("Error fetching requests:", fetchError);
       setError("Unable to load requests right now.");
@@ -386,19 +460,6 @@ function RequestsList() {
   }, [fetchRequests]);
 
   const metrics = useMemo(() => {
-    const statusCounts = requests.reduce(
-      (acc, request) => {
-        acc[request.status] = (acc[request.status] || 0) + 1;
-        return acc;
-      },
-      {
-        Completed: 0,
-        "In Progress": 0,
-        Pending: 0,
-        Waiting: 0,
-      },
-    );
-
     return [
       {
         accent: "#3b82f6",
@@ -410,22 +471,28 @@ function RequestsList() {
         accent: "#f59e0b",
         icon: LuClock3,
         label: "Pending",
-        value: statusCounts.Pending,
+        value: summaryCounts.pending,
       },
       {
         accent: "#2563eb",
         icon: LuListChecks,
         label: "In progress",
-        value: statusCounts["In Progress"],
+        value: summaryCounts.inProgress,
+      },
+      {
+        accent: "#f97316",
+        icon: LuClock3,
+        label: "Waiting",
+        value: summaryCounts.onHold,
       },
       {
         accent: "#0cb899",
         icon: FaCheckCircle,
         label: "Completed",
-        value: statusCounts.Completed,
+        value: summaryCounts.completed,
       },
     ];
-  }, [requests, totalCount]);
+  }, [summaryCounts, totalCount]);
 
   const exportRequests = async () => {
     if (!exportRange?.[0] || !exportRange?.[1]) {
@@ -520,6 +587,9 @@ function RequestsList() {
         ...currentRequest,
         status: statusValue,
       }));
+      setSummaryCounts((currentCounts) =>
+        updateCountForStatusChange(currentCounts, selectedRequest.status, statusValue),
+      );
       toast.success("Request status updated");
     } catch (statusError) {
       console.error("Error updating request status:", statusError);
@@ -646,7 +716,9 @@ function RequestsList() {
           <article key={label} style={styles.metric(accent)}>
             <div>
               <p style={styles.metricLabel}>{label}</p>
-              <h2 style={styles.metricValue}>{loading ? "-" : formatNumber(value)}</h2>
+              <h2 style={styles.metricValue}>
+                {loading && !summaryCountsLoaded ? "-" : formatNumber(value)}
+              </h2>
             </div>
             <div style={styles.metricIcon}>
               <Icon size={22} />

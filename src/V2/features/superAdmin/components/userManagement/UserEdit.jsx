@@ -1,6 +1,5 @@
- 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Checkbox, Drawer, Form, Input, Select } from "antd";
+import { Button, Drawer, Form, Input, Select } from "antd";
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
@@ -17,17 +16,19 @@ const roleOptions = [
   { label: "Staff", value: USER_ROLES.STAFF },
   { label: "Teacher", value: USER_ROLES.TEACHER },
   { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
+  { label: "Tech Admin", value: USER_ROLES.DEPARTMENT_ADMIN },
 ];
 
 const initialFormData = {
   department: "",
   institution: "",
-  is_admin: false,
   mobile_number: "",
   name: "",
+  password: "",
   role: "",
   staff_id: "",
   typeofissue: "",
+  username: "",
 };
 
 const formItemStyle = {
@@ -157,9 +158,11 @@ function UserEdit({ onClose, onUpdate, open, user }) {
   const selectedRole = Form.useWatch("role", form);
   const selectedIssueId = Form.useWatch("typeofissue", form);
 
-  const needsInstitution =
-    selectedRole === USER_ROLES.STAFF || selectedRole === USER_ROLES.TEACHER;
+  const needsInstitution = selectedRole === USER_ROLES.STAFF || selectedRole === USER_ROLES.TEACHER;
   const isTechSupport = selectedRole === USER_ROLES.TECHNICAL_STAFF;
+  const isDepartmentAdmin = selectedRole === USER_ROLES.DEPARTMENT_ADMIN;
+  const needsSection = isTechSupport || isDepartmentAdmin;
+  const needsStaffContact = Boolean(selectedRole) && !isDepartmentAdmin;
 
   const institutionOptions = useMemo(() => toOptions(institutions), [institutions]);
   const departmentOptions = useMemo(() => toOptions(departments), [departments]);
@@ -207,12 +210,13 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     form.setFieldsValue({
       department: user.department?.id || "",
       institution: user.institution?.id || "",
-      is_admin: Boolean(user.is_admin),
       mobile_number: user.mobile_number || "",
       name: user.name || "",
-      role: user.role || "",
+      password: "",
+      role: user.is_admin ? USER_ROLES.DEPARTMENT_ADMIN : user.role || "",
       staff_id: user.staff_id || "",
       typeofissue: getUserIssueId(user),
+      username: user.username || "",
     });
     setMobileNumberError("");
     form.setFields([
@@ -220,6 +224,8 @@ function UserEdit({ onClose, onUpdate, open, user }) {
       { name: "name", errors: [] },
       { name: "role", errors: [] },
       { name: "staff_id", errors: [] },
+      { name: "password", errors: [] },
+      { name: "username", errors: [] },
       { name: "department", errors: [] },
       { name: "institution", errors: [] },
       { name: "typeofissue", errors: [] },
@@ -239,12 +245,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
   }, [needsInstitution, open, selectedInstitution, selectedRole]);
 
   useEffect(() => {
-    if (
-      !open ||
-      !isTechSupport ||
-      !selectedIssueId ||
-      findById(typesOfIssue, selectedIssueId)
-    ) {
+    if (!open || !needsSection || !selectedIssueId || findById(typesOfIssue, selectedIssueId)) {
       return;
     }
 
@@ -260,7 +261,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
         typeofissue: matchingIssue.id,
       });
     }
-  }, [form, isTechSupport, open, selectedIssueId, typesOfIssue]);
+  }, [form, needsSection, open, selectedIssueId, typesOfIssue]);
 
   const checkMobileNumberExists = async (mobileNumber) => {
     if (!mobileNumber || mobileNumber.length !== 10 || mobileNumber === user?.mobile_number) {
@@ -292,12 +293,20 @@ function UserEdit({ onClose, onUpdate, open, user }) {
   };
 
   const handleRoleChange = (value) => {
+    setMobileNumberError("");
+    form.setFields([
+      { name: "mobile_number", errors: [] },
+      { name: "staff_id", errors: [] },
+    ]);
     form.setFieldsValue({
       role: value,
       department: "",
       institution: "",
-      is_admin: false,
+      mobile_number: "",
+      password: "",
+      staff_id: "",
       typeofissue: "",
+      username: "",
     });
   };
 
@@ -316,7 +325,9 @@ function UserEdit({ onClose, onUpdate, open, user }) {
       return;
     }
 
-    const isMobileAvailable = await checkMobileNumberExists(values.mobile_number);
+    const isMobileAvailable = needsStaffContact
+      ? await checkMobileNumberExists(values.mobile_number)
+      : true;
 
     if (!isMobileAvailable || mobileNumberError) {
       toast.warning("Please fix the highlighted fields");
@@ -327,15 +338,17 @@ function UserEdit({ onClose, onUpdate, open, user }) {
     const payload = {
       department_id: needsInstitution ? values.department : null,
       institution_id: needsInstitution ? values.institution : null,
-      is_admin: isTechSupport ? Boolean(values.is_admin) : false,
-      mobile_number: values.mobile_number,
+      is_admin: isDepartmentAdmin,
+      mobile_number: needsStaffContact ? values.mobile_number : undefined,
       name: values.name.trim(),
+      password: isDepartmentAdmin && values.password ? values.password : undefined,
       role: values.role,
-      section_for_staff: isTechSupport
+      section_for_staff: needsSection
         ? selectedIssue?.name || user.section_for_staff || null
         : null,
-      staff_id: values.staff_id,
-      typeofissue_id: isTechSupport ? values.typeofissue : null,
+      staff_id: needsStaffContact ? values.staff_id : undefined,
+      typeofissue_id: needsSection ? values.typeofissue : null,
+      username: isDepartmentAdmin ? values.username.trim() : undefined,
     };
 
     setSubmitting(true);
@@ -384,32 +397,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
               rules={[{ required: true, whitespace: true, message: "Name is required" }]}
               style={formItemStyle}
             >
-              <Input
-                placeholder="Full name"
-                style={styles.control}
-              />
-            </Form.Item>
-
-            <Form.Item
-              label={<span style={styles.label}>Staff ID</span>}
-              name="staff_id"
-              rules={[
-                { required: true, message: "Staff ID is required" },
-                {
-                  pattern: /^[A-Z][0-9]{0,5}$/,
-                  message: "Staff ID must start with a letter and use numbers after it.",
-                },
-              ]}
-              style={formItemStyle}
-            >
-              <Input
-                placeholder="A12345"
-                style={styles.control}
-                onChange={(event) => {
-                  const value = event.target.value.trim().toUpperCase();
-                  form.setFieldsValue({ staff_id: value });
-                }}
-              />
+              <Input placeholder="Full name" style={styles.control} />
             </Form.Item>
 
             <Form.Item
@@ -426,22 +414,77 @@ function UserEdit({ onClose, onUpdate, open, user }) {
               />
             </Form.Item>
 
-            <Form.Item
-              label={<span style={styles.label}>Mobile Number</span>}
-              name="mobile_number"
-              rules={[
-                { required: true, message: "Mobile number is required" },
-                { len: 10, message: "Enter a 10 digit mobile number" },
-              ]}
-              style={formItemStyle}
-            >
-              <Input
-                placeholder="10 digit mobile number"
-                style={styles.control}
-                onBlur={() => checkMobileNumberExists(form.getFieldValue("mobile_number"))}
-                onChange={handleMobileChange}
-              />
-            </Form.Item>
+            {needsStaffContact ? (
+              <>
+                <Form.Item
+                  label={<span style={styles.label}>Staff ID</span>}
+                  name="staff_id"
+                  rules={[
+                    { required: true, message: "Staff ID is required" },
+                    {
+                      pattern: /^[A-Z][0-9]{0,5}$/,
+                      message: "Staff ID must start with a letter and use numbers after it.",
+                    },
+                  ]}
+                  style={formItemStyle}
+                >
+                  <Input
+                    placeholder="A12345"
+                    style={styles.control}
+                    onChange={(event) => {
+                      const value = event.target.value.trim().toUpperCase();
+                      form.setFieldsValue({ staff_id: value });
+                    }}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span style={styles.label}>Mobile Number</span>}
+                  name="mobile_number"
+                  rules={[
+                    { required: true, message: "Mobile number is required" },
+                    { len: 10, message: "Enter a 10 digit mobile number" },
+                  ]}
+                  style={formItemStyle}
+                >
+                  <Input
+                    placeholder="10 digit mobile number"
+                    style={styles.control}
+                    onBlur={() => checkMobileNumberExists(form.getFieldValue("mobile_number"))}
+                    onChange={handleMobileChange}
+                  />
+                </Form.Item>
+              </>
+            ) : null}
+
+            {isDepartmentAdmin ? (
+              <>
+                <Form.Item
+                  label={<span style={styles.label}>Username</span>}
+                  name="username"
+                  rules={[{ required: true, whitespace: true, message: "Username is required" }]}
+                  style={formItemStyle}
+                >
+                  <Input
+                    autoComplete="username"
+                    placeholder="Admin username"
+                    style={styles.control}
+                  />
+                </Form.Item>
+
+                <Form.Item
+                  label={<span style={styles.label}>Password</span>}
+                  name="password"
+                  style={formItemStyle}
+                >
+                  <Input.Password
+                    autoComplete="new-password"
+                    placeholder="Leave blank to keep current password"
+                    style={styles.control}
+                  />
+                </Form.Item>
+              </>
+            ) : null}
           </div>
         </section>
 
@@ -473,7 +516,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
               <Form.Item
                 label={<span style={styles.label}>Department</span>}
                 name="department"
-                rules={[{ required: false, message: "Department is required" }]}
+                rules={[{ required: true, message: "Department is required" }]}
                 style={formItemStyle}
               >
                 <Select
@@ -490,7 +533,7 @@ function UserEdit({ onClose, onUpdate, open, user }) {
           </section>
         ) : null}
 
-        {isTechSupport ? (
+        {needsSection ? (
           <section style={styles.section}>
             <div style={styles.grid}>
               <Form.Item
@@ -507,16 +550,6 @@ function UserEdit({ onClose, onUpdate, open, user }) {
                   loading={lookupsLoading}
                   style={styles.control}
                 />
-              </Form.Item>
-
-              <Form.Item
-                name="is_admin"
-                style={{ ...formItemStyle, alignContent: "end" }}
-                valuePropName="checked"
-              >
-                <Checkbox>
-                  Department Admin
-                </Checkbox>
               </Form.Item>
             </div>
           </section>
