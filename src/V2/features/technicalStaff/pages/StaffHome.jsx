@@ -97,6 +97,9 @@ const getStatusStyle = (status) => STATUS_STYLES[status] || STATUS_STYLES.Pendin
 
 const getIssueName = (task) => task?.issue_complaint?.name || task?.issue_request?.name || "N/A";
 
+const getIssueTypeName = (task) =>
+  task?.type_of_issue?.name || task?.type_of_request?.name || task?.department?.name || "";
+
 const getPerson = (task) => task?.complainted_by || task?.requested_by || null;
 
 const getPersonLabel = (task) =>
@@ -494,32 +497,46 @@ function StaffHome() {
           {renderStatusChip(task.status)}
           <Box sx={{ flex: 1 }} />
           <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-            {formatDate(task.date)}
+            {formatDateTime(task.date)}
           </Typography>
         </Stack>
 
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#0f172a",
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1.25,
-            mb: 1,
-            overflowWrap: "anywhere",
-          }}
-        >
-          {getIssueName(task)}
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              flex: 1,
+              color: "#0f172a",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+              minWidth: 0,
+            }}
+          >
+            {getIssueName(task)}
+          </Typography>
+          {getIssueTypeName(task) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: 700,
+                maxWidth: "42%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {getIssueTypeName(task)}
+            </Typography>
+          )}
+        </Stack>
+
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+          {task?.institution?.name || task?.department?.name || "N/A"}
         </Typography>
-
-        <Stack spacing={0.6}>
-          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
-            {task?.institution?.name || "N/A"}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-            {task?.department?.name || "N/A"} | {formatTime(task.date) || "Time not available"}
-          </Typography>
-        </Stack>
       </Box>
 
       <Divider />

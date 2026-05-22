@@ -3,11 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import ArrowBack from "@mui/icons-material/ArrowBack";
 import Assignment from "@mui/icons-material/Assignment";
 import Business from "@mui/icons-material/Business";
+import CalendarMonth from "@mui/icons-material/CalendarMonth";
 import Call from "@mui/icons-material/Call";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import Inbox from "@mui/icons-material/Inbox";
+import LocationOn from "@mui/icons-material/LocationOn";
 import Notes from "@mui/icons-material/Notes";
 import Person from "@mui/icons-material/Person";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 import Schedule from "@mui/icons-material/Schedule";
 import WhatsApp from "@mui/icons-material/WhatsApp";
 import {
@@ -67,6 +70,51 @@ const STATUS_STYLES = {
 const getStatusStyle = (status) => STATUS_STYLES[status] || STATUS_STYLES.Cancelled;
 
 const getRequestName = (request) => request?.issue_request?.name || "N/A";
+
+const getIssueTypeName = (request) =>
+  request?.type_of_request?.name || request?.department?.name || "";
+
+const getNamedText = (value, fallback = "N/A") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || value.code || value.id || fallback;
+  }
+
+  return String(value);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceRequest = (request) =>
+  [request?.type_of_request?.name, request?.department?.name, request?.department].some((value) =>
+    ["maintenance", "maintanance"].includes(normalizeKey(getNamedText(value, ""))),
+  );
+
+const isStageProgramRequest = (request) => {
+  const requestName = normalizeKey(getNamedText(request?.issue_request, ""));
+
+  return (
+    (requestName.includes("stage") && requestName.includes("program")) ||
+    Boolean(request?.program_name || request?.program_date || request?.program_time)
+  );
+};
+
+const getRequestLocation = (request) =>
+  getNamedText(request?.location || request?.location_name || request?.institution);
+
+const getRequestSubLocation = (request) =>
+  getNamedText(
+    request?.sub_location ||
+      request?.subLocation ||
+      request?.sub_location_name ||
+      request?.subLocationName,
+  );
 
 const normalizeList = (value) => (Array.isArray(value) ? value : []);
 
@@ -154,6 +202,8 @@ function RequestHandle() {
 
   const contactNumber =
     selectedTask?.requested_by?.mobile_number || selectedTask?.complainted_by?.mobile_number || "";
+  const showMaintenanceDetails = selectedTask && isMaintenanceRequest(selectedTask);
+  const showStageProgramDetails = selectedTask && isStageProgramRequest(selectedTask);
 
   useEffect(() => {
     setDelayReasons(normalizeList(selectedTask?.delay_reason));
@@ -508,32 +558,46 @@ function RequestHandle() {
           {renderStatusChip(task.status)}
           <Box sx={{ flex: 1 }} />
           <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-            {formatDate(task.date)}
+            {formatDateTime(task.date)}
           </Typography>
         </Stack>
 
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#0f172a",
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1.25,
-            mb: 1,
-            overflowWrap: "anywhere",
-          }}
-        >
-          {getRequestName(task)}
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              flex: 1,
+              color: "#0f172a",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+              minWidth: 0,
+            }}
+          >
+            {getRequestName(task)}
+          </Typography>
+          {getIssueTypeName(task) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: "700",
+                maxWidth: "42%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {getIssueTypeName(task)}
+            </Typography>
+          )}
+        </Stack>
+
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+          {task?.institution?.name || task?.department?.name || "N/A"}
         </Typography>
-
-        <Stack spacing={0.6}>
-          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
-            {task?.institution?.name || "N/A"}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-            {task?.department?.name || "N/A"} | {formatTime(task.date) || "Time not available"}
-          </Typography>
-        </Stack>
       </Box>
 
       <Divider />
@@ -622,6 +686,18 @@ function RequestHandle() {
               {renderDetailRow("Department", selectedTask?.department?.name, Assignment)}
               {renderDetailRow("Request", getRequestName(selectedTask), Assignment)}
               {renderDetailRow("Requested by", selectedTask?.requested_by?.name, Person)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Location", getRequestLocation(selectedTask), LocationOn)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Sub Location", getRequestSubLocation(selectedTask), Business)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Priority", selectedTask?.priority, PriorityHigh)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Name", selectedTask?.program_name, CalendarMonth)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Date", selectedTask?.program_date, CalendarMonth)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Time", selectedTask?.program_time, Schedule)}
             </Box>
 
             <Box sx={{ mt: 1.25 }}>
@@ -950,7 +1026,7 @@ function RequestHandle() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: 1,
               mt: 1.5,
             }}
@@ -958,6 +1034,7 @@ function RequestHandle() {
             {[
               ["Pending", isInitialLoading ? "..." : statusCounts.Pending || 0],
               ["Progress", isInitialLoading ? "..." : statusCounts["In Progress"] || 0],
+              ["Waiting", isInitialLoading ? "..." : statusCounts.Waiting || 0],
               ["Completed", isInitialLoading ? "..." : statusCounts.Completed || 0],
             ].map(([label, value]) => (
               <Box

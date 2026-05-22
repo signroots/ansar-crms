@@ -215,21 +215,6 @@ function StaffProfile() {
               </Typography>
             </Box>
 
-            <Chip
-              icon={<SupportAgent />}
-              label={user?.role || "Staff"}
-              size="small"
-              sx={{
-                height: 30,
-                borderRadius: 1.5,
-                bgcolor: "#ecfeff",
-                border: "1px solid #bae6fd",
-                color: "#0f766e",
-                fontSize: 12,
-                fontWeight: 700,
-                "& .MuiChip-icon": { color: "#0f766e" },
-              }}
-            />
           </Stack>
 
           <Box

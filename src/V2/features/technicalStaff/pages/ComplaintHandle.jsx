@@ -6,8 +6,10 @@ import Business from "@mui/icons-material/Business";
 import Call from "@mui/icons-material/Call";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import Inbox from "@mui/icons-material/Inbox";
+import LocationOn from "@mui/icons-material/LocationOn";
 import Notes from "@mui/icons-material/Notes";
 import Person from "@mui/icons-material/Person";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 import ReportProblem from "@mui/icons-material/ReportProblem";
 import Schedule from "@mui/icons-material/Schedule";
 import WhatsApp from "@mui/icons-material/WhatsApp";
@@ -68,6 +70,45 @@ const STATUS_STYLES = {
 const getStatusStyle = (status) => STATUS_STYLES[status] || STATUS_STYLES.Cancelled;
 
 const getComplaintName = (complaint) => complaint?.issue_complaint?.name || "N/A";
+
+const getIssueTypeName = (complaint) =>
+  complaint?.type_of_issue?.name || complaint?.department?.name || "";
+
+const getNamedText = (value, fallback = "N/A") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || value.code || value.id || fallback;
+  }
+
+  return String(value);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceComplaint = (complaint) =>
+  [
+    complaint?.type_of_issue?.name,
+    complaint?.complaint_type?.name,
+    complaint?.department?.name,
+    complaint?.department,
+  ].some((value) => ["maintenance", "maintanance"].includes(normalizeKey(getNamedText(value, ""))));
+
+const getComplaintLocation = (complaint) =>
+  getNamedText(complaint?.location || complaint?.location_name || complaint?.institution);
+
+const getComplaintSubLocation = (complaint) =>
+  getNamedText(
+    complaint?.sub_location ||
+      complaint?.subLocation ||
+      complaint?.sub_location_name ||
+      complaint?.subLocationName,
+  );
 
 const normalizeList = (value) => (Array.isArray(value) ? value : []);
 
@@ -156,6 +197,7 @@ function ComplaintHandle() {
   );
 
   const contactNumber = selectedTask?.complainted_by?.mobile_number || "";
+  const showMaintenanceDetails = selectedTask && isMaintenanceComplaint(selectedTask);
 
   useEffect(() => {
     setDelayReasons(normalizeList(selectedTask?.delay_reason));
@@ -530,32 +572,46 @@ function ComplaintHandle() {
           {renderStatusChip(task.status)}
           <Box sx={{ flex: 1 }} />
           <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-            {formatDate(task.date)}
+            {formatDateTime(task.date)}
           </Typography>
         </Stack>
 
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#0f172a",
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1.25,
-            mb: 1,
-            overflowWrap: "anywhere",
-          }}
-        >
-          {getComplaintName(task)}
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              flex: 1,
+              color: "#0f172a",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+              minWidth: 0,
+            }}
+          >
+            {getComplaintName(task)}
+          </Typography>
+          {getIssueTypeName(task) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: 700,
+                maxWidth: "42%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {getIssueTypeName(task)}
+            </Typography>
+          )}
+        </Stack>
+
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+          {task?.institution?.name || task?.department?.name || "N/A"}
         </Typography>
-
-        <Stack spacing={0.6}>
-          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
-            {task?.institution?.name || "N/A"}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-            {task?.department?.name || "N/A"} | {formatTime(task.date) || "Time not available"}
-          </Typography>
-        </Stack>
       </Box>
 
       <Divider />
@@ -658,6 +714,12 @@ function ComplaintHandle() {
               {renderDetailRow("Department", selectedTask?.department?.name, Assignment)}
               {renderDetailRow("Complaint", getComplaintName(selectedTask), ReportProblem)}
               {renderDetailRow("Complained by", selectedTask?.complainted_by?.name, Person)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Location", getComplaintLocation(selectedTask), LocationOn)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Sub Location", getComplaintSubLocation(selectedTask), Business)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Priority", selectedTask?.priority, PriorityHigh)}
               {renderDetailRow("Remark", selectedTask?.remark, Notes)}
             </Box>
 
@@ -1029,7 +1091,7 @@ function ComplaintHandle() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: 1,
               mt: 1.5,
             }}
@@ -1037,6 +1099,7 @@ function ComplaintHandle() {
             {[
               ["Pending", isInitialLoading ? "..." : statusCounts.Pending || 0],
               ["Progress", isInitialLoading ? "..." : statusCounts["In Progress"] || 0],
+              ["Waiting", isInitialLoading ? "..." : statusCounts.Waiting || 0],
               ["Completed", isInitialLoading ? "..." : statusCounts.Completed || 0],
             ].map(([label, value]) => (
               <Box
