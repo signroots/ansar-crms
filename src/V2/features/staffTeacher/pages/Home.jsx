@@ -84,6 +84,9 @@ const getTypeStyle = (item) => TASK_TYPE_STYLES[getTaskType(item)] || TASK_TYPE_
 
 const getIssueName = (item) => item?.issue_request?.name || item?.issue_complaint?.name || "N/A";
 
+const getIssueTypeName = (item) =>
+  item?.type_of_request?.name || item?.type_of_issue?.name || item?.department?.name || "";
+
 const formatDate = (value) => {
   if (!value) {
     return "N/A";
@@ -120,6 +123,13 @@ const formatTime = (value) => {
   });
 };
 
+const formatDateTime = (value) => {
+  const date = formatDate(value);
+  const time = formatTime(value);
+
+  return time ? `${date} - ${time}` : date;
+};
+
 const getDelayReasonText = (delayReason) => {
   if (Array.isArray(delayReason)) {
     return delayReason.map((item) => item?.reason || item?.name).filter(Boolean).join(", ");
@@ -132,10 +142,56 @@ const getDelayReasonText = (delayReason) => {
   return delayReason || "";
 };
 
+const emptyCounts = {
+  completed: 0,
+  inProgress: 0,
+  onHold: 0,
+  pending: 0,
+  total: 0,
+};
+
+const normalizeSubmittedResponse = (data) => {
+  if (Array.isArray(data)) {
+    return {
+      counts: data.reduce(
+        (counts, item) => {
+          const status = String(item.status || "").trim().toLowerCase();
+
+          return {
+            ...counts,
+            completed: counts.completed + (status === "completed" ? 1 : 0),
+            inProgress: counts.inProgress + (status === "in progress" ? 1 : 0),
+            onHold: counts.onHold + (status === "waiting" || status === "on hold" ? 1 : 0),
+            pending: counts.pending + (status === "pending" ? 1 : 0),
+            total: counts.total + 1,
+          };
+        },
+        { ...emptyCounts },
+      ),
+      results: data,
+    };
+  }
+
+  const counts = data?.counts || {};
+
+  return {
+    counts: {
+      completed: Number(counts.completed_count || 0),
+      inProgress: Number(counts.in_progress_count || counts.inprogress_count || 0),
+      onHold: Number(counts.on_hold_count || 0),
+      pending: Number(counts.pending_count || 0),
+      total: Number(counts.total_count || data?.results?.length || 0),
+    },
+    results: Array.isArray(data?.results) ? data.results : [],
+  };
+};
+
 function Home() {
   const [activeTab, setActiveTab] = useState(0);
   const [requests, setRequests] = useState([]);
   const [complaints, setComplaints] = useState([]);
+  const [requestCounts, setRequestCounts] = useState(emptyCounts);
+  const [complaintCounts, setComplaintCounts] = useState(emptyCounts);
   const [selectedItem, setSelectedItem] = useState(null);
   const [delayReason, setDelayReason] = useState("");
   const navigate = useNavigate();
@@ -152,6 +208,18 @@ function Home() {
 
   const activeItems = activeTab === 0 ? pendingComplaints : pendingRequests;
   const activeLabel = activeTab === 0 ? "Complaints" : "Requests";
+
+  useEffect(() => {
+    const resetPreview = () => {
+      setSelectedItem(null);
+    };
+
+    window.addEventListener("staffTeacher:navigation", resetPreview);
+
+    return () => {
+      window.removeEventListener("staffTeacher:navigation", resetPreview);
+    };
+  }, []);
 
   useEffect(() => {
     const staff_id = localStorage.getItem("staff_id");
@@ -176,12 +244,22 @@ function Home() {
 
     axios
       .get(`${BASE_URL}/api/sumbitted-request/list/`, config)
-      .then((response) => setRequests(response.data))
+      .then((response) => {
+        const normalizedData = normalizeSubmittedResponse(response.data);
+
+        setRequests(normalizedData.results);
+        setRequestCounts(normalizedData.counts);
+      })
       .catch((error) => console.error("Error fetching requests:", error));
 
     axios
       .get(`${BASE_URL}/api/sumbitted-complaint/list/`, config)
-      .then((response) => setComplaints(response.data))
+      .then((response) => {
+        const normalizedData = normalizeSubmittedResponse(response.data);
+
+        setComplaints(normalizedData.results);
+        setComplaintCounts(normalizedData.counts);
+      })
       .catch((error) => console.error("Error fetching complaints:", error));
   }, []);
 
@@ -302,32 +380,46 @@ function Home() {
           {renderStatusChip(item.status)}
           <Box sx={{ flex: 1 }} />
           <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-            {formatDate(item.date)}
+            {formatDateTime(item.date)}
           </Typography>
         </Stack>
 
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#0f172a",
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1.25,
-            mb: 1,
-            overflowWrap: "anywhere",
-          }}
-        >
-          {getIssueName(item)}
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              flex: 1,
+              color: "#0f172a",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+              minWidth: 0,
+            }}
+          >
+            {getIssueName(item)}
+          </Typography>
+          {getIssueTypeName(item) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: 700,
+                maxWidth: "42%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {getIssueTypeName(item)}
+            </Typography>
+          )}
+        </Stack>
+
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+          {item?.institution?.name || "Submitted item"}
         </Typography>
-
-        <Stack spacing={0.6}>
-          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
-            {item?.institution?.name || "Submitted item"}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-            {formatTime(item.date) || "Time not available"}
-          </Typography>
-        </Stack>
       </Box>
 
       <Divider />
@@ -549,9 +641,9 @@ function Home() {
               }}
             >
               {[
-                ["Total", pendingComplaints.length + pendingRequests.length],
-                ["Complaints", pendingComplaints.length],
-                ["Requests", pendingRequests.length],
+                ["Total", complaintCounts.pending + requestCounts.pending],
+                ["Complaints", complaintCounts.pending],
+                ["Requests", requestCounts.pending],
               ].map(([label, value]) => (
                 <Box
                   key={label}

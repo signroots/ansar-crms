@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import Article from "@mui/icons-material/Article";
 import Category from "@mui/icons-material/Category";
+import LocationOn from "@mui/icons-material/LocationOn";
 import Notes from "@mui/icons-material/Notes";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 import Schedule from "@mui/icons-material/Schedule";
 import Send from "@mui/icons-material/Send";
 import {
@@ -19,63 +21,237 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
+import ROUTE_PATHS from "../../../app/router/paths";
+import {
+  extractApiFieldErrors,
+  getFirstApiErrorMessage,
+} from "../../../shared/utils/formErrors";
 import BASE_URL from "../../../shared/utils/baseUrl";
 
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("access_token");
+
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const normalizeApiList = (data) => {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.results)) {
+    return data.results;
+  }
+
+  if (Array.isArray(data?.data)) {
+    return data.data;
+  }
+
+  if (Array.isArray(data?.requests)) {
+    return data.requests;
+  }
+
+  if (Array.isArray(data?.all_requests)) {
+    return data.all_requests;
+  }
+
+  return [];
+};
+
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const findById = (items, value) => items.find((item) => String(item.id) === String(value));
+
+const apiFieldMap = {
+  issue_request: "allRequest",
+  sub_location: "subLocation",
+  type_of_request: "typeOfRequest",
+};
+
 function RequestForm() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     typeOfRequest: "",
     allRequest: "",
+    location: "",
     notes: "",
+    priority: "Medium",
     program_name: "",
     program_date: "",
     program_time: "",
+    subLocation: "",
   });
   const [typesOfRequest, setTypesOfRequest] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [subLocations, setSubLocations] = useState([]);
+  const [subLocationsLoading, setSubLocationsLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const selectedRequestType = useMemo(
+    () => findById(typesOfRequest, formData.typeOfRequest),
+    [formData.typeOfRequest, typesOfRequest],
+  );
+  const selectedRequest = useMemo(
+    () => findById(allRequests, formData.allRequest),
+    [allRequests, formData.allRequest],
+  );
+  const isMaintenance = normalizeLabel(selectedRequestType?.name) === "maintenance";
+  const selectedRequestKey = normalizeLabel(selectedRequest?.name);
+  const isStageProgram =
+    selectedRequestKey.includes("stage") && selectedRequestKey.includes("program");
+  const isSubLocationEnabled = Boolean(formData.location) && subLocations.length > 0;
+
   useEffect(() => {
     axios
-      .get(`${BASE_URL}/api/types-of-request/`)
-      .then((response) => setTypesOfRequest(response.data))
+      .get(`${BASE_URL}/api/types-of-request/`, { headers: getAuthHeaders() })
+      .then((response) => setTypesOfRequest(normalizeApiList(response.data)))
       .catch(() => setTypesOfRequest([]));
+
+    axios
+      .get(`${BASE_URL}/api/institutions/`, { headers: getAuthHeaders() })
+      .then((response) => setLocations(normalizeApiList(response.data)))
+      .catch(() => setLocations([]));
   }, []);
 
   const handleTypeOfRequestChange = (event) => {
     const typeOfRequestId = event.target.value;
-    setFormData({ ...formData, typeOfRequest: typeOfRequestId, allRequest: "" });
+
+    setFormData({
+      ...formData,
+      typeOfRequest: typeOfRequestId,
+      allRequest: "",
+      location: "",
+      program_name: "",
+      program_date: "",
+      program_time: "",
+      subLocation: "",
+    });
+    setFieldErrors({});
+    setSubLocations([]);
 
     axios
-      .get(`${BASE_URL}/api/allrequests/${typeOfRequestId}/`)
-      .then((response) => setAllRequests(response.data))
+      .get(`${BASE_URL}/api/allrequests/${typeOfRequestId}/`, { headers: getAuthHeaders() })
+      .then((response) => setAllRequests(normalizeApiList(response.data)))
       .catch(() => setAllRequests([]));
   };
 
   const handleInputChange = (event) => {
     setFormData({ ...formData, [event.target.name]: event.target.value });
+    setFieldErrors((currentErrors) => ({ ...currentErrors, [event.target.name]: "" }));
+  };
+
+  const handleRequestChange = (event) => {
+    setFormData({
+      ...formData,
+      allRequest: event.target.value,
+      program_name: "",
+      program_date: "",
+      program_time: "",
+    });
+    setFieldErrors((currentErrors) => ({
+      ...currentErrors,
+      allRequest: "",
+      program_date: "",
+      program_name: "",
+      program_time: "",
+    }));
+  };
+
+  const handleLocationChange = (event) => {
+    const locationId = event.target.value;
+
+    setFormData({ ...formData, location: locationId, subLocation: "" });
+    setFieldErrors((currentErrors) => ({ ...currentErrors, location: "", subLocation: "" }));
+    setSubLocations([]);
+    setSubLocationsLoading(true);
+
+    axios
+      .get(`${BASE_URL}/api/sublocation/${locationId}/`, { headers: getAuthHeaders() })
+      .then((response) => setSubLocations(normalizeApiList(response.data)))
+      .catch(() => setSubLocations([]))
+      .finally(() => setSubLocationsLoading(false));
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+
+    const nextFieldErrors = {};
+
+    if (!formData.typeOfRequest) {
+      nextFieldErrors.typeOfRequest = "Required";
+    }
+
+    if (!formData.allRequest) {
+      nextFieldErrors.allRequest = "Required";
+    }
+
+    if (isMaintenance) {
+      if (!formData.location) {
+        nextFieldErrors.location = "Required";
+      }
+
+      if (isSubLocationEnabled && !formData.subLocation) {
+        nextFieldErrors.subLocation = "Required";
+      }
+    }
+
+    if (isStageProgram) {
+      if (!formData.program_name) {
+        nextFieldErrors.program_name = "Required";
+      }
+
+      if (!formData.program_date) {
+        nextFieldErrors.program_date = "Required";
+      }
+
+      if (!formData.program_time) {
+        nextFieldErrors.program_time = "Required";
+      }
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      return;
+    }
 
     const payload = {
       staff_id: localStorage.getItem("staff_id"),
       issue_request: formData.allRequest,
       notes: formData.notes,
       type_of_request: formData.typeOfRequest,
-      program_name: formData.program_name,
-      program_date: formData.program_date,
-      program_time: formData.program_time,
     };
+
+    if (isMaintenance) {
+      payload.location = formData.location;
+      payload.priority = formData.priority;
+
+      if (isSubLocationEnabled) {
+        payload.sub_location = formData.subLocation;
+      }
+    }
+
+    if (isStageProgram) {
+      payload.program_name = formData.program_name;
+      payload.program_date = formData.program_date;
+      payload.program_time = formData.program_time;
+    }
 
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/requests/submit/`, payload);
+      const response = await axios.post(`${BASE_URL}/api/requests/submit/`, payload, {
+        headers: getAuthHeaders(),
+      });
 
       if (response.status === 201) {
         setSnackbarSeverity("success");
@@ -84,11 +260,17 @@ function RequestForm() {
         setFormData({
           typeOfRequest: "",
           allRequest: "",
+          location: "",
           notes: "",
+          priority: "Medium",
           program_name: "",
           program_date: "",
           program_time: "",
+          subLocation: "",
         });
+        setFieldErrors({});
+        setSubLocations([]);
+        navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
       } else {
         setSnackbarSeverity("error");
         setSnackbarMessage("Failed to submit the request.");
@@ -96,8 +278,13 @@ function RequestForm() {
       }
     } catch (error) {
       console.error("Error submitting the request:", error);
+      const apiErrors = extractApiFieldErrors(error, apiFieldMap);
+
+      setFieldErrors((currentErrors) => ({ ...currentErrors, ...apiErrors }));
       setSnackbarSeverity("error");
-      setSnackbarMessage("An error occurred while submitting the request.");
+      setSnackbarMessage(
+        getFirstApiErrorMessage(apiErrors, "An error occurred while submitting the request."),
+      );
       setOpenSnackbar(true);
     } finally {
       setIsSubmitting(false);
@@ -112,17 +299,34 @@ function RequestForm() {
     minHeight: 48,
     borderRadius: 2,
     bgcolor: "#ffffff",
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#0f766e",
+      borderWidth: 2,
+    },
     "& .MuiSelect-select": {
       display: "flex",
       alignItems: "center",
       py: 1.25,
     },
+    "&:hover .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#14b8a6",
+    },
   };
 
   const textFieldSx = {
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#0f766e",
+    },
     "& .MuiOutlinedInput-root": {
       borderRadius: 2,
       bgcolor: "#ffffff",
+      "&.Mui-focused fieldset": {
+        borderColor: "#0f766e",
+        borderWidth: 2,
+      },
+      "&:hover fieldset": {
+        borderColor: "#14b8a6",
+      },
     },
   };
 
@@ -187,6 +391,7 @@ function RequestForm() {
                   onChange={handleTypeOfRequestChange}
                   fullWidth
                   displayEmpty
+                  error={Boolean(fieldErrors.typeOfRequest)}
                   sx={selectSx}
                 >
                   <MenuItem value="" disabled hidden>
@@ -198,6 +403,11 @@ function RequestForm() {
                     </MenuItem>
                   ))}
                 </Select>
+                {fieldErrors.typeOfRequest && (
+                  <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                    {fieldErrors.typeOfRequest}
+                  </Typography>
+                )}
               </Box>
 
               <Box>
@@ -206,10 +416,11 @@ function RequestForm() {
                 </Typography>
                 <Select
                   value={formData.allRequest}
-                  onChange={(event) => setFormData({ ...formData, allRequest: event.target.value })}
+                  onChange={handleRequestChange}
                   fullWidth
                   displayEmpty
                   disabled={!formData.typeOfRequest}
+                  error={Boolean(fieldErrors.allRequest)}
                   sx={selectSx}
                 >
                   <MenuItem value="" disabled hidden>
@@ -221,9 +432,114 @@ function RequestForm() {
                     </MenuItem>
                   ))}
                 </Select>
+                {fieldErrors.allRequest && (
+                  <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                    {fieldErrors.allRequest}
+                  </Typography>
+                )}
               </Box>
 
-              {formData.allRequest === 3 && (
+              {isMaintenance && (
+                <>
+                  <Box>
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                      <LocationOn sx={{ color: "#64748b", fontSize: 18 }} />
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+                        Location
+                      </Typography>
+                    </Stack>
+                    <Select
+                      name="location"
+                      value={formData.location}
+                      onChange={handleLocationChange}
+                      fullWidth
+                      displayEmpty
+                      error={Boolean(fieldErrors.location)}
+                      sx={selectSx}
+                    >
+                      <MenuItem value="" disabled hidden>
+                        Select Location
+                      </MenuItem>
+                      {locations.map((location) => (
+                        <MenuItem key={location.id} value={location.id}>
+                          {location.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldErrors.location && (
+                      <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                        {fieldErrors.location}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                    >
+                      Sub Location
+                    </Typography>
+                    <Select
+                      name="subLocation"
+                      value={formData.subLocation}
+                      onChange={handleInputChange}
+                      fullWidth
+                      displayEmpty
+                      disabled={!formData.location || subLocationsLoading || !isSubLocationEnabled}
+                      error={Boolean(fieldErrors.subLocation)}
+                      sx={selectSx}
+                    >
+                      <MenuItem value="" disabled hidden>
+                        Select Sub Location
+                      </MenuItem>
+                      {subLocationsLoading && (
+                        <MenuItem value="" disabled>
+                          Loading sub locations...
+                        </MenuItem>
+                      )}
+                      {formData.location && !subLocationsLoading && subLocations.length === 0 && (
+                        <MenuItem value="" disabled>
+                          No sub locations found
+                        </MenuItem>
+                      )}
+                      {subLocations.map((subLocation) => (
+                        <MenuItem key={subLocation.id} value={subLocation.id}>
+                          {subLocation.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {fieldErrors.subLocation && (
+                      <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                        {fieldErrors.subLocation}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  <Box>
+                    <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
+                      <PriorityHigh sx={{ color: "#64748b", fontSize: 18 }} />
+                      <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+                        Priority
+                      </Typography>
+                    </Stack>
+                    <Select
+                      name="priority"
+                      value={formData.priority}
+                      onChange={handleInputChange}
+                      fullWidth
+                      displayEmpty
+                      sx={selectSx}
+                    >
+                      <MenuItem value="low">Low</MenuItem>
+                      <MenuItem value="Medium">Medium</MenuItem>
+                      <MenuItem value="emergency">Emergency</MenuItem>
+                    </Select>
+                  </Box>
+                </>
+              )}
+
+              {isStageProgram && (
                 <Box
                   sx={{
                     display: "grid",
@@ -237,6 +553,8 @@ function RequestForm() {
                     value={formData.program_name}
                     onChange={handleInputChange}
                     fullWidth
+                    error={Boolean(fieldErrors.program_name)}
+                    helperText={fieldErrors.program_name}
                     sx={{ ...textFieldSx, gridColumn: "1 / -1" }}
                   />
                   <TextField
@@ -246,6 +564,8 @@ function RequestForm() {
                     value={formData.program_date}
                     onChange={handleInputChange}
                     fullWidth
+                    error={Boolean(fieldErrors.program_date)}
+                    helperText={fieldErrors.program_date}
                     InputLabelProps={{ shrink: true }}
                     sx={textFieldSx}
                   />
@@ -256,6 +576,8 @@ function RequestForm() {
                     value={formData.program_time}
                     onChange={handleInputChange}
                     fullWidth
+                    error={Boolean(fieldErrors.program_time)}
+                    helperText={fieldErrors.program_time}
                     InputLabelProps={{ shrink: true }}
                     sx={textFieldSx}
                   />

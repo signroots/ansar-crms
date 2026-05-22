@@ -216,21 +216,6 @@ function UserProfile() {
               </Typography>
             </Box>
 
-            <Chip
-              icon={<School />}
-              label={user?.role || "Staff"}
-              size="small"
-              sx={{
-                height: 30,
-                borderRadius: 1.5,
-                bgcolor: "#ecfeff",
-                border: "1px solid #bae6fd",
-                color: "#0f766e",
-                fontSize: 12,
-                fontWeight: 700,
-                "& .MuiChip-icon": { color: "#0f766e" },
-              }}
-            />
           </Stack>
 
           <Box
@@ -243,7 +228,6 @@ function UserProfile() {
             {renderInfoRow("Staff ID", user?.staff_id, Badge)}
             {renderInfoRow("Role", user?.role, HowToReg)}
             {renderInfoRow("Institution", user?.institution, Business)}
-            {renderInfoRow("Department", user?.department || user?.section_for_staff, AccountTree)}
             {renderInfoRow("Number", user?.mobile_number, Call)}
           </Box>
 

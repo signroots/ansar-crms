@@ -40,6 +40,10 @@ const isActivePath = (pathname, path) =>
 function StaffTeacherBottomBar() {
   const location = useLocation();
 
+  const resetStaffPreview = () => {
+    window.dispatchEvent(new Event("staffTeacher:navigation"));
+  };
+
   const activePath =
     NAV_ITEMS.find((item) => isActivePath(location.pathname, item.path))?.path ||
     STAFF_TEACHER_ROUTES.home;
@@ -119,6 +123,7 @@ function StaffTeacherBottomBar() {
                 value={item.path}
                 label={item.label}
                 icon={<Icon />}
+                onClick={resetStaffPreview}
               />
             );
           })}

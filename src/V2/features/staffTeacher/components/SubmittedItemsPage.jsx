@@ -6,7 +6,9 @@ import Business from "@mui/icons-material/Business";
 import CalendarMonth from "@mui/icons-material/CalendarMonth";
 import ChevronRight from "@mui/icons-material/ChevronRight";
 import Inbox from "@mui/icons-material/Inbox";
+import LocationOn from "@mui/icons-material/LocationOn";
 import Notes from "@mui/icons-material/Notes";
+import PriorityHigh from "@mui/icons-material/PriorityHigh";
 import Schedule from "@mui/icons-material/Schedule";
 import {
   Avatar,
@@ -126,8 +128,90 @@ const formatReasonTime = (value) => {
 
 const normalizeReasons = (value) => (Array.isArray(value) ? value : []);
 
+const emptyCounts = {
+  Completed: 0,
+  "In Progress": 0,
+  Pending: 0,
+  Waiting: 0,
+};
+
+const normalizeSubmittedResponse = (data) => {
+  if (Array.isArray(data)) {
+    return {
+      counts: data.reduce(
+        (counts, item) => ({
+          ...counts,
+          [item.status]: (counts[item.status] || 0) + 1,
+        }),
+        { ...emptyCounts },
+      ),
+      results: data,
+      total: data.length,
+    };
+  }
+
+  const counts = data?.counts || {};
+  const results = Array.isArray(data?.results) ? data.results : [];
+
+  return {
+    counts: {
+      Completed: Number(counts.completed_count || 0),
+      "In Progress": Number(counts.in_progress_count || counts.inprogress_count || 0),
+      Pending: Number(counts.pending_count || 0),
+      Waiting: Number(counts.on_hold_count || 0),
+    },
+    results,
+    total: Number(counts.total_count || results.length),
+  };
+};
+
+const getNamedText = (value, fallback = "N/A") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || value.code || value.id || fallback;
+  }
+
+  return String(value);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceItem = (item) =>
+  [
+    item?.type_of_issue?.name,
+    item?.type_of_request?.name,
+    item?.complaint_type?.name,
+    item?.department?.name,
+    item?.department,
+  ].some((value) => ["maintenance", "maintanance"].includes(normalizeKey(getNamedText(value, ""))));
+
+const isStageProgramItem = (item) => {
+  const requestName = normalizeKey(getNamedText(item?.issue_request, ""));
+
+  return (
+    (requestName.includes("stage") && requestName.includes("program")) ||
+    Boolean(item?.program_name || item?.program_date || item?.program_time)
+  );
+};
+
+const getItemLocation = (item) =>
+  getNamedText(item?.location || item?.location_name || item?.institution);
+
+const getItemSubLocation = (item) =>
+  getNamedText(
+    item?.sub_location || item?.subLocation || item?.sub_location_name || item?.subLocationName,
+  );
+
 function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeColor }) {
   const [items, setItems] = useState([]);
+  const [itemCounts, setItemCounts] = useState(emptyCounts);
+  const [itemTotal, setItemTotal] = useState(0);
   const [selectedItem, setSelectedItem] = useState(null);
   const [focusedStep, setFocusedStep] = useState("Pending");
 
@@ -137,18 +221,26 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
   const selectedReasons = normalizeReasons(selectedItem?.delay_reason);
   const progressValue = selectedItem ? (selectedStatusIndex / (STATUS_STEPS.length - 1)) * 100 : 0;
   const focusedStatusStyle = getStatusStyle(focusedStep);
+  const showMaintenanceDetails = selectedItem && isMaintenanceItem(selectedItem);
+  const showStageProgramDetails =
+    itemKind === "request" && selectedItem && isStageProgramItem(selectedItem);
+  const getIssueTypeName = (item) =>
+    item?.type_of_request?.name || item?.type_of_issue?.name || item?.department?.name || "";
 
-  const statusCounts = useMemo(
-    () =>
-      items.reduce(
-        (counts, item) => ({
-          ...counts,
-          [item.status]: (counts[item.status] || 0) + 1,
-        }),
-        {},
-      ),
-    [items],
-  );
+  const statusCounts = useMemo(() => itemCounts, [itemCounts]);
+
+  useEffect(() => {
+    const resetPreview = () => {
+      setSelectedItem(null);
+      setFocusedStep("Pending");
+    };
+
+    window.addEventListener("staffTeacher:navigation", resetPreview);
+
+    return () => {
+      window.removeEventListener("staffTeacher:navigation", resetPreview);
+    };
+  }, []);
 
   useEffect(() => {
     const staff_id = localStorage.getItem("staff_id");
@@ -172,7 +264,11 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
         },
       })
       .then((response) => {
-        setItems(response.data);
+        const normalizedData = normalizeSubmittedResponse(response.data);
+
+        setItems(normalizedData.results);
+        setItemCounts(normalizedData.counts);
+        setItemTotal(normalizedData.total);
       })
       .catch((error) => {
         console.error(`Error fetching ${itemLabel.toLowerCase()}:`, error);
@@ -277,32 +373,46 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
           {renderStatusChip(item.status)}
           <Box sx={{ flex: 1 }} />
           <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
-            {formatDate(item.date)}
+            {formatDateTime(item.date)}
           </Typography>
         </Stack>
 
-        <Typography
-          variant="subtitle1"
-          sx={{
-            color: "#0f172a",
-            fontSize: 15,
-            fontWeight: 700,
-            lineHeight: 1.25,
-            mb: 1,
-            overflowWrap: "anywhere",
-          }}
-        >
-          {getIssueName(item)}
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5, minWidth: 0 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              flex: 1,
+              color: "#0f172a",
+              fontSize: 15,
+              fontWeight: 700,
+              lineHeight: 1.25,
+              overflowWrap: "anywhere",
+              minWidth: 0,
+            }}
+          >
+            {getIssueName(item)}
+          </Typography>
+          {getIssueTypeName(item) && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "#64748b",
+                fontSize: 12,
+                fontWeight: 700,
+                maxWidth: "42%",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {getIssueTypeName(item)}
+            </Typography>
+          )}
+        </Stack>
+
+        <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
+          {item?.institution?.name || "Submitted item"}
         </Typography>
-
-        <Stack spacing={0.6}>
-          <Typography variant="body2" sx={{ color: "#475569", fontWeight: 600 }}>
-            {item?.institution?.name || "Submitted item"}
-          </Typography>
-          <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-            {formatTime(item.date) || "Time not available"}
-          </Typography>
-        </Stack>
       </Box>
 
       <Divider />
@@ -574,6 +684,18 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
               {renderDetailRow("Date and time", formatDateTime(selectedItem.date), Schedule)}
               {renderDetailRow(itemLabel, getIssueName(selectedItem), Icon)}
               {renderDetailRow("Institution", selectedItem?.institution?.name, Business)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Location", getItemLocation(selectedItem), LocationOn)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Sub Location", getItemSubLocation(selectedItem), Business)}
+              {showMaintenanceDetails &&
+                renderDetailRow("Priority", selectedItem?.priority, PriorityHigh)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Name", selectedItem?.program_name, CalendarMonth)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Date", selectedItem?.program_date, CalendarMonth)}
+              {showStageProgramDetails &&
+                renderDetailRow("Program Time", selectedItem?.program_time, Schedule)}
               {renderDetailRow("Notes", selectedItem?.notes, Notes)}
             </Box>
 
@@ -619,7 +741,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
               </Typography>
             </Box>
             <Chip
-              label={items.length}
+              label={itemTotal}
               sx={{
                 minWidth: 42,
                 height: 34,
@@ -635,7 +757,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
+              gridTemplateColumns: "repeat(4, 1fr)",
               gap: 1,
               mt: 1.5,
             }}
@@ -643,6 +765,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
             {[
               ["Pending", statusCounts.Pending || 0],
               ["Progress", statusCounts["In Progress"] || 0],
+              ["Waiting", statusCounts.Waiting || 0],
               ["Completed", statusCounts.Completed || 0],
             ].map(([label, value]) => (
               <Box

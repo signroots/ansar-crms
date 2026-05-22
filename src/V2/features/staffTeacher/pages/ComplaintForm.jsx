@@ -21,7 +21,13 @@ import {
   Typography,
 } from "@mui/material";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
+import ROUTE_PATHS from "../../../app/router/paths";
+import {
+  extractApiFieldErrors,
+  getFirstApiErrorMessage,
+} from "../../../shared/utils/formErrors";
 import BASE_URL from "../../../shared/utils/baseUrl";
 
 const getAuthHeaders = () => {
@@ -30,7 +36,14 @@ const getAuthHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const apiFieldMap = {
+  issue_complaint: "issue",
+  sub_location: "subLocation",
+  type_of_issue: "typeOfIssue",
+};
+
 function ComplaintForm() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     typeOfIssue: "",
     typeOfIssueName: "",
@@ -44,6 +57,7 @@ function ComplaintForm() {
   const [issues, setIssues] = useState([]);
   const [locations, setLocations] = useState([]);
   const [subLocations, setSubLocations] = useState([]);
+  const [subLocationsLoading, setSubLocationsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -53,6 +67,7 @@ function ComplaintForm() {
   const isMaintenance = ["maintenance", "maintanance"].includes(
     formData.typeOfIssueName.trim().toLowerCase(),
   );
+  const isSubLocationEnabled = Boolean(formData.location) && subLocations.length > 0;
 
   const normalizeApiList = (data) => {
     if (Array.isArray(data)) {
@@ -114,11 +129,14 @@ function ComplaintForm() {
 
     setFormData({ ...formData, location: locationId, subLocation: "" });
     setFieldErrors((currentErrors) => ({ ...currentErrors, location: "", subLocation: "" }));
+    setSubLocations([]);
+    setSubLocationsLoading(true);
 
     axios
       .get(`${BASE_URL}/api/sublocation/${locationId}/`, { headers: getAuthHeaders() })
       .then((response) => setSubLocations(normalizeApiList(response.data)))
-      .catch(() => setSubLocations([]));
+      .catch(() => setSubLocations([]))
+      .finally(() => setSubLocationsLoading(false));
   };
 
   const handleSubLocationChange = (event) => {
@@ -140,7 +158,7 @@ function ComplaintForm() {
         nextFieldErrors.location = "Required";
       }
 
-      if (!formData.subLocation) {
+      if (isSubLocationEnabled && !formData.subLocation) {
         nextFieldErrors.subLocation = "Required";
       }
     }
@@ -160,7 +178,10 @@ function ComplaintForm() {
     if (isMaintenance) {
       payload.priority = formData.priority;
       payload.location = formData.location;
-      payload.sub_location = formData.subLocation;
+
+      if (isSubLocationEnabled) {
+        payload.sub_location = formData.subLocation;
+      }
     }
 
     setIsSubmitting(true);
@@ -190,6 +211,7 @@ function ComplaintForm() {
         });
         setFieldErrors({});
         setSubLocations([]);
+        navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
       } else {
         setSnackbarSeverity("error");
         setSnackbarMessage("Failed to submit the Complaint.");
@@ -197,8 +219,13 @@ function ComplaintForm() {
       }
     } catch (error) {
       console.error("Error submitting the Complaint:", error);
+      const apiErrors = extractApiFieldErrors(error, apiFieldMap);
+
+      setFieldErrors((currentErrors) => ({ ...currentErrors, ...apiErrors }));
       setSnackbarSeverity("error");
-      setSnackbarMessage("An error occurred while submitting the complaint.");
+      setSnackbarMessage(
+        getFirstApiErrorMessage(apiErrors, "An error occurred while submitting the complaint."),
+      );
       setOpenSnackbar(true);
     } finally {
       setIsSubmitting(false);
@@ -213,17 +240,34 @@ function ComplaintForm() {
     minHeight: 48,
     borderRadius: 2,
     bgcolor: "#ffffff",
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#0f766e",
+      borderWidth: 2,
+    },
     "& .MuiSelect-select": {
       display: "flex",
       alignItems: "center",
       py: 1.25,
     },
+    "&:hover .MuiOutlinedInput-notchedOutline": {
+      borderColor: "#14b8a6",
+    },
   };
 
   const textFieldSx = {
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#0f766e",
+    },
     "& .MuiOutlinedInput-root": {
       borderRadius: 2,
       bgcolor: "#ffffff",
+      "&.Mui-focused fieldset": {
+        borderColor: "#0f766e",
+        borderWidth: 2,
+      },
+      "&:hover fieldset": {
+        borderColor: "#14b8a6",
+      },
     },
   };
 
@@ -369,13 +413,23 @@ function ComplaintForm() {
                       onChange={handleSubLocationChange}
                       fullWidth
                       displayEmpty
-                      disabled={!formData.location}
+                      disabled={!formData.location || subLocationsLoading || !isSubLocationEnabled}
                       error={Boolean(fieldErrors.subLocation)}
                       sx={selectSx}
                     >
                       <MenuItem value="" disabled hidden>
                         Select Sub Location
                       </MenuItem>
+                      {subLocationsLoading && (
+                        <MenuItem value="" disabled>
+                          Loading sub locations...
+                        </MenuItem>
+                      )}
+                      {formData.location && !subLocationsLoading && subLocations.length === 0 && (
+                        <MenuItem value="" disabled>
+                          No sub locations found
+                        </MenuItem>
+                      )}
                       {subLocations.map((subLocation) => (
                         <MenuItem key={subLocation.id} value={subLocation.id}>
                           {subLocation.name}
