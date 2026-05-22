@@ -5,6 +5,11 @@ import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
 import { USER_ROLES } from "../../../../shared/constants/roles";
+import {
+  extractApiFieldErrors,
+  getFirstApiErrorMessage,
+  setAntdFormFieldErrors,
+} from "../../../../shared/utils/formErrors";
 
 const USERS_CREATE_ENDPOINT = "/api/api/users/create/";
 const INSTITUTIONS_ENDPOINT = "/api/api/institutions/";
@@ -146,6 +151,14 @@ const normalizeExistingValues = (items, key) =>
       ? String(item[key] || item.staff_id || item.mobile_number || item.value || item.id || "")
       : String(item),
   );
+
+const apiFieldMap = {
+  department_id: "department",
+  institution_id: "institution",
+  is_admin: "role",
+  section_for_staff: "typeofissue",
+  typeofissue_id: "typeofissue",
+};
 
 function UserAdd({ onUserAdded }) {
   const [form] = Form.useForm();
@@ -370,9 +383,10 @@ function UserAdd({ onUserAdded }) {
       onUserAdded?.();
     } catch (error) {
       console.error("Error adding user:", error);
-      const errorMessage =
-        error.response?.data?.error || error.response?.data?.message || "Unable to add user";
-      toast.error(errorMessage);
+      const apiErrors = extractApiFieldErrors(error, apiFieldMap);
+
+      setAntdFormFieldErrors(form, apiErrors);
+      toast.error(getFirstApiErrorMessage(apiErrors, "Unable to add user"));
     } finally {
       setSubmitting(false);
     }

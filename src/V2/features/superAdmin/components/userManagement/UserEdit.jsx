@@ -4,6 +4,11 @@ import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
 import { USER_ROLES } from "../../../../shared/constants/roles";
+import {
+  extractApiFieldErrors,
+  getFirstApiErrorMessage,
+  setAntdFormFieldErrors,
+} from "../../../../shared/utils/formErrors";
 
 const USER_UPDATE_ENDPOINT = (id) => `/api/api/users/${id}/update/`;
 const INSTITUTIONS_ENDPOINT = "/api/api/institutions/";
@@ -138,6 +143,14 @@ const normalizeExistingValues = (items, key) =>
       ? String(item[key] || item.staff_id || item.mobile_number || item.value || item.id || "")
       : String(item),
   );
+
+const apiFieldMap = {
+  department_id: "department",
+  institution_id: "institution",
+  is_admin: "role",
+  section_for_staff: "typeofissue",
+  typeofissue_id: "typeofissue",
+};
 
 const getUserIssueId = (user) =>
   user?.typeofissue?.id ||
@@ -383,9 +396,10 @@ function UserEdit({ onClose, onUpdate, open, user }) {
       onClose?.();
     } catch (error) {
       console.error("Error updating user:", error);
-      const errorMessage =
-        error.response?.data?.message || error.response?.data?.error || "Unable to update user";
-      toast.error(errorMessage);
+      const apiErrors = extractApiFieldErrors(error, apiFieldMap);
+
+      setAntdFormFieldErrors(form, apiErrors);
+      toast.error(getFirstApiErrorMessage(apiErrors, "Unable to update user"));
     } finally {
       setSubmitting(false);
     }

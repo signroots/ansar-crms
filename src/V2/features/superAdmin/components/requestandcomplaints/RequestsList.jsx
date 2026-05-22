@@ -233,6 +233,31 @@ const styles = {
     fontWeight: 700,
     wordBreak: "break-word",
   },
+  commentList: {
+    display: "grid",
+    gap: "10px",
+  },
+  commentItem: {
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface-soft, #f8fafc)",
+  },
+  commentText: {
+    margin: 0,
+    color: "var(--admin-text, #101828)",
+    fontSize: "14px",
+    fontWeight: 700,
+    lineHeight: 1.5,
+    wordBreak: "break-word",
+  },
+  commentMeta: {
+    display: "block",
+    marginTop: "6px",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
   statusEditor: {
     display: "grid",
     gap: "8px",
@@ -260,6 +285,44 @@ const getText = (value, fallback = "N/A") => {
   return String(value);
 };
 
+const getNamedText = (value, fallback = "N/A") => {
+  if (value && typeof value === "object") {
+    return getText(value.name || value.title || value.label || value.code || value.id, fallback);
+  }
+
+  return getText(value, fallback);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceRequest = (request) =>
+  [request?.type_of_request?.name, request?.department?.name, request?.department].some((value) =>
+    ["maintenance", "maintanance"].includes(normalizeKey(getNamedText(value, ""))),
+  );
+
+const isStageProgramRequest = (request) => {
+  const requestName = normalizeKey(getNamedText(request?.issue_request, ""));
+
+  return (
+    (requestName.includes("stage") && requestName.includes("program")) ||
+    Boolean(request?.program_name || request?.program_date || request?.program_time)
+  );
+};
+
+const getRequestLocation = (request) =>
+  getNamedText(request?.location || request?.location_name || request?.institution);
+
+const getRequestSubLocation = (request) =>
+  getNamedText(
+    request?.sub_location ||
+      request?.subLocation ||
+      request?.sub_location_name ||
+      request?.subLocationName,
+  );
+
 const formatDate = (value, withTime = false) => {
   if (!value) {
     return "N/A";
@@ -278,6 +341,36 @@ const formatDate = (value, withTime = false) => {
     month: "short",
     year: "numeric",
   }).format(date);
+};
+
+const normalizeDelayReasons = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value) {
+    return [];
+  }
+
+  return [{ reason: value }];
+};
+
+const formatDelayReasonsText = (value) => {
+  const reasons = normalizeDelayReasons(value);
+
+  if (!reasons.length) {
+    return "N/A";
+  }
+
+  return reasons
+    .map((item) => {
+      const reason = getText(item?.reason || item, "");
+      const timestamp = item?.created_at ? ` (${formatDate(item.created_at, true)})` : "";
+
+      return `${reason}${timestamp}`;
+    })
+    .filter(Boolean)
+    .join("; ");
 };
 
 const normalizeListResponse = (data) => {
@@ -359,6 +452,9 @@ const mapRequestForExport = (request) => ({
   Institution: getText(request.institution?.name),
   Department: getText(request.department?.name),
   Request: getText(request.issue_request?.name),
+  Location: getRequestLocation(request),
+  "Sub Location": getRequestSubLocation(request),
+  Priority: getText(request.priority),
   Status: getText(request.status),
   "Requested By": getText(request.requested_by?.name),
   "Mobile Number": getText(request.requested_by?.mobile_number),
@@ -367,6 +463,7 @@ const mapRequestForExport = (request) => ({
   "Program Time": getText(request.program_time),
   "Resolved By": getText(request.resolved_by?.name),
   "Resolved Date": formatDate(request.resolved_date, true),
+  "Delay Reason": formatDelayReasonsText(request.delay_reason),
   Notes: getText(request.notes),
 });
 
@@ -681,16 +778,53 @@ function RequestsList() {
         ["Requested By", selectedRequest.requested_by?.name],
         ["Mobile Number", selectedRequest.requested_by?.mobile_number],
         ["Request", selectedRequest.issue_request?.name],
+        ...(isMaintenanceRequest(selectedRequest)
+          ? [
+              ["Location", getRequestLocation(selectedRequest)],
+              ["Sub Location", getRequestSubLocation(selectedRequest)],
+              ["Priority", selectedRequest.priority],
+            ]
+          : []),
         ["Status", selectedRequest.status],
         ["Created Date & Time", formatDate(selectedRequest.date, true)],
-        ["Program Name", selectedRequest.program_name],
-        ["Program Date", selectedRequest.program_date],
-        ["Program Time", selectedRequest.program_time],
+        ...(isStageProgramRequest(selectedRequest)
+          ? [
+              ["Program Name", selectedRequest.program_name],
+              ["Program Date", selectedRequest.program_date],
+              ["Program Time", selectedRequest.program_time],
+            ]
+          : []),
         ["Resolved By", selectedRequest.resolved_by?.name],
         ["Resolved Date & Time", formatDate(selectedRequest.resolved_date, true)],
+        ["Delay Reason", selectedRequest.delay_reason],
         ["Notes", selectedRequest.notes],
       ]
     : [];
+
+  const renderDetailValue = (label, value) => {
+    if (label !== "Delay Reason") {
+      return <span style={styles.detailValue}>{getText(value)}</span>;
+    }
+
+    const reasons = normalizeDelayReasons(value);
+
+    if (!reasons.length) {
+      return <span style={styles.detailValue}>N/A</span>;
+    }
+
+    return (
+      <div style={styles.commentList}>
+        {reasons.map((item, index) => (
+          <article key={`${item?.created_at || "delay"}-${index}`} style={styles.commentItem}>
+            <p style={styles.commentText}>{getText(item?.reason || item)}</p>
+            {item?.created_at ? (
+              <span style={styles.commentMeta}>{formatDate(item.created_at, true)}</span>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={styles.page}>
@@ -747,7 +881,7 @@ function RequestsList() {
               setStatusFilter(value);
             }}
             options={[
-              { label: "All status", value: "all" },
+              { label: "All", value: "all" },
               { label: "Pending", value: "Pending" },
               { label: "In Progress", value: "In Progress" },
               { label: "Waiting", value: "Waiting" },
@@ -848,9 +982,15 @@ function RequestsList() {
 
             <div style={styles.detailGrid}>
               {detailItems.map(([label, value]) => (
-                <div key={label} style={styles.detailItem}>
+                <div
+                  key={label}
+                  style={{
+                    ...styles.detailItem,
+                    ...(label === "Delay Reason" ? { gridColumn: "1 / -1" } : {}),
+                  }}
+                >
                   <span style={styles.detailLabel}>{label}</span>
-                  <span style={styles.detailValue}>{getText(value)}</span>
+                  {renderDetailValue(label, value)}
                 </div>
               ))}
             </div>

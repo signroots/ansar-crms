@@ -15,7 +15,7 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const SEARCH_DEBOUNCE_DELAY = 500;
 
 const ROLE_FILTER_OPTIONS = [
-  { label: "All roles", value: "all" },
+  { label: "All", value: "all" },
   { label: "Staff", value: USER_ROLES.STAFF },
   { label: "Teacher", value: USER_ROLES.TEACHER },
   { label: "Tech Support", value: USER_ROLES.TECHNICAL_STAFF },
@@ -188,19 +188,43 @@ const getText = (value, fallback = "N/A") => {
 const normalizeUsersResponse = (data) => {
   if (Array.isArray(data)) {
     return {
+      counts: {
+        staff: 0,
+        teacher: 0,
+        techAdmin: 0,
+        techSupport: 0,
+      },
       count: data.length,
       results: data,
     };
   }
 
-  return {
-    count: Number(data?.count || data?.results?.length || data?.data?.length || 0),
-    results: Array.isArray(data?.results)
+  const paginatedData =
+    data?.results && !Array.isArray(data.results) && typeof data.results === "object"
       ? data.results
-      : Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data?.users)
-          ? data.users
+      : data;
+  const counts = data?.counts || {};
+
+  return {
+    counts: {
+      staff: Number(counts.staff_count || 0),
+      teacher: Number(counts.teacher_count || 0),
+      techAdmin: Number(counts.tech_admin_count || 0),
+      techSupport: Number(counts.tech_support_count || 0),
+    },
+    count: Number(
+      paginatedData?.count ||
+        paginatedData?.results?.length ||
+        paginatedData?.data?.length ||
+        paginatedData?.users?.length ||
+        0,
+    ),
+    results: Array.isArray(paginatedData?.results)
+      ? paginatedData.results
+      : Array.isArray(paginatedData?.data)
+        ? paginatedData.data
+        : Array.isArray(paginatedData?.users)
+          ? paginatedData.users
           : [],
   };
 };
@@ -223,6 +247,12 @@ function UsersList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [userCounts, setUserCounts] = useState({
+    staff: 0,
+    teacher: 0,
+    techAdmin: 0,
+    techSupport: 0,
+  });
   const [users, setUsers] = useState([]);
 
   const fetchUsers = useCallback(async () => {
@@ -249,6 +279,7 @@ function UsersList() {
 
       setUsers(normalizedData.results);
       setTotalCount(normalizedData.count);
+      setUserCounts(normalizedData.counts);
     } catch (fetchError) {
       console.error("Error fetching users:", fetchError);
       setError("Unable to load users right now.");
@@ -272,18 +303,6 @@ function UsersList() {
   }, [fetchUsers]);
 
   const metrics = useMemo(() => {
-    const loadedCounts = users.reduce(
-      (acc, user) => {
-        acc[user.role] = (acc[user.role] || 0) + 1;
-        return acc;
-      },
-      {
-        [USER_ROLES.STAFF]: 0,
-        [USER_ROLES.TEACHER]: 0,
-        [USER_ROLES.TECHNICAL_STAFF]: 0,
-      },
-    );
-
     return [
       {
         accent: "#0cb899",
@@ -294,23 +313,29 @@ function UsersList() {
       {
         accent: "#3b82f6",
         icon: LuUserRoundCheck,
-        label: "Loaded staff",
-        value: loadedCounts[USER_ROLES.STAFF],
+        label: "Staff",
+        value: userCounts.staff,
       },
       {
         accent: "#8b5cf6",
         icon: LuUserCog,
-        label: "Loaded tech",
-        value: loadedCounts[USER_ROLES.TECHNICAL_STAFF],
+        label: "Tech support",
+        value: userCounts.techSupport,
       },
       {
         accent: "#f59e0b",
         icon: LuShieldCheck,
-        label: "Loaded teachers",
-        value: loadedCounts[USER_ROLES.TEACHER],
+        label: "Teachers",
+        value: userCounts.teacher,
+      },
+      {
+        accent: "#10b981",
+        icon: LuShieldCheck,
+        label: "Tech admins",
+        value: userCounts.techAdmin,
       },
     ];
-  }, [totalCount, users]);
+  }, [totalCount, userCounts]);
 
   const copyMobileNumber = async (mobileNumber) => {
     if (!mobileNumber) {
