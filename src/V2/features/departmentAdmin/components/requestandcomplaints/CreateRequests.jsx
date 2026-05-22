@@ -8,6 +8,10 @@ import { toast } from "react-toastify";
 
 import { USER_ROLES } from "../../../../shared/constants/roles";
 import BASE_URL from "../../../../shared/utils/baseUrl";
+import {
+  extractApiFieldErrors,
+  getFirstApiErrorMessage,
+} from "../../../../shared/utils/formErrors";
 
 const initialFormData = {
   allRequest: "",
@@ -188,6 +192,14 @@ const getSelectedLabel = (items, value) => {
   return item ? getItemLabel(item) : "";
 };
 
+const apiFieldMap = {
+  issue_request: "allRequest",
+  phone_number: "phoneNumber",
+  staff_id: "staffId",
+  sub_location: "subLocation",
+  type_of_request: "typeOfRequest",
+};
+
 function FieldError({ children }) {
   if (!children) {
     return null;
@@ -206,6 +218,7 @@ function CreateRequests({ fetchRequests }) {
   const [requestTypeName, setRequestTypeName] = useState("");
   const [staffIds, setStaffIds] = useState([]);
   const [subLocations, setSubLocations] = useState([]);
+  const [subLocationsLoading, setSubLocationsLoading] = useState(false);
   const [lookupsLoaded, setLookupsLoaded] = useState(false);
   const [lookupsLoading, setLookupsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -235,6 +248,7 @@ function CreateRequests({ fetchRequests }) {
   const requestCategoryOptions = useMemo(() => toOptions(allRequests), [allRequests]);
   const institutionOptions = useMemo(() => toOptions(institutions), [institutions]);
   const subLocationOptions = useMemo(() => toOptions(subLocations), [subLocations]);
+  const isSubLocationEnabled = Boolean(formData.location) && subLocationOptions.length > 0;
 
   const setField = (name, value, extra = {}) => {
     setFormData((currentFormData) => ({
@@ -373,13 +387,16 @@ function CreateRequests({ fetchRequests }) {
   };
 
   const handleLocationChange = (value) => {
+    setSubLocations([]);
+    setSubLocationsLoading(true);
     setField("location", value, {
       subLocation: "",
     });
 
     apiRequest("GET", `/api/sublocation/${value}/`)
       .then((res) => setSubLocations(normalizeApiList(res.data)))
-      .catch(() => setSubLocations([]));
+      .catch(() => setSubLocations([]))
+      .finally(() => setSubLocationsLoading(false));
   };
 
   const validateForm = () => {
@@ -402,7 +419,7 @@ function CreateRequests({ fetchRequests }) {
         nextErrors.location = "Required";
       }
 
-      if (!formData.subLocation) {
+      if (isSubLocationEnabled && !formData.subLocation) {
         nextErrors.subLocation = "Required";
       }
     }
@@ -457,7 +474,10 @@ function CreateRequests({ fetchRequests }) {
       setOpenDrawer(false);
     } catch (error) {
       console.error("Request submission failed:", error);
-      toast.error("Submission failed");
+      const apiErrors = extractApiFieldErrors(error, apiFieldMap);
+
+      setErrors((currentErrors) => ({ ...currentErrors, ...apiErrors }));
+      toast.error(getFirstApiErrorMessage(apiErrors, "Submission failed"));
     } finally {
       setSubmitting(false);
     }
@@ -594,6 +614,11 @@ function CreateRequests({ fetchRequests }) {
                 <label style={styles.field}>
                   <span style={styles.label}>Sub Location</span>
                   <Select
+                    disabled={!formData.location || subLocationsLoading || !isSubLocationEnabled}
+                    loading={subLocationsLoading}
+                    notFoundContent={
+                      formData.location ? "No sub locations found" : "Select location first"
+                    }
                     optionFilterProp="label"
                     options={subLocationOptions}
                     placeholder="Select sub location"

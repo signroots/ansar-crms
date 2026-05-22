@@ -268,6 +268,31 @@ const styles = {
     fontWeight: 700,
     wordBreak: "break-word",
   },
+  commentList: {
+    display: "grid",
+    gap: "10px",
+  },
+  commentItem: {
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid var(--admin-border, #e2e8f0)",
+    background: "var(--admin-surface-soft, #f8fafc)",
+  },
+  commentText: {
+    margin: 0,
+    color: "var(--admin-text, #101828)",
+    fontSize: "14px",
+    fontWeight: 700,
+    lineHeight: 1.5,
+    wordBreak: "break-word",
+  },
+  commentMeta: {
+    display: "block",
+    marginTop: "6px",
+    color: "var(--admin-muted, #667085)",
+    fontSize: "12px",
+    fontWeight: 600,
+  },
   statusEditor: {
     display: "grid",
     gap: "8px",
@@ -294,6 +319,38 @@ const getText = (value, fallback = "N/A") => {
 
   return String(value);
 };
+
+const getNamedText = (value, fallback = "N/A") => {
+  if (value && typeof value === "object") {
+    return getText(value.name || value.title || value.label || value.code || value.id, fallback);
+  }
+
+  return getText(value, fallback);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceComplaint = (complaint) =>
+  [
+    complaint?.type_of_issue?.name,
+    complaint?.complaint_type?.name,
+    complaint?.department?.name,
+    complaint?.department,
+  ].some((value) => ["maintenance", "maintanance"].includes(normalizeKey(getNamedText(value, ""))));
+
+const getComplaintLocation = (complaint) =>
+  getNamedText(complaint?.location || complaint?.location_name || complaint?.institution);
+
+const getComplaintSubLocation = (complaint) =>
+  getNamedText(
+    complaint?.sub_location ||
+      complaint?.subLocation ||
+      complaint?.sub_location_name ||
+      complaint?.subLocationName,
+  );
 
 const formatDate = (value, withTime = false) => {
   if (!value) {
@@ -349,6 +406,36 @@ const formatDateTimeText = (value) => {
   }
 
   return `${parts.date} at ${parts.time}`;
+};
+
+const normalizeDelayReasons = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (!value) {
+    return [];
+  }
+
+  return [{ reason: value }];
+};
+
+const formatDelayReasonsText = (value) => {
+  const reasons = normalizeDelayReasons(value);
+
+  if (!reasons.length) {
+    return "N/A";
+  }
+
+  return reasons
+    .map((item) => {
+      const reason = getText(item?.reason || item, "");
+      const timestamp = item?.created_at ? ` (${formatDateTimeText(item.created_at)})` : "";
+
+      return `${reason}${timestamp}`;
+    })
+    .filter(Boolean)
+    .join("; ");
 };
 
 const renderDateTimeCell = (value, label, emptyText = "N/A") => {
@@ -446,13 +533,15 @@ const mapComplaintForExport = (complaint) => ({
   Institution: getText(complaint.institution?.name),
   Complaint: getText(complaint.issue_complaint?.name),
   "Type of Issue": getText(complaint.type_of_issue?.name),
+  Location: getComplaintLocation(complaint),
+  "Sub Location": getComplaintSubLocation(complaint),
   Priority: getText(complaint.priority),
   Status: getText(complaint.status),
   "Complained By": getText(complaint.complainted_by?.name),
   "Mobile Number": getText(complaint.complainted_by?.mobile_number),
   "Attended By": getText(complaint.resolved_by?.name),
   "Resolved Date": formatDate(complaint.resolved_date, true),
-  "Delay Reason": getText(complaint.delay_reason),
+  "Delay Reason": formatDelayReasonsText(complaint.delay_reason),
   Remark: getText(complaint.remark),
   Notes: getText(complaint.notes),
   "Completed Note": getText(complaint.completed_note),
@@ -757,6 +846,13 @@ function ComplaintsList() {
         ["Complaint", selectedComplaint.issue_complaint?.name],
         ["Type of Issue", selectedComplaint.type_of_issue?.name],
         ["Category", selectedComplaint.category],
+        ...(isMaintenanceComplaint(selectedComplaint)
+          ? [
+              ["Location", getComplaintLocation(selectedComplaint)],
+              ["Sub Location", getComplaintSubLocation(selectedComplaint)],
+              ["Priority", selectedComplaint.priority],
+            ]
+          : []),
         ["Status", selectedComplaint.status],
         ["Created Date & Time", formatDateTimeText(selectedComplaint.date)],
         ["Attend Date & Time", formatDateTimeText(selectedComplaint.attend_date)],
@@ -768,6 +864,31 @@ function ComplaintsList() {
         ["Completed Note", selectedComplaint.completed_note],
       ]
     : [];
+
+  const renderDetailValue = (label, value) => {
+    if (label !== "Delay Reason") {
+      return <span style={styles.detailValue}>{getText(value)}</span>;
+    }
+
+    const reasons = normalizeDelayReasons(value);
+
+    if (!reasons.length) {
+      return <span style={styles.detailValue}>N/A</span>;
+    }
+
+    return (
+      <div style={styles.commentList}>
+        {reasons.map((item, index) => (
+          <article key={`${item?.created_at || "delay"}-${index}`} style={styles.commentItem}>
+            <p style={styles.commentText}>{getText(item?.reason || item)}</p>
+            {item?.created_at ? (
+              <span style={styles.commentMeta}>{formatDateTimeText(item.created_at)}</span>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div style={styles.page}>
@@ -824,7 +945,7 @@ function ComplaintsList() {
               setStatusFilter(value);
             }}
             options={[
-              { label: "All status", value: "all" },
+              { label: "All", value: "all" },
               { label: "Pending", value: "Pending" },
               { label: "In Progress", value: "In Progress" },
               { label: "Waiting", value: "Waiting" },
@@ -924,9 +1045,15 @@ function ComplaintsList() {
 
             <div style={styles.detailGrid}>
               {detailItems.map(([label, value]) => (
-                <div key={label} style={styles.detailItem}>
+                <div
+                  key={label}
+                  style={{
+                    ...styles.detailItem,
+                    ...(label === "Delay Reason" ? { gridColumn: "1 / -1" } : {}),
+                  }}
+                >
                   <span style={styles.detailLabel}>{label}</span>
-                  <span style={styles.detailValue}>{getText(value)}</span>
+                  {renderDetailValue(label, value)}
                 </div>
               ))}
             </div>
