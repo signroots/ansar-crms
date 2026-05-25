@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 
-import BASE_URL from "../../../../shared/utils/baseUrl";
+import { apiService } from "../../../../services/api/Api.service";
 
 export const DASHBOARD_MONTHS = [
   "January",
@@ -58,13 +58,7 @@ const emptyMonthlyData = {
 const toNumber = (value) => Number(value || 0);
 
 const readJson = async (url, signal) => {
-  const response = await fetch(url, { signal });
-
-  if (!response.ok) {
-    throw new Error(`Dashboard API failed with ${response.status}`);
-  }
-
-  return response.json();
+  return apiService.get(url, { signal });
 };
 
 const normalizeStats = (data = {}) => ({
@@ -120,8 +114,8 @@ export const useDashboardData = () => {
     setError("");
 
     return Promise.allSettled([
-      readJson(`${BASE_URL}/api/dashboard-stats/`, signal),
-      readJson(`${BASE_URL}/api/pie_chart_monthly-complaints-requests/`, signal),
+      readJson("/api/api/dashboard-stats/", signal),
+      readJson("/api/api/pie_chart_monthly-complaints-requests/", signal),
     ])
       .then(([statsResult, monthlyResult]) => {
         if (signal.aborted) {return;}
