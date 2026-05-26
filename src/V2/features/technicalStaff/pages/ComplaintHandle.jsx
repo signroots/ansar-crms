@@ -611,6 +611,9 @@ function ComplaintHandle() {
 
         <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
           {task?.institution?.name || task?.department?.name || "N/A"}
+          {isMaintenanceComplaint(task) && getComplaintSubLocation(task)
+            ? ` - ${getComplaintSubLocation(task)}`
+            : ""}
         </Typography>
       </Box>
 

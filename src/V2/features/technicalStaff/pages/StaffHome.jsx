@@ -100,6 +100,33 @@ const getIssueName = (task) => task?.issue_complaint?.name || task?.issue_reques
 const getIssueTypeName = (task) =>
   task?.type_of_issue?.name || task?.type_of_request?.name || task?.department?.name || "";
 
+const getNamedText = (value, fallback = "") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || value.code || value.id || fallback;
+  }
+
+  return String(value);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceTask = (task) =>
+  [task?.type_of_issue?.name, task?.type_of_request?.name].some((value) =>
+    ["maintenance", "maintanance"].includes(normalizeKey(value)),
+  );
+
+const getTaskSubLocation = (task) =>
+  getNamedText(
+    task?.sub_location || task?.subLocation || task?.sub_location_name || task?.subLocationName,
+  );
+
 const getPerson = (task) => task?.complainted_by || task?.requested_by || null;
 
 const getPersonLabel = (task) =>
@@ -536,6 +563,9 @@ function StaffHome() {
 
         <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
           {task?.institution?.name || task?.department?.name || "N/A"}
+          {isMaintenanceTask(task) && getTaskSubLocation(task)
+            ? ` - ${getTaskSubLocation(task)}`
+            : ""}
         </Typography>
       </Box>
 
@@ -627,6 +657,8 @@ function StaffHome() {
               {renderDetailRow("Department", selectedTask?.department?.name, Assignment)}
               {renderDetailRow(selectedTypeStyle.label, getIssueName(selectedTask), TypeIcon)}
               {renderDetailRow(getPersonLabel(selectedTask), selectedPerson?.name, Person)}
+              {isMaintenanceTask(selectedTask) &&
+                renderDetailRow("Department Admin", getTaskSubLocation(selectedTask), Business)}
             </Box>
 
             <Box sx={{ mt: 1.25 }}>

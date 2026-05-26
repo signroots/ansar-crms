@@ -412,6 +412,9 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
 
         <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
           {item?.institution?.name || "Submitted item"}
+          {isMaintenanceItem(item) && getItemSubLocation(item)
+            ? ` - ${getItemSubLocation(item)}`
+            : ""}
         </Typography>
       </Box>
 

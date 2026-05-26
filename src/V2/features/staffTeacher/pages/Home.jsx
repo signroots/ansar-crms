@@ -87,6 +87,33 @@ const getIssueName = (item) => item?.issue_request?.name || item?.issue_complain
 const getIssueTypeName = (item) =>
   item?.type_of_request?.name || item?.type_of_issue?.name || item?.department?.name || "";
 
+const getNamedText = (value, fallback = "") => {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || value.code || value.id || fallback;
+  }
+
+  return String(value);
+};
+
+const normalizeKey = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const isMaintenanceItem = (item) =>
+  [item?.type_of_issue?.name, item?.type_of_request?.name].some((value) =>
+    ["maintenance", "maintanance"].includes(normalizeKey(value)),
+  );
+
+const getItemSubLocation = (item) =>
+  getNamedText(
+    item?.sub_location || item?.subLocation || item?.sub_location_name || item?.subLocationName,
+  );
+
 const formatDate = (value) => {
   if (!value) {
     return "N/A";
@@ -419,6 +446,9 @@ function Home() {
 
         <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
           {item?.institution?.name || "Submitted item"}
+          {isMaintenanceItem(item) && getItemSubLocation(item)
+            ? ` - ${getItemSubLocation(item)}`
+            : ""}
         </Typography>
       </Box>
 
@@ -537,6 +567,8 @@ function Home() {
             {renderDetailRow("Issue", getIssueName(selectedItem), EventNote)}
             {renderDetailRow("Notes", selectedItem?.notes, Notes)}
             {renderDetailRow("Institution", selectedItem?.institution?.name, Business)}
+            {isMaintenanceItem(selectedItem) &&
+              renderDetailRow("Department Admin", getItemSubLocation(selectedItem), Business)}
           </Box>
 
           <Box sx={{ mt: 1.5 }}>

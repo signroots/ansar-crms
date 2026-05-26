@@ -597,6 +597,9 @@ function RequestHandle() {
 
         <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 600 }}>
           {task?.institution?.name || task?.department?.name || "N/A"}
+          {isMaintenanceRequest(task) && getRequestSubLocation(task)
+            ? ` - ${getRequestSubLocation(task)}`
+            : ""}
         </Typography>
       </Box>
 
