@@ -1,13 +1,12 @@
  
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, DatePicker, Drawer, Input, Select, TimePicker } from "antd";
-import axios from "axios";
 import dayjs from "dayjs";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
+import { apiService } from "../../../../services/api/Api.service";
 import { USER_ROLES } from "../../../../shared/constants/roles";
-import BASE_URL from "../../../../shared/utils/baseUrl";
 import {
   extractApiFieldErrors,
   getFirstApiErrorMessage,
@@ -28,19 +27,10 @@ const initialFormData = {
   typeOfRequest: "",
 };
 
-const getAccessToken = () => localStorage.getItem("access_token");
-
 const apiRequest = async (method, url, data = null) => {
-  const token = getAccessToken();
+  const normalizedMethod = method.toLowerCase();
 
-  return axios({
-    data,
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    method,
-    url: `${BASE_URL}${url}`,
-  });
+  return normalizedMethod === "get" ? apiService.get(url) : apiService[normalizedMethod](url, data);
 };
 
 const styles = {
@@ -232,7 +222,8 @@ function CreateRequests({ fetchRequests }) {
     requestTypeName || getSelectedLabel(typesOfRequest, formData.typeOfRequest);
   const selectedCategoryKey = normalizeLabel(selectedCategoryName);
   const selectedRequestTypeKey = normalizeLabel(selectedRequestTypeName);
-  const isMaintenance = selectedRequestTypeKey === "maintenance";
+  const isMaintenance = ["maintenance", "maintanance"].includes(selectedRequestTypeKey);
+  const isNotesRequired = isMaintenance && selectedCategoryKey === "others";
   const isStageProgram =
     selectedCategoryKey.includes("stage") && selectedCategoryKey.includes("program");
 
@@ -293,14 +284,14 @@ function CreateRequests({ fetchRequests }) {
 
     try {
       const [staffResponse, institutionsResponse, requestTypesResponse] = await Promise.all([
-        apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead"),
-        apiRequest("GET", "/api/institutions/"),
-        apiRequest("GET", "/api/types-of-request/"),
+        apiRequest("GET", "/api/api/check-staff-id/?data=DepartmentHead"),
+        apiRequest("GET", "/api/api/institutions/"),
+        apiRequest("GET", "/api/api/types-of-request/"),
       ]);
 
-      setStaffIds(staffResponse.data.staff_ids || []);
-      setInstitutions(normalizeApiList(institutionsResponse.data));
-      setTypesOfRequest(normalizeApiList(requestTypesResponse.data));
+      setStaffIds(staffResponse.staff_ids || []);
+      setInstitutions(normalizeApiList(institutionsResponse));
+      setTypesOfRequest(normalizeApiList(requestTypesResponse));
       setLookupsLoaded(true);
     } catch (error) {
       console.error("Request form lookup fetch error:", error);
@@ -356,8 +347,8 @@ function CreateRequests({ fetchRequests }) {
 
     setRequestCategoriesLoading(true);
 
-    apiRequest("GET", `/api/allrequests/${formData.typeOfRequest}/`)
-      .then((res) => setAllRequests(normalizeApiList(res.data)))
+    apiRequest("GET", `/api/api/allrequests/${formData.typeOfRequest}/`)
+      .then((data) => setAllRequests(normalizeApiList(data)))
       .catch(() => setAllRequests([]))
       .finally(() => setRequestCategoriesLoading(false));
   }, [formData.typeOfRequest, openDrawer]);
@@ -393,8 +384,8 @@ function CreateRequests({ fetchRequests }) {
       subLocation: "",
     });
 
-    apiRequest("GET", `/api/sublocation/${value}/`)
-      .then((res) => setSubLocations(normalizeApiList(res.data)))
+    apiRequest("GET", `/api/api/sublocation/${value}/`)
+      .then((data) => setSubLocations(normalizeApiList(data)))
       .catch(() => setSubLocations([]))
       .finally(() => setSubLocationsLoading(false));
   };
@@ -421,6 +412,10 @@ function CreateRequests({ fetchRequests }) {
 
       if (isSubLocationEnabled && !formData.subLocation) {
         nextErrors.subLocation = "Required";
+      }
+
+      if (isNotesRequired && !formData.notes.trim()) {
+        nextErrors.notes = "Required";
       }
     }
 
@@ -467,7 +462,7 @@ function CreateRequests({ fetchRequests }) {
     setSubmitting(true);
 
     try {
-      await apiRequest("POST", "/api/requests/submit/", payload);
+      await apiRequest("POST", "/api/api/requests/submit/", payload);
       toast.success("Request submitted successfully");
       fetchRequests?.();
       resetForm();
@@ -692,12 +687,13 @@ function CreateRequests({ fetchRequests }) {
             <label style={styles.field}>
               <span style={styles.label}>Notes</span>
               <Input.TextArea
-                placeholder="Add notes"
+                placeholder={isNotesRequired ? "Describe the other maintenance request" : "Add notes"}
                 rows={4}
                 style={{ fontSize: "15px", minHeight: "112px", padding: "12px" }}
                 value={formData.notes}
                 onChange={(event) => setField("notes", event.target.value)}
               />
+              <FieldError>{errors.notes}</FieldError>
             </label>
           </section>
         </div>

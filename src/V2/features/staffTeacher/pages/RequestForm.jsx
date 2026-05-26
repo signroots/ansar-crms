@@ -20,21 +20,11 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import ROUTE_PATHS from "../../../app/router/paths";
-import {
-  extractApiFieldErrors,
-  getFirstApiErrorMessage,
-} from "../../../shared/utils/formErrors";
-import BASE_URL from "../../../shared/utils/baseUrl";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token");
-
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiService } from "../../../services/api/Api.service";
+import { extractApiFieldErrors, getFirstApiErrorMessage } from "../../../shared/utils/formErrors";
 
 const normalizeApiList = (data) => {
   if (Array.isArray(data)) {
@@ -64,6 +54,9 @@ const normalizeLabel = (value) =>
   String(value || "")
     .trim()
     .toLowerCase();
+
+const isMaintenanceLabel = (value) =>
+  ["maintenance", "maintanance"].includes(normalizeLabel(value));
 
 const findById = (items, value) => items.find((item) => String(item.id) === String(value));
 
@@ -105,21 +98,23 @@ function RequestForm() {
     () => findById(allRequests, formData.allRequest),
     [allRequests, formData.allRequest],
   );
-  const isMaintenance = normalizeLabel(selectedRequestType?.name) === "maintenance";
+  const isMaintenance = isMaintenanceLabel(selectedRequestType?.name);
   const selectedRequestKey = normalizeLabel(selectedRequest?.name);
+  const isOtherRequest = selectedRequestKey === "others";
+  const isNotesRequired = isMaintenance && isOtherRequest;
   const isStageProgram =
     selectedRequestKey.includes("stage") && selectedRequestKey.includes("program");
   const isSubLocationEnabled = Boolean(formData.location) && subLocations.length > 0;
 
   useEffect(() => {
-    axios
-      .get(`${BASE_URL}/api/types-of-request/`, { headers: getAuthHeaders() })
-      .then((response) => setTypesOfRequest(normalizeApiList(response.data)))
+    apiService
+      .get("/api/api/types-of-request/")
+      .then((data) => setTypesOfRequest(normalizeApiList(data)))
       .catch(() => setTypesOfRequest([]));
 
-    axios
-      .get(`${BASE_URL}/api/institutions/`, { headers: getAuthHeaders() })
-      .then((response) => setLocations(normalizeApiList(response.data)))
+    apiService
+      .get("/api/api/institutions/")
+      .then((data) => setLocations(normalizeApiList(data)))
       .catch(() => setLocations([]));
   }, []);
 
@@ -139,9 +134,9 @@ function RequestForm() {
     setFieldErrors({});
     setSubLocations([]);
 
-    axios
-      .get(`${BASE_URL}/api/allrequests/${typeOfRequestId}/`, { headers: getAuthHeaders() })
-      .then((response) => setAllRequests(normalizeApiList(response.data)))
+    apiService
+      .get(`/api/api/allrequests/${typeOfRequestId}/`)
+      .then((data) => setAllRequests(normalizeApiList(data)))
       .catch(() => setAllRequests([]));
   };
 
@@ -161,6 +156,7 @@ function RequestForm() {
     setFieldErrors((currentErrors) => ({
       ...currentErrors,
       allRequest: "",
+      notes: "",
       program_date: "",
       program_name: "",
       program_time: "",
@@ -175,9 +171,9 @@ function RequestForm() {
     setSubLocations([]);
     setSubLocationsLoading(true);
 
-    axios
-      .get(`${BASE_URL}/api/sublocation/${locationId}/`, { headers: getAuthHeaders() })
-      .then((response) => setSubLocations(normalizeApiList(response.data)))
+    apiService
+      .get(`/api/api/sublocation/${locationId}/`)
+      .then((data) => setSubLocations(normalizeApiList(data)))
       .catch(() => setSubLocations([]))
       .finally(() => setSubLocationsLoading(false));
   };
@@ -202,6 +198,10 @@ function RequestForm() {
 
       if (isSubLocationEnabled && !formData.subLocation) {
         nextFieldErrors.subLocation = "Required";
+      }
+
+      if (isNotesRequired && !formData.notes.trim()) {
+        nextFieldErrors.notes = "Required";
       }
     }
 
@@ -249,33 +249,25 @@ function RequestForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/api/requests/submit/`, payload, {
-        headers: getAuthHeaders(),
-      });
+      await apiService.post("/api/api/requests/submit/", payload);
 
-      if (response.status === 201) {
-        setSnackbarSeverity("success");
-        setSnackbarMessage("Request submitted successfully!");
-        setOpenSnackbar(true);
-        setFormData({
-          typeOfRequest: "",
-          allRequest: "",
-          location: "",
-          notes: "",
-          priority: "Medium",
-          program_name: "",
-          program_date: "",
-          program_time: "",
-          subLocation: "",
-        });
-        setFieldErrors({});
-        setSubLocations([]);
-        navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
-      } else {
-        setSnackbarSeverity("error");
-        setSnackbarMessage("Failed to submit the request.");
-        setOpenSnackbar(true);
-      }
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Request submitted successfully!");
+      setOpenSnackbar(true);
+      setFormData({
+        typeOfRequest: "",
+        allRequest: "",
+        location: "",
+        notes: "",
+        priority: "Medium",
+        program_name: "",
+        program_date: "",
+        program_time: "",
+        subLocation: "",
+      });
+      setFieldErrors({});
+      setSubLocations([]);
+      navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
     } catch (error) {
       console.error("Error submitting the request:", error);
       const apiErrors = extractApiFieldErrors(error, apiFieldMap);
@@ -411,7 +403,10 @@ function RequestForm() {
               </Box>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                >
                   Request
                 </Typography>
                 <Select
@@ -595,12 +590,21 @@ function RequestForm() {
                   name="notes"
                   value={formData.notes}
                   onChange={handleInputChange}
-                  placeholder="Add extra details if needed"
+                  placeholder={
+                    isNotesRequired
+                      ? "Describe the other maintenance request"
+                      : "Add extra details if needed"
+                  }
                   multiline
                   fullWidth
                   rows={3}
                   sx={textFieldSx}
                 />
+                {fieldErrors.notes && (
+                  <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                    {fieldErrors.notes}
+                  </Typography>
+                )}
               </Box>
 
               <Button

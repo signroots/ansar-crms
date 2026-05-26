@@ -20,27 +20,22 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 import ROUTE_PATHS from "../../../app/router/paths";
-import {
-  extractApiFieldErrors,
-  getFirstApiErrorMessage,
-} from "../../../shared/utils/formErrors";
-import BASE_URL from "../../../shared/utils/baseUrl";
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("access_token");
-
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiService } from "../../../services/api/Api.service";
+import { extractApiFieldErrors, getFirstApiErrorMessage } from "../../../shared/utils/formErrors";
 
 const apiFieldMap = {
   issue_complaint: "issue",
   sub_location: "subLocation",
   type_of_issue: "typeOfIssue",
 };
+
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 function ComplaintForm() {
   const navigate = useNavigate();
@@ -65,8 +60,11 @@ function ComplaintForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isMaintenance = ["maintenance", "maintanance"].includes(
-    formData.typeOfIssueName.trim().toLowerCase(),
+    normalizeLabel(formData.typeOfIssueName),
   );
+  const selectedIssue = issues.find((issue) => String(issue.id) === String(formData.issue));
+  const isOtherIssue = normalizeLabel(selectedIssue?.name) === "others";
+  const isNotesRequired = isMaintenance && isOtherIssue;
   const isSubLocationEnabled = Boolean(formData.location) && subLocations.length > 0;
 
   const normalizeApiList = (data) => {
@@ -86,14 +84,14 @@ function ComplaintForm() {
   };
 
   useEffect(() => {
-    axios
-      .get(`${BASE_URL}/api/types-of-issue/`, { headers: getAuthHeaders() })
-      .then((response) => setTypesOfIssue(normalizeApiList(response.data)))
+    apiService
+      .get("/api/api/types-of-issue/")
+      .then((data) => setTypesOfIssue(normalizeApiList(data)))
       .catch(() => setTypesOfIssue([]));
 
-    axios
-      .get(`${BASE_URL}/api/institutions/`, { headers: getAuthHeaders() })
-      .then((response) => setLocations(normalizeApiList(response.data)))
+    apiService
+      .get("/api/api/institutions/")
+      .then((data) => setLocations(normalizeApiList(data)))
       .catch(() => setLocations([]));
   }, []);
 
@@ -113,9 +111,9 @@ function ComplaintForm() {
     setFieldErrors({});
     setSubLocations([]);
 
-    axios
-      .get(`${BASE_URL}/api/issues/${typeOfIssueId}/`, { headers: getAuthHeaders() })
-      .then((response) => setIssues(normalizeApiList(response.data)))
+    apiService
+      .get(`/api/api/issues/${typeOfIssueId}/`)
+      .then((data) => setIssues(normalizeApiList(data)))
       .catch(() => setIssues([]));
   };
 
@@ -132,9 +130,9 @@ function ComplaintForm() {
     setSubLocations([]);
     setSubLocationsLoading(true);
 
-    axios
-      .get(`${BASE_URL}/api/sublocation/${locationId}/`, { headers: getAuthHeaders() })
-      .then((response) => setSubLocations(normalizeApiList(response.data)))
+    apiService
+      .get(`/api/api/sublocation/${locationId}/`)
+      .then((data) => setSubLocations(normalizeApiList(data)))
       .catch(() => setSubLocations([]))
       .finally(() => setSubLocationsLoading(false));
   };
@@ -160,6 +158,10 @@ function ComplaintForm() {
 
       if (isSubLocationEnabled && !formData.subLocation) {
         nextFieldErrors.subLocation = "Required";
+      }
+
+      if (isNotesRequired && !formData.notes.trim()) {
+        nextFieldErrors.notes = "Required";
       }
     }
 
@@ -187,36 +189,23 @@ function ComplaintForm() {
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem("access_token");
+      await apiService.post("/api/api/complaints/submit/", payload);
 
-      const response = await axios.post(`${BASE_URL}/api/complaints/submit/`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+      setSnackbarSeverity("success");
+      setSnackbarMessage("Complaint submitted successfully!");
+      setOpenSnackbar(true);
+      setFormData({
+        typeOfIssue: "",
+        typeOfIssueName: "",
+        issue: "",
+        priority: "",
+        location: "",
+        subLocation: "",
+        notes: "",
       });
-
-      if (response.status === 201) {
-        setSnackbarSeverity("success");
-        setSnackbarMessage("Complaint submitted successfully!");
-        setOpenSnackbar(true);
-        setFormData({
-          typeOfIssue: "",
-          typeOfIssueName: "",
-          issue: "",
-          priority: "",
-          location: "",
-          subLocation: "",
-          notes: "",
-        });
-        setFieldErrors({});
-        setSubLocations([]);
-        navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
-      } else {
-        setSnackbarSeverity("error");
-        setSnackbarMessage("Failed to submit the Complaint.");
-        setOpenSnackbar(true);
-      }
+      setFieldErrors({});
+      setSubLocations([]);
+      navigate(ROUTE_PATHS.staffTeacher.home, { replace: true });
     } catch (error) {
       console.error("Error submitting the Complaint:", error);
       const apiErrors = extractApiFieldErrors(error, apiFieldMap);
@@ -346,7 +335,10 @@ function ComplaintForm() {
               </Box>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                >
                   Complaint
                 </Typography>
                 <Select
@@ -443,7 +435,7 @@ function ComplaintForm() {
                     )}
                   </Box>
 
-                       <Box>
+                  <Box>
                     <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.75 }}>
                       <PriorityHigh sx={{ color: "#64748b", fontSize: 18 }} />
                       <Typography variant="subtitle2" sx={{ color: "#0f172a", fontWeight: 700 }}>
@@ -486,12 +478,21 @@ function ComplaintForm() {
                   name="notes"
                   value={formData.notes}
                   onChange={handleInputChange}
-                  placeholder="Add extra details if needed"
+                  placeholder={
+                    isNotesRequired
+                      ? "Describe the other maintenance complaint"
+                      : "Add extra details if needed"
+                  }
                   multiline
                   fullWidth
                   rows={3}
                   sx={textFieldSx}
                 />
+                {fieldErrors.notes && (
+                  <Typography variant="caption" sx={{ color: "#dc2626", fontWeight: 700 }}>
+                    {fieldErrors.notes}
+                  </Typography>
+                )}
               </Box>
 
               <Button

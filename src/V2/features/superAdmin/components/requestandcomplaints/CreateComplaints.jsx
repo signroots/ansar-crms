@@ -1,15 +1,14 @@
  
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Drawer, Input, Select, Tag } from "antd";
-import axios from "axios";
 import { FiPlus } from "react-icons/fi";
 import { toast } from "react-toastify";
 
+import { apiService } from "../../../../services/api/Api.service";
 import {
   extractApiFieldErrors,
   getFirstApiErrorMessage,
 } from "../../../../shared/utils/formErrors";
-import BASE_URL from "../../../../shared/utils/baseUrl";
 
 const initialFormData = {
   staffId: "",
@@ -24,17 +23,10 @@ const initialFormData = {
   priority: "",
 };
 
-const getAccessToken = () => localStorage.getItem("access_token");
-
 const apiRequest = async (method, url, data = null) => {
-  const token = getAccessToken();
+  const normalizedMethod = method.toLowerCase();
 
-  return axios({
-    data,
-    headers: { Authorization: `Bearer ${token}` },
-    method,
-    url: `${BASE_URL}${url}`,
-  });
+  return normalizedMethod === "get" ? apiService.get(url) : apiService[normalizedMethod](url, data);
 };
 
 const styles = {
@@ -165,6 +157,11 @@ const normalizeApiList = (data) => {
 const getIssueLabel = (item) =>
   item.name || item.issue || item.title || item.issue_name || item.complaint || "Untitled";
 
+const normalizeLabel = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
 const priorityOptions = [
   { label: "Low", value: "low" },
   { label: "Medium", value: "medium" },
@@ -206,8 +203,12 @@ function CreateComplaints({ onCreated }) {
 
   const isTechSupport = userRole === "Tech Support";
   const isMaintenance = ["maintenance", "maintanance"].includes(
-    formData.complaintTypeName.trim().toLowerCase(),
+    normalizeLabel(formData.complaintTypeName),
   );
+  const selectedIssueName = getIssueLabel(
+    issues.find((issue) => String(issue.id) === String(formData.issue)) || {},
+  );
+  const isNotesRequired = isMaintenance && normalizeLabel(selectedIssueName) === "others";
 
   const staffOptions = useMemo(
     () =>
@@ -262,14 +263,14 @@ function CreateComplaints({ onCreated }) {
 
     try {
       const [staffResponse, issueTypesResponse, institutionsResponse] = await Promise.all([
-        apiRequest("GET", "/api/check-staff-id/?data=DepartmentHead"),
-        apiRequest("GET", "/api/types-of-issue/"),
-        apiRequest("GET", "/api/institutions/"),
+        apiRequest("GET", "/api/api/check-staff-id/?data=DepartmentHead"),
+        apiRequest("GET", "/api/api/types-of-issue/"),
+        apiRequest("GET", "/api/api/institutions/"),
       ]);
 
-      setStaffIds(staffResponse.data.staff_ids || []);
-      setIssueTypes(normalizeApiList(issueTypesResponse.data));
-      setInstitutions(normalizeApiList(institutionsResponse.data));
+      setStaffIds(staffResponse.staff_ids || []);
+      setIssueTypes(normalizeApiList(issueTypesResponse));
+      setInstitutions(normalizeApiList(institutionsResponse));
       setLookupsLoaded(true);
     } catch (error) {
       console.error("Complaint form lookup fetch error:", error);
@@ -325,8 +326,8 @@ function CreateComplaints({ onCreated }) {
 
     setIssuesLoading(true);
 
-    apiRequest("GET", `/api/issues/${formData.complaintType}/`)
-      .then((res) => setIssues(normalizeApiList(res.data)))
+    apiRequest("GET", `/api/api/issues/${formData.complaintType}/`)
+      .then((data) => setIssues(normalizeApiList(data)))
       .catch((err) => {
         console.error("Issue fetch error:", err);
         setIssues([]);
@@ -363,8 +364,8 @@ function CreateComplaints({ onCreated }) {
       subLocation: "",
     });
 
-    apiRequest("GET", `/api/sublocation/${value}/`)
-      .then((res) => setSubLocations(normalizeApiList(res.data)))
+    apiRequest("GET", `/api/api/sublocation/${value}/`)
+      .then((data) => setSubLocations(normalizeApiList(data)))
       .catch(() => setSubLocations([]))
       .finally(() => setSubLocationsLoading(false));
   };
@@ -391,6 +392,10 @@ function CreateComplaints({ onCreated }) {
 
       if (isSubLocationEnabled && !formData.subLocation) {
         nextErrors.subLocation = "Required";
+      }
+
+      if (isNotesRequired && !formData.notes.trim()) {
+        nextErrors.notes = "Required";
       }
     }
 
@@ -604,12 +609,13 @@ function CreateComplaints({ onCreated }) {
             <label style={styles.field}>
               <span style={styles.label}>Notes</span>
               <Input.TextArea
-                placeholder="Add notes"
+                placeholder={isNotesRequired ? "Describe the other maintenance complaint" : "Add notes"}
                 rows={4}
                 style={{ fontSize: "15px", minHeight: "112px", padding: "12px" }}
                 value={formData.notes}
                 onChange={(event) => setField("notes", event.target.value)}
               />
+              <FieldError>{errors.notes}</FieldError>
             </label>
           </section>
         </div>
