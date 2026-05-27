@@ -20,7 +20,7 @@ import { LuBuilding2, LuClock3, LuListChecks } from "react-icons/lu";
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
-import { ROLE_GROUPS } from "../../../../shared/constants/roles";
+import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateComplaints from "./CreateComplaints";
 
@@ -560,6 +560,7 @@ function ComplaintsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusRemark, setStatusRemark] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
   const [summaryCountsLoaded, setSummaryCountsLoaded] = useState(false);
@@ -571,8 +572,10 @@ function ComplaintsList() {
   });
   const [totalCount, setTotalCount] = useState(0);
 
-  const { role } = useMemo(() => getAuthSession(), []);
-  const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
+  const { isAdmin, role } = useMemo(() => getAuthSession(), []);
+  const canUpdateStatus =
+    ROLE_GROUPS.DEPARTMENT_ADMIN.includes(role) ||
+    (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true);
@@ -724,10 +727,12 @@ function ComplaintsList() {
   const openComplaintDetails = (complaint) => {
     setSelectedComplaint(complaint);
     setStatusValue(complaint.status || "");
+    setStatusRemark("");
   };
 
   const closeComplaintDetails = () => {
     setSelectedComplaint(null);
+    setStatusRemark("");
     setStatusValue("");
   };
 
@@ -736,20 +741,33 @@ function ComplaintsList() {
       return;
     }
 
+    if (statusValue === "Completed" && !statusRemark.trim()) {
+      toast.warn("Please enter a remark before completing the complaint.");
+      return;
+    }
+
     setStatusUpdating(true);
 
     try {
       await apiService.patch(`/api/api/complaint/${selectedComplaint.id}/update-status-admin/`, {
+        ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
         status: statusValue,
       });
 
       setComplaints((currentComplaints) =>
         currentComplaints.map((complaint) =>
-          complaint.id === selectedComplaint.id ? { ...complaint, status: statusValue } : complaint,
+          complaint.id === selectedComplaint.id
+            ? {
+                ...complaint,
+                ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
+                status: statusValue,
+              }
+            : complaint,
         ),
       );
       setSelectedComplaint((currentComplaint) => ({
         ...currentComplaint,
+        ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
         status: statusValue,
       }));
       setSummaryCounts((currentCounts) =>
@@ -1022,7 +1040,12 @@ function ComplaintsList() {
                       value: status,
                     }))}
                     value={statusValue || undefined}
-                    onChange={setStatusValue}
+                    onChange={(value) => {
+                      setStatusValue(value);
+                      if (value !== "Completed") {
+                        setStatusRemark("");
+                      }
+                    }}
                   />
                   <Popconfirm
                     cancelText="Cancel"
@@ -1032,7 +1055,11 @@ function ComplaintsList() {
                     title="Update status?"
                   >
                     <Button
-                      disabled={!statusValue || statusValue === selectedComplaint.status}
+                      disabled={
+                        !statusValue ||
+                        statusValue === selectedComplaint.status ||
+                        (statusValue === "Completed" && !statusRemark.trim())
+                      }
                       loading={statusUpdating}
                       type="primary"
                     >
@@ -1040,6 +1067,14 @@ function ComplaintsList() {
                     </Button>
                   </Popconfirm>
                 </div>
+                {statusValue === "Completed" ? (
+                  <Input.TextArea
+                    placeholder="Enter completion remark"
+                    rows={3}
+                    value={statusRemark}
+                    onChange={(event) => setStatusRemark(event.target.value)}
+                  />
+                ) : null}
               </div>
             ) : null}
 

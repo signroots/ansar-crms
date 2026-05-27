@@ -20,7 +20,7 @@ import { LuCalendarClock, LuClock3, LuFileSymlink, LuListChecks } from "react-ic
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
-import { ROLE_GROUPS } from "../../../../shared/constants/roles";
+import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateRequests from "./CreateRequests";
 
@@ -490,8 +490,10 @@ function RequestsList() {
   });
   const [totalCount, setTotalCount] = useState(0);
 
-  const { role } = useMemo(() => getAuthSession(), []);
-  const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
+  const { isAdmin, role } = useMemo(() => getAuthSession(), []);
+  const canUpdateStatus =
+    ROLE_GROUPS.DEPARTMENT_ADMIN.includes(role) ||
+    (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);

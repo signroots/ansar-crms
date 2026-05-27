@@ -180,8 +180,10 @@ function StaffHome() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null });
   const [delayReasons, setDelayReasons] = useState([]);
+  const [completionRemark, setCompletionRemark] = useState("");
   const [newDelayReason, setNewDelayReason] = useState("");
   const [showSubmitButton, setShowSubmitButton] = useState(false);
+  const [statusValue, setStatusValue] = useState("");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const pendingTasks = useMemo(
@@ -202,9 +204,11 @@ function StaffHome() {
 
   useEffect(() => {
     setDelayReasons(Array.isArray(selectedTask?.delay_reason) ? selectedTask.delay_reason : []);
+    setCompletionRemark("");
     setNewDelayReason("");
     setShowSubmitButton(false);
-  }, [selectedTask?.id, selectedTask?.type, selectedTask?.delay_reason]);
+    setStatusValue(selectedTask?.status || "");
+  }, [selectedTask?.id, selectedTask?.type, selectedTask?.delay_reason, selectedTask?.status]);
 
   useEffect(() => {
     let isMounted = true;
@@ -279,6 +283,7 @@ function StaffHome() {
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
     const isComplaint = selectedTask.type === "complaint";
+    const nextRemark = isComplaint && newStatus === "Completed" ? completionRemark.trim() : "";
     const endpoint = isComplaint
       ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`
       : `${BASE_URL}/api/request/${selectedTask.id}/update-status/`;
@@ -287,16 +292,22 @@ function StaffHome() {
       await axios.patch(endpoint, {
         status: newStatus,
         staff_id: staffId,
+        ...(nextRemark ? { remark: nextRemark } : {}),
       });
 
       setSelectedTask((currentTask) =>
-        currentTask ? { ...currentTask, status: newStatus } : currentTask,
+        currentTask
+          ? { ...currentTask, ...(nextRemark ? { remark: nextRemark } : {}), status: newStatus }
+          : currentTask,
       );
       setServiceRequests((prevRequests) =>
         prevRequests.map((task) =>
-          isSameTask(task, selectedTask) ? { ...task, status: newStatus } : task,
+          isSameTask(task, selectedTask)
+            ? { ...task, ...(nextRemark ? { remark: nextRemark } : {}), status: newStatus }
+            : task,
         ),
       );
+      setStatusValue(newStatus);
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -311,6 +322,14 @@ function StaffHome() {
 
   const handleDropdownChange = (event) => {
     const newStatus = event.target.value;
+    const isComplaint = getTaskType(selectedTask) === "complaint";
+
+    setStatusValue(newStatus);
+
+    if (isComplaint && newStatus === "Completed") {
+      setCompletionRemark("");
+      return;
+    }
 
     if (newStatus === "In Progress" || newStatus === "Completed" || newStatus === "Waiting") {
       setConfirmDialog({
@@ -323,8 +342,25 @@ function StaffHome() {
     handleStatusChange(newStatus);
   };
 
+  const handleCompletedStatusUpdate = () => {
+    if (!completionRemark.trim()) {
+      toast.warn("Please enter a remark before completing the complaint.");
+      return;
+    }
+
+    setConfirmDialog({
+      open: true,
+      action: () => handleStatusChange("Completed"),
+    });
+  };
+
   const handleDialogClose = (confirm) => {
     setConfirmDialog({ open: false, action: null });
+
+    if (!confirm) {
+      setStatusValue(selectedTask?.status || "");
+      return;
+    }
 
     if (confirm && confirmDialog.action) {
       confirmDialog.action();
@@ -363,8 +399,10 @@ function StaffHome() {
 
   const handleBackToList = () => {
     setSelectedTask(null);
+    setCompletionRemark("");
     setNewDelayReason("");
     setShowSubmitButton(false);
+    setStatusValue("");
   };
 
   const renderStatusChip = (status) => {
@@ -476,7 +514,7 @@ function StaffHome() {
 
     if (selectedTask.status === "Waiting") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="Waiting">
             Waiting
           </MenuItem>
@@ -487,7 +525,7 @@ function StaffHome() {
 
     if (selectedTask.status === "In Progress") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="In Progress">
             In Progress
           </MenuItem>
@@ -691,6 +729,51 @@ function StaffHome() {
               </Typography>
               {renderStatusControl()}
             </Box>
+
+            {getTaskType(selectedTask) === "complaint" &&
+              statusValue === "Completed" &&
+              selectedTask?.status !== "Completed" && (
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                  >
+                    Completion Remark
+                  </Typography>
+                  <TextField
+                    value={completionRemark}
+                    onChange={(event) => setCompletionRemark(event.target.value)}
+                    fullWidth
+                    placeholder="Enter remark before completing"
+                    multiline
+                    minRows={3}
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: 2,
+                        bgcolor: "#ffffff",
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={handleCompletedStatusUpdate}
+                    disabled={!completionRemark.trim()}
+                    sx={{
+                      mt: 1,
+                      minHeight: 46,
+                      borderRadius: 2,
+                      bgcolor: "#0f766e",
+                      fontWeight: 700,
+                      textTransform: "none",
+                      boxShadow: "none",
+                      "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                    }}
+                  >
+                    Update Status
+                  </Button>
+                </Box>
+              )}
 
             {selectedTask?.status === "Waiting" && (
               <Box sx={{ mt: 1.5 }}>

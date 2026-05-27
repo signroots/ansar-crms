@@ -181,7 +181,7 @@ function ComplaintHandle() {
   const [completedReasons, setCompletedReasons] = useState([]);
   const [newCompletedReason, setNewCompletedReason] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [remarksSubmitted, setRemarksSubmitted] = useState(false);
+  const [statusValue, setStatusValue] = useState("");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const statusCounts = useMemo(
@@ -205,7 +205,7 @@ function ComplaintHandle() {
     setNewDelayReason("");
     setNewCompletedReason("");
     setRemarks("");
-    setRemarksSubmitted(false);
+    setStatusValue(selectedTask?.status || "");
   }, [selectedTask]);
 
   useEffect(() => {
@@ -254,26 +254,28 @@ function ComplaintHandle() {
 
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
+    const nextRemark = newStatus === "Completed" ? remarks.trim() : remarks;
 
     try {
       await axios.patch(`${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`, {
         status: newStatus,
         staff_id: staffId,
-        remark: remarks,
+        ...(nextRemark ? { remark: nextRemark } : {}),
       });
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? { ...currentTask, status: newStatus, remark: remarks || currentTask.remark }
+          ? { ...currentTask, status: newStatus, remark: nextRemark || currentTask.remark }
           : currentTask,
       );
       setComplaints((prevComplaints) =>
         prevComplaints.map((task) =>
           task.id === selectedTask.id
-            ? { ...task, status: newStatus, remark: remarks || task.remark }
+            ? { ...task, status: newStatus, remark: nextRemark || task.remark }
             : task,
         ),
       );
+      setStatusValue(newStatus);
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -289,14 +291,38 @@ function ComplaintHandle() {
   const handleDropdownChange = (event) => {
     const newStatus = event.target.value;
 
+    setStatusValue(newStatus);
+
+    if (newStatus === "Completed") {
+      setRemarks("");
+      return;
+    }
+
     setConfirmDialog({
       open: true,
       action: () => handleStatusChange(newStatus),
     });
   };
 
+  const handleCompletedStatusUpdate = () => {
+    if (!remarks.trim()) {
+      toast.warn("Please enter a remark before completing the complaint.");
+      return;
+    }
+
+    setConfirmDialog({
+      open: true,
+      action: () => handleStatusChange("Completed"),
+    });
+  };
+
   const handleDialogClose = (confirm) => {
     setConfirmDialog({ open: false, action: null });
+
+    if (!confirm) {
+      setStatusValue(selectedTask?.status || "");
+      return;
+    }
 
     if (confirm && confirmDialog.action) {
       confirmDialog.action();
@@ -361,27 +387,12 @@ function ComplaintHandle() {
     }
   };
 
-  const handleConfirmInProgressRemark = () => {
-    if (remarks.trim() === "") {
-      toast.warn("Please enter a remark before proceeding.");
-      return;
-    }
-
-    setConfirmDialog({
-      open: true,
-      action: async () => {
-        await handleStatusChange("In Progress");
-        setRemarks("");
-        setRemarksSubmitted(true);
-      },
-    });
-  };
-
   const handleBackToList = () => {
     setSelectedTask(null);
     setNewDelayReason("");
     setNewCompletedReason("");
     setRemarks("");
+    setStatusValue("");
   };
 
   const renderStatusChip = (status) => {
@@ -464,7 +475,7 @@ function ComplaintHandle() {
 
     if (selectedTask.status === "Waiting") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="Waiting">
             Waiting
           </MenuItem>
@@ -475,7 +486,7 @@ function ComplaintHandle() {
 
     if (selectedTask.status === "In Progress") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="In Progress">
             In Progress
           </MenuItem>
@@ -757,19 +768,19 @@ function ComplaintHandle() {
               {renderStatusControl()}
             </Box>
 
-            {selectedTask.status === "In Progress" && !remarksSubmitted && (
+            {statusValue === "Completed" && selectedTask.status !== "Completed" && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography
                   variant="subtitle2"
                   sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
                 >
-                  Work Remark
+                  Completion Remark
                 </Typography>
                 <TextField
                   value={remarks}
                   onChange={(event) => setRemarks(event.target.value)}
                   fullWidth
-                  placeholder="Enter remark before confirming"
+                  placeholder="Enter remark before completing"
                   multiline
                   minRows={3}
                   sx={{
@@ -782,7 +793,8 @@ function ComplaintHandle() {
                 <Button
                   variant="contained"
                   fullWidth
-                  onClick={handleConfirmInProgressRemark}
+                  onClick={handleCompletedStatusUpdate}
+                  disabled={!remarks.trim()}
                   sx={{
                     mt: 1,
                     minHeight: 46,
@@ -794,7 +806,7 @@ function ComplaintHandle() {
                     "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
                   }}
                 >
-                  Confirm In Progress
+                  Update Status
                 </Button>
               </Box>
             )}

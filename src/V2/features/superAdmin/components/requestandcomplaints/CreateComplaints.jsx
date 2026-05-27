@@ -424,7 +424,7 @@ function CreateComplaints({ onCreated }) {
     setSubmitting(true);
 
     try {
-      await apiRequest("POST", "/api/complaints/submit/", payload);
+      await apiRequest("POST", "/api/api/complaints/submit/", payload);
       toast.success("Complaint submitted successfully");
       setOpenDrawer(false);
       resetForm();
