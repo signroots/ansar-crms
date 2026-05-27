@@ -283,7 +283,7 @@ function StaffHome() {
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
     const isComplaint = selectedTask.type === "complaint";
-    const nextRemark = isComplaint && newStatus === "Completed" ? completionRemark.trim() : "";
+    const nextCompletedNote = newStatus === "Completed" ? completionRemark.trim() : "";
     const endpoint = isComplaint
       ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`
       : `${BASE_URL}/api/request/${selectedTask.id}/update-status/`;
@@ -292,14 +292,14 @@ function StaffHome() {
       await axios.patch(endpoint, {
         status: newStatus,
         staff_id: staffId,
-        ...(nextRemark ? { completed_note: nextRemark } : {}),
+        ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
       });
 
       setSelectedTask((currentTask) =>
         currentTask
           ? {
               ...currentTask,
-              ...(nextRemark ? { completed_note: nextRemark } : {}),
+              ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
               status: newStatus,
             }
           : currentTask,
@@ -309,7 +309,7 @@ function StaffHome() {
           isSameTask(task, selectedTask)
             ? {
                 ...task,
-                ...(nextRemark ? { completed_note: nextRemark } : {}),
+                ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
                 status: newStatus,
               }
             : task,
@@ -330,11 +330,10 @@ function StaffHome() {
 
   const handleDropdownChange = (event) => {
     const newStatus = event.target.value;
-    const isComplaint = getTaskType(selectedTask) === "complaint";
 
     setStatusValue(newStatus);
 
-    if (isComplaint && newStatus === "Completed") {
+    if (newStatus === "Completed") {
       setCompletionRemark("");
       return;
     }
@@ -352,7 +351,7 @@ function StaffHome() {
 
   const handleCompletedStatusUpdate = () => {
     if (!completionRemark.trim()) {
-      toast.warn("Please enter a remark before completing the complaint.");
+      toast.warn("Please enter a completed note before completing.");
       return;
     }
 
@@ -738,50 +737,48 @@ function StaffHome() {
               {renderStatusControl()}
             </Box>
 
-            {getTaskType(selectedTask) === "complaint" &&
-              statusValue === "Completed" &&
-              selectedTask?.status !== "Completed" && (
-                <Box sx={{ mt: 1.5 }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
-                  >
-                    Completion Remark
-                  </Typography>
-                  <TextField
-                    value={completionRemark}
-                    onChange={(event) => setCompletionRemark(event.target.value)}
-                    fullWidth
-                    placeholder="Enter remark before completing"
-                    multiline
-                    minRows={3}
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: 2,
-                        bgcolor: "#ffffff",
-                      },
-                    }}
-                  />
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={handleCompletedStatusUpdate}
-                    disabled={!completionRemark.trim()}
-                    sx={{
-                      mt: 1,
-                      minHeight: 46,
+            {statusValue === "Completed" && selectedTask?.status !== "Completed" && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                >
+                  Completed Note
+                </Typography>
+                <TextField
+                  value={completionRemark}
+                  onChange={(event) => setCompletionRemark(event.target.value)}
+                  fullWidth
+                  placeholder="Enter completed note"
+                  multiline
+                  minRows={3}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
                       borderRadius: 2,
-                      bgcolor: "#0f766e",
-                      fontWeight: 700,
-                      textTransform: "none",
-                      boxShadow: "none",
-                      "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
-                    }}
-                  >
-                    Update Status
-                  </Button>
-                </Box>
-              )}
+                      bgcolor: "#ffffff",
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleCompletedStatusUpdate}
+                  disabled={!completionRemark.trim()}
+                  sx={{
+                    mt: 1,
+                    minHeight: 46,
+                    borderRadius: 2,
+                    bgcolor: "#0f766e",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    boxShadow: "none",
+                    "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                  }}
+                >
+                  Update Status
+                </Button>
+              </Box>
+            )}
 
             {selectedTask?.status === "Waiting" && (
               <Box sx={{ mt: 1.5 }}>

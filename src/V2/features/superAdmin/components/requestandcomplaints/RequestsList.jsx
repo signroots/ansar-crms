@@ -480,6 +480,7 @@ function RequestsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusRemark, setStatusRemark] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
   const [summaryCountsLoaded, setSummaryCountsLoaded] = useState(false);
@@ -655,11 +656,13 @@ function RequestsList() {
   const openRequestDetails = (request) => {
     markAsViewed(request);
     setSelectedRequest(request);
+    setStatusRemark("");
     setStatusValue(request.status || "");
   };
 
   const closeRequestDetails = () => {
     setSelectedRequest(null);
+    setStatusRemark("");
     setStatusValue("");
   };
 
@@ -668,20 +671,33 @@ function RequestsList() {
       return;
     }
 
+    if (statusValue === "Completed" && !statusRemark.trim()) {
+      toast.warn("Please enter a completed note before completing the request.");
+      return;
+    }
+
     setStatusUpdating(true);
 
     try {
       await apiService.patch(`/api/api/request/${selectedRequest.id}/update-status-admin/`, {
+        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
         status: statusValue,
       });
 
       setRequests((currentRequests) =>
         currentRequests.map((request) =>
-          request.id === selectedRequest.id ? { ...request, status: statusValue } : request,
+          request.id === selectedRequest.id
+            ? {
+                ...request,
+                ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
+                status: statusValue,
+              }
+            : request,
         ),
       );
       setSelectedRequest((currentRequest) => ({
         ...currentRequest,
+        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
         status: statusValue,
       }));
       setSummaryCounts((currentCounts) =>
@@ -959,7 +975,12 @@ function RequestsList() {
                       value: status,
                     }))}
                     value={statusValue || undefined}
-                    onChange={setStatusValue}
+                    onChange={(value) => {
+                      setStatusValue(value);
+                      if (value !== "Completed") {
+                        setStatusRemark("");
+                      }
+                    }}
                   />
                   <Popconfirm
                     cancelText="Cancel"
@@ -969,7 +990,11 @@ function RequestsList() {
                     title="Update status?"
                   >
                     <Button
-                      disabled={!statusValue || statusValue === selectedRequest.status}
+                      disabled={
+                        !statusValue ||
+                        statusValue === selectedRequest.status ||
+                        (statusValue === "Completed" && !statusRemark.trim())
+                      }
                       loading={statusUpdating}
                       type="primary"
                     >
@@ -977,6 +1002,14 @@ function RequestsList() {
                     </Button>
                   </Popconfirm>
                 </div>
+                {statusValue === "Completed" ? (
+                  <Input.TextArea
+                    placeholder="Enter completed note"
+                    rows={3}
+                    value={statusRemark}
+                    onChange={(event) => setStatusRemark(event.target.value)}
+                  />
+                ) : null}
               </div>
             ) : null}
 

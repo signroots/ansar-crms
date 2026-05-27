@@ -184,8 +184,10 @@ function RequestHandle() {
   const [confirmDialog, setConfirmDialog] = useState({ open: false, action: null });
   const [delayReasons, setDelayReasons] = useState([]);
   const [newDelayReason, setNewDelayReason] = useState("");
+  const [completionRemark, setCompletionRemark] = useState("");
   const [completedReasons, setCompletedReasons] = useState([]);
   const [newCompletedReason, setNewCompletedReason] = useState("");
+  const [statusValue, setStatusValue] = useState("");
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const statusCounts = useMemo(
@@ -207,9 +209,11 @@ function RequestHandle() {
 
   useEffect(() => {
     setDelayReasons(normalizeList(selectedTask?.delay_reason));
+    setCompletionRemark("");
     setCompletedReasons(parseCompletedNotes(selectedTask?.completed_note));
     setNewDelayReason("");
     setNewCompletedReason("");
+    setStatusValue(selectedTask?.status || "");
   }, [selectedTask]);
 
   useEffect(() => {
@@ -258,21 +262,36 @@ function RequestHandle() {
 
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
+    const nextCompletedNote = newStatus === "Completed" ? completionRemark.trim() : "";
 
     try {
       await axios.patch(`${BASE_URL}/api/request/${selectedTask.id}/update-status/`, {
         status: newStatus,
         staff_id: staffId,
+        ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
       });
 
       setSelectedTask((currentTask) =>
-        currentTask ? { ...currentTask, status: newStatus } : currentTask,
+        currentTask
+          ? {
+              ...currentTask,
+              ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
+              status: newStatus,
+            }
+          : currentTask,
       );
       setRequests((prevRequests) =>
         prevRequests.map((task) =>
-          task.id === selectedTask.id ? { ...task, status: newStatus } : task,
+          task.id === selectedTask.id
+            ? {
+                ...task,
+                ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
+                status: newStatus,
+              }
+            : task,
         ),
       );
+      setStatusValue(newStatus);
     } catch (error) {
       console.error("Error updating status:", error);
     }
@@ -288,14 +307,38 @@ function RequestHandle() {
   const handleDropdownChange = (event) => {
     const newStatus = event.target.value;
 
+    setStatusValue(newStatus);
+
+    if (newStatus === "Completed") {
+      setCompletionRemark("");
+      return;
+    }
+
     setConfirmDialog({
       open: true,
       action: () => handleStatusChange(newStatus),
     });
   };
 
+  const handleCompletedStatusUpdate = () => {
+    if (!completionRemark.trim()) {
+      toast.warn("Please enter a completed note before completing the request.");
+      return;
+    }
+
+    setConfirmDialog({
+      open: true,
+      action: () => handleStatusChange("Completed"),
+    });
+  };
+
   const handleDialogClose = (confirm) => {
     setConfirmDialog({ open: false, action: null });
+
+    if (!confirm) {
+      setStatusValue(selectedTask?.status || "");
+      return;
+    }
 
     if (confirm && confirmDialog.action) {
       confirmDialog.action();
@@ -362,8 +405,10 @@ function RequestHandle() {
 
   const handleBackToList = () => {
     setSelectedTask(null);
+    setCompletionRemark("");
     setNewDelayReason("");
     setNewCompletedReason("");
+    setStatusValue("");
   };
 
   const renderStatusChip = (status) => {
@@ -464,7 +509,7 @@ function RequestHandle() {
 
     if (selectedTask.status === "Waiting") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="Waiting">
             Waiting
           </MenuItem>
@@ -475,7 +520,7 @@ function RequestHandle() {
 
     if (selectedTask.status === "In Progress") {
       return (
-        <Select value={selectedTask.status} onChange={handleDropdownChange} fullWidth>
+        <Select value={statusValue || selectedTask.status} onChange={handleDropdownChange} fullWidth>
           <MenuItem disabled hidden value="In Progress">
             In Progress
           </MenuItem>
@@ -733,6 +778,49 @@ function RequestHandle() {
               </Typography>
               {renderStatusControl()}
             </Box>
+
+            {statusValue === "Completed" && selectedTask.status !== "Completed" && (
+              <Box sx={{ mt: 1.5 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
+                >
+                  Completed Note
+                </Typography>
+                <TextField
+                  value={completionRemark}
+                  onChange={(event) => setCompletionRemark(event.target.value)}
+                  fullWidth
+                  placeholder="Enter completed note"
+                  multiline
+                  minRows={3}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 2,
+                      bgcolor: "#ffffff",
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={handleCompletedStatusUpdate}
+                  disabled={!completionRemark.trim()}
+                  sx={{
+                    mt: 1,
+                    minHeight: 46,
+                    borderRadius: 2,
+                    bgcolor: "#0f766e",
+                    fontWeight: 700,
+                    textTransform: "none",
+                    boxShadow: "none",
+                    "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                  }}
+                >
+                  Update Status
+                </Button>
+              </Box>
+            )}
 
             {selectedTask.status === "Waiting" && (
               <Box sx={{ mt: 1.5 }}>
