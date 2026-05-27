@@ -260,18 +260,18 @@ function ComplaintHandle() {
       await axios.patch(`${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`, {
         status: newStatus,
         staff_id: staffId,
-        ...(nextRemark ? { remark: nextRemark } : {}),
+        ...(nextRemark ? { completed_note: nextRemark } : {}),
       });
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? { ...currentTask, status: newStatus, remark: nextRemark || currentTask.remark }
+          ? { ...currentTask, status: newStatus, completed_note: nextRemark || currentTask.completed_note, status: newStatus }
           : currentTask,
       );
       setComplaints((prevComplaints) =>
         prevComplaints.map((task) =>
           task.id === selectedTask.id
-            ? { ...task, status: newStatus, remark: nextRemark || task.remark }
+            ? { ...task, status: newStatus, completed_note: nextRemark || task.completed_note, status: newStatus }
             : task,
         ),
       );

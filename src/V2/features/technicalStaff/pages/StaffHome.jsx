@@ -292,18 +292,26 @@ function StaffHome() {
       await axios.patch(endpoint, {
         status: newStatus,
         staff_id: staffId,
-        ...(nextRemark ? { remark: nextRemark } : {}),
+        ...(nextRemark ? { completed_note: nextRemark } : {}),
       });
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? { ...currentTask, ...(nextRemark ? { remark: nextRemark } : {}), status: newStatus }
+          ? {
+              ...currentTask,
+              ...(nextRemark ? { completed_note: nextRemark } : {}),
+              status: newStatus,
+            }
           : currentTask,
       );
       setServiceRequests((prevRequests) =>
         prevRequests.map((task) =>
           isSameTask(task, selectedTask)
-            ? { ...task, ...(nextRemark ? { remark: nextRemark } : {}), status: newStatus }
+            ? {
+                ...task,
+                ...(nextRemark ? { completed_note: nextRemark } : {}),
+                status: newStatus,
+              }
             : task,
         ),
       );

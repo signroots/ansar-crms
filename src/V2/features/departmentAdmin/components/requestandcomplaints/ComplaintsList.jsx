@@ -750,7 +750,7 @@ function ComplaintsList() {
 
     try {
       await apiService.patch(`/api/api/complaint/${selectedComplaint.id}/update-status-admin/`, {
-        ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
+        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
         status: statusValue,
       });
 
@@ -759,7 +759,7 @@ function ComplaintsList() {
           complaint.id === selectedComplaint.id
             ? {
                 ...complaint,
-                ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
+                ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
                 status: statusValue,
               }
             : complaint,
@@ -767,7 +767,7 @@ function ComplaintsList() {
       );
       setSelectedComplaint((currentComplaint) => ({
         ...currentComplaint,
-        ...(statusValue === "Completed" ? { remark: statusRemark.trim() } : {}),
+        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
         status: statusValue,
       }));
       setSummaryCounts((currentCounts) =>
