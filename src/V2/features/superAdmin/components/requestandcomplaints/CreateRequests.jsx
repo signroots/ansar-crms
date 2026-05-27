@@ -459,7 +459,7 @@ function CreateRequests({ fetchRequests }) {
     setSubmitting(true);
 
     try {
-      await apiRequest("POST", "/api/requests/submit/", payload);
+      await apiRequest("POST", "/api/api/requests/submit/", payload);
       toast.success("Request submitted successfully");
       fetchRequests?.();
       resetForm();
