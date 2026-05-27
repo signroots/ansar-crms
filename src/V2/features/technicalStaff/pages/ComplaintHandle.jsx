@@ -265,13 +265,13 @@ function ComplaintHandle() {
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? { ...currentTask, status: newStatus, completed_note: nextRemark || currentTask.completed_note, status: newStatus }
+          ? { ...currentTask, completed_note: nextRemark || currentTask.completed_note, status: newStatus }
           : currentTask,
       );
       setComplaints((prevComplaints) =>
         prevComplaints.map((task) =>
           task.id === selectedTask.id
-            ? { ...task, status: newStatus, completed_note: nextRemark || task.completed_note, status: newStatus }
+            ? { ...task, completed_note: nextRemark || task.completed_note, status: newStatus }
             : task,
         ),
       );
