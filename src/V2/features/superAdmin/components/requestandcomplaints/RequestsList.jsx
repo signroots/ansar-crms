@@ -285,6 +285,14 @@ const getText = (value, fallback = "N/A") => {
   return String(value);
 };
 
+const hasCompletedNote = (value) => {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasCompletedNote(item?.completed_note || item?.reason || item));
+  }
+
+  return value !== null && value !== undefined && String(value).trim() !== "";
+};
+
 const getNamedText = (value, fallback = "N/A") => {
   if (value && typeof value === "object") {
     return getText(value.name || value.title || value.label || value.code || value.id, fallback);
@@ -671,7 +679,10 @@ function RequestsList() {
       return;
     }
 
-    if (statusValue === "Completed" && !statusRemark.trim()) {
+    const hasExistingCompletedNote = hasCompletedNote(selectedRequest.completed_note);
+    const nextCompletedNote = statusRemark.trim();
+
+    if (statusValue === "Completed" && !hasExistingCompletedNote && !nextCompletedNote) {
       toast.warn("Please enter a completed note before completing the request.");
       return;
     }
@@ -680,7 +691,9 @@ function RequestsList() {
 
     try {
       await apiService.patch(`/api/api/request/${selectedRequest.id}/update-status-admin/`, {
-        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
+        ...(statusValue === "Completed" && !hasExistingCompletedNote
+          ? { completed_note: nextCompletedNote }
+          : {}),
         status: statusValue,
       });
 
@@ -689,7 +702,9 @@ function RequestsList() {
           request.id === selectedRequest.id
             ? {
                 ...request,
-                ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
+                ...(statusValue === "Completed" && !hasExistingCompletedNote
+                  ? { completed_note: nextCompletedNote }
+                  : {}),
                 status: statusValue,
               }
             : request,
@@ -697,7 +712,9 @@ function RequestsList() {
       );
       setSelectedRequest((currentRequest) => ({
         ...currentRequest,
-        ...(statusValue === "Completed" ? { completed_note: statusRemark.trim() } : {}),
+        ...(statusValue === "Completed" && !hasExistingCompletedNote
+          ? { completed_note: nextCompletedNote }
+          : {}),
         status: statusValue,
       }));
       setSummaryCounts((currentCounts) =>
@@ -816,6 +833,8 @@ function RequestsList() {
         ["Notes", selectedRequest.notes],
       ]
     : [];
+
+  const selectedRequestHasCompletedNote = hasCompletedNote(selectedRequest?.completed_note);
 
   const renderDetailValue = (label, value) => {
     if (label !== "Delay Reason") {
@@ -993,7 +1012,9 @@ function RequestsList() {
                       disabled={
                         !statusValue ||
                         statusValue === selectedRequest.status ||
-                        (statusValue === "Completed" && !statusRemark.trim())
+                        (statusValue === "Completed" &&
+                          !selectedRequestHasCompletedNote &&
+                          !statusRemark.trim())
                       }
                       loading={statusUpdating}
                       type="primary"
@@ -1002,7 +1023,7 @@ function RequestsList() {
                     </Button>
                   </Popconfirm>
                 </div>
-                {statusValue === "Completed" ? (
+                {statusValue === "Completed" && !selectedRequestHasCompletedNote ? (
                   <Input.TextArea
                     placeholder="Enter completed note"
                     rows={3}

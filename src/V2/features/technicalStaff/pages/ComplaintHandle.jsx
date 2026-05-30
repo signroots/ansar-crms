@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import ArrowBack from "@mui/icons-material/ArrowBack";
 import Assignment from "@mui/icons-material/Assignment";
@@ -114,20 +114,42 @@ const normalizeList = (value) => (Array.isArray(value) ? value : []);
 
 const parseCompletedNotes = (value) => {
   if (Array.isArray(value)) {
-    return value;
+    return value.filter((item) => hasCompletedNote(item?.completed_note || item?.reason || item));
+  }
+
+  if (value && typeof value === "object") {
+    return hasCompletedNote(value.completed_note || value.reason) ? [value] : [];
   }
 
   if (typeof value !== "string" || value.trim() === "") {
     return [];
   }
 
+  const trimmedValue = value.trim();
+
+  if (!trimmedValue.startsWith("[") && !trimmedValue.startsWith("{")) {
+    return [{ completed_note: trimmedValue }];
+  }
+
   try {
-    return JSON.parse(value.replace(/'/g, '"').replace(/None/g, "null"));
+    return parseCompletedNotes(JSON.parse(trimmedValue.replace(/'/g, '"').replace(/None/g, "null")));
   } catch (error) {
     console.error("Error parsing completed_note:", error);
-    return [];
+    return [{ completed_note: trimmedValue }];
   }
 };
+
+function hasCompletedNote(value) {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasCompletedNote(item?.completed_note || item?.reason || item));
+  }
+
+  if (value && typeof value === "object") {
+    return hasCompletedNote(value.completed_note || value.reason);
+  }
+
+  return value !== null && value !== undefined && String(value).trim() !== "";
+}
 
 const formatDate = (value) => {
   if (!value) {
@@ -197,6 +219,7 @@ function ComplaintHandle() {
   );
 
   const contactNumber = selectedTask?.complainted_by?.mobile_number || "";
+  const hasSelectedCompletedNote = hasCompletedNote(selectedTask?.completed_note);
   const showMaintenanceDetails = selectedTask && isMaintenanceComplaint(selectedTask);
 
   useEffect(() => {
@@ -208,45 +231,51 @@ function ComplaintHandle() {
     setStatusValue(selectedTask?.status || "");
   }, [selectedTask]);
 
+  const fetchComplaints = useCallback(async ({ showLoading = false } = {}) => {
+    const staffId = localStorage.getItem("staff_id");
+
+    if (showLoading) {
+      setIsInitialLoading(true);
+    }
+
+    try {
+      const response = await axios.get(`${BASE_URL}/api/complaints-list/tech-support/`, {
+        params: { staff_id: staffId },
+      });
+
+      return normalizeList(response.data);
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+      return null;
+    } finally {
+      if (showLoading) {
+        setIsInitialLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
-    const fetchComplaints = async ({ showLoading = false } = {}) => {
-      const staffId = localStorage.getItem("staff_id");
+    const refreshComplaints = async ({ showLoading = false } = {}) => {
+      const nextComplaints = await fetchComplaints({ showLoading });
 
-      if (showLoading) {
-        setIsInitialLoading(true);
-      }
-
-      try {
-        const response = await axios.get(`${BASE_URL}/api/complaints-list/tech-support/`, {
-          params: { staff_id: staffId },
-        });
-        const nextComplaints = normalizeList(response.data);
-
-        if (isMounted) {
-          setComplaints(nextComplaints);
-        }
-      } catch (error) {
-        console.error("Error fetching complaints:", error);
-      } finally {
-        if (isMounted && showLoading) {
-          setIsInitialLoading(false);
-        }
+      if (isMounted && nextComplaints) {
+        setComplaints(nextComplaints);
       }
     };
 
-    fetchComplaints({ showLoading: true });
+    refreshComplaints({ showLoading: true });
 
     const intervalId = setInterval(() => {
-      fetchComplaints();
+      refreshComplaints();
     }, 3600000);
 
     return () => {
       isMounted = false;
       clearInterval(intervalId);
     };
-  }, []);
+  }, [fetchComplaints]);
 
   const handleViewDetails = (task) => {
     setSelectedTask(task);
@@ -254,24 +283,35 @@ function ComplaintHandle() {
 
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
-    const nextRemark = newStatus === "Completed" ? remarks.trim() : remarks;
+    const nextCompletedNote =
+      newStatus === "Completed" && !hasCompletedNote(selectedTask?.completed_note)
+        ? remarks.trim()
+        : "";
 
     try {
       await axios.patch(`${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`, {
         status: newStatus,
         staff_id: staffId,
-        ...(nextRemark ? { completed_note: nextRemark } : {}),
+        ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
       });
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? { ...currentTask, completed_note: nextRemark || currentTask.completed_note, status: newStatus }
+          ? {
+              ...currentTask,
+              ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
+              status: newStatus,
+            }
           : currentTask,
       );
       setComplaints((prevComplaints) =>
         prevComplaints.map((task) =>
           task.id === selectedTask.id
-            ? { ...task, completed_note: nextRemark || task.completed_note, status: newStatus }
+            ? {
+                ...task,
+                ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
+                status: newStatus,
+              }
             : task,
         ),
       );
@@ -294,6 +334,14 @@ function ComplaintHandle() {
     setStatusValue(newStatus);
 
     if (newStatus === "Completed") {
+      if (hasSelectedCompletedNote) {
+        setConfirmDialog({
+          open: true,
+          action: () => handleStatusChange(newStatus),
+        });
+        return;
+      }
+
       setRemarks("");
       return;
     }
@@ -305,8 +353,13 @@ function ComplaintHandle() {
   };
 
   const handleCompletedStatusUpdate = () => {
+    if (hasSelectedCompletedNote) {
+      toast.warn("Completed note already exists for this complaint.");
+      return;
+    }
+
     if (!remarks.trim()) {
-      toast.warn("Please enter a remark before completing the complaint.");
+      toast.warn("Please enter a completed note before completing the complaint.");
       return;
     }
 
@@ -365,21 +418,30 @@ function ComplaintHandle() {
   const handleNoteSubmit = async () => {
     const staffId = localStorage.getItem("staff_id");
 
+    if (hasSelectedCompletedNote) {
+      toast.warn("Completed note already exists for this complaint.");
+      return;
+    }
+
     try {
+      const submittedCompletedNote = newCompletedReason.trim();
       const response = await axios.patch(
         `${BASE_URL}/api/complaint/${selectedTask.id}/update-completed-reason/`,
         {
           staff_id: staffId,
-          completed_note: newCompletedReason,
+          completed_note: submittedCompletedNote,
         },
       );
-      const parsedNotes = parseCompletedNotes(response.data.completed_note);
+      const nextCompletedNote = response.data?.completed_note || submittedCompletedNote;
+      const parsedNotes = parseCompletedNotes(nextCompletedNote);
+      const nextComplaints = await fetchComplaints();
+      const refreshedComplaint = nextComplaints?.find((task) => task.id === selectedTask.id);
 
-      setSelectedTask((prev) => ({
-        ...prev,
-        completed_note: parsedNotes,
-      }));
-      setCompletedReasons(parsedNotes);
+      if (nextComplaints) {
+        setComplaints(nextComplaints);
+      }
+      setSelectedTask((prev) => refreshedComplaint || { ...prev, completed_note: nextCompletedNote });
+      setCompletedReasons(refreshedComplaint ? parseCompletedNotes(refreshedComplaint.completed_note) : parsedNotes);
       setNewCompletedReason("");
       toast.success("Notes updated successfully");
     } catch (error) {
@@ -768,19 +830,21 @@ function ComplaintHandle() {
               {renderStatusControl()}
             </Box>
 
-            {statusValue === "Completed" && selectedTask.status !== "Completed" && (
+            {statusValue === "Completed" &&
+              selectedTask.status !== "Completed" &&
+              !hasSelectedCompletedNote && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography
                   variant="subtitle2"
                   sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
                 >
-                  Completion Remark
+                  Completed Note
                 </Typography>
                 <TextField
                   value={remarks}
                   onChange={(event) => setRemarks(event.target.value)}
                   fullWidth
-                  placeholder="Enter remark before completing"
+                  placeholder="Enter completed note"
                   multiline
                   minRows={3}
                   sx={{
@@ -870,42 +934,48 @@ function ComplaintHandle() {
                 </Typography>
                 {renderHistoryList({
                   items: completedReasons,
-                  emptyText: "No completed notes available.",
+                  emptyText: hasSelectedCompletedNote
+                    ? "No completed notes available."
+                    : "Completed note is not submitted yet.",
                   getText: (item) => item.completed_note,
                 })}
-                <TextField
-                  value={newCompletedReason}
-                  onChange={handleCompletedReasonChange}
-                  fullWidth
-                  placeholder="Enter completed reason"
-                  multiline
-                  minRows={2}
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: 2,
-                      bgcolor: "#ffffff",
-                    },
-                  }}
-                />
-                {newCompletedReason.trim().length > 0 && (
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={handleNoteSubmit}
-                    sx={{
-                      mt: 1,
-                      minHeight: 46,
-                      borderRadius: 2,
-                      bgcolor: "#0f766e",
-                      fontWeight: 700,
-                      textTransform: "none",
-                      boxShadow: "none",
-                      "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
-                    }}
-                  >
-                    Submit Completed Note
-                  </Button>
-                )}
+                {!hasSelectedCompletedNote ? (
+                  <>
+                    <TextField
+                      value={newCompletedReason}
+                      onChange={handleCompletedReasonChange}
+                      fullWidth
+                      placeholder="Enter completed reason"
+                      multiline
+                      minRows={2}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 2,
+                          bgcolor: "#ffffff",
+                        },
+                      }}
+                    />
+                    {newCompletedReason.trim().length > 0 && (
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        onClick={handleNoteSubmit}
+                        sx={{
+                          mt: 1,
+                          minHeight: 46,
+                          borderRadius: 2,
+                          bgcolor: "#0f766e",
+                          fontWeight: 700,
+                          textTransform: "none",
+                          boxShadow: "none",
+                          "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                        }}
+                      >
+                        Submit Completed Note
+                      </Button>
+                    )}
+                  </>
+                ) : null}
               </Box>
             )}
 

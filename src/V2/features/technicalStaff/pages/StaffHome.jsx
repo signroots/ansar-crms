@@ -112,6 +112,18 @@ const getNamedText = (value, fallback = "") => {
   return String(value);
 };
 
+const hasCompletedNote = (value) => {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasCompletedNote(item?.completed_note || item?.reason || item));
+  }
+
+  if (value && typeof value === "object") {
+    return hasCompletedNote(value.completed_note || value.reason);
+  }
+
+  return value !== null && value !== undefined && String(value).trim() !== "";
+};
+
 const normalizeKey = (value) =>
   String(value || "")
     .trim()
@@ -200,6 +212,7 @@ function StaffHome() {
 
   const selectedTypeStyle = getTypeStyle(selectedTask);
   const selectedPerson = getPerson(selectedTask);
+  const hasSelectedCompletedNote = hasCompletedNote(selectedTask?.completed_note);
   const contactNumber = selectedPerson?.mobile_number || "";
 
   useEffect(() => {
@@ -283,7 +296,10 @@ function StaffHome() {
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
     const isComplaint = selectedTask.type === "complaint";
-    const nextCompletedNote = newStatus === "Completed" ? completionRemark.trim() : "";
+    const nextCompletedNote =
+      newStatus === "Completed" && !hasCompletedNote(selectedTask?.completed_note)
+        ? completionRemark.trim()
+        : "";
     const endpoint = isComplaint
       ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`
       : `${BASE_URL}/api/request/${selectedTask.id}/update-status/`;
@@ -334,6 +350,14 @@ function StaffHome() {
     setStatusValue(newStatus);
 
     if (newStatus === "Completed") {
+      if (hasSelectedCompletedNote) {
+        setConfirmDialog({
+          open: true,
+          action: () => handleStatusChange(newStatus),
+        });
+        return;
+      }
+
       setCompletionRemark("");
       return;
     }
@@ -350,6 +374,11 @@ function StaffHome() {
   };
 
   const handleCompletedStatusUpdate = () => {
+    if (hasSelectedCompletedNote) {
+      toast.warn("Completed note already exists.");
+      return;
+    }
+
     if (!completionRemark.trim()) {
       toast.warn("Please enter a completed note before completing.");
       return;
@@ -737,7 +766,9 @@ function StaffHome() {
               {renderStatusControl()}
             </Box>
 
-            {statusValue === "Completed" && selectedTask?.status !== "Completed" && (
+            {statusValue === "Completed" &&
+              selectedTask?.status !== "Completed" &&
+              !hasSelectedCompletedNote && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography
                   variant="subtitle2"
