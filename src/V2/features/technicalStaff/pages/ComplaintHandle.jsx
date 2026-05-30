@@ -577,7 +577,7 @@ function ComplaintHandle() {
     );
   };
 
-  const renderHistoryList = ({ items, emptyText, getText }) => (
+  const renderHistoryList = ({ items, emptyText, getText, showTimestamp = true }) => (
     <Box
       sx={{
         maxHeight: 190,
@@ -600,9 +600,11 @@ function ComplaintHandle() {
             <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>
               {getText(item) || "N/A"}
             </Typography>
-            <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
-              {formatDateTime(item.created_at)}
-            </Typography>
+            {showTimestamp ? (
+              <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 500 }}>
+                {formatDateTime(item.created_at)}
+              </Typography>
+            ) : null}
           </Box>
         ))
       ) : (
@@ -938,6 +940,7 @@ function ComplaintHandle() {
                     ? "No completed notes available."
                     : "Completed note is not submitted yet.",
                   getText: (item) => item.completed_note,
+                  showTimestamp: false,
                 })}
                 {!hasSelectedCompletedNote ? (
                   <>
