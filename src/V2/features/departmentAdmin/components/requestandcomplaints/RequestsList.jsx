@@ -472,6 +472,7 @@ const mapRequestForExport = (request) => ({
   "Resolved Date": formatDate(request.resolved_date, true),
   "Delay Reason": formatDelayReasonsText(request.delay_reason),
   Notes: getText(request.notes),
+  "Completed Note": getText(request.completed_note),
 });
 
 function RequestsList() {
@@ -829,6 +830,7 @@ function RequestsList() {
         ["Resolved Date & Time", formatDate(selectedRequest.resolved_date, true)],
         ["Delay Reason", selectedRequest.delay_reason],
         ["Notes", selectedRequest.notes],
+        ["Completed Note", selectedRequest.completed_note],
       ]
     : [];
 

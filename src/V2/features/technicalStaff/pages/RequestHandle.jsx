@@ -935,7 +935,7 @@ function RequestHandle() {
                   variant="subtitle2"
                   sx={{ color: "#0f172a", fontWeight: 700, mb: 0.75 }}
                 >
-                  Completed Notes
+                  Completed Note
                 </Typography>
                 {renderHistoryList({
                   items: completedReasons,
@@ -951,7 +951,7 @@ function RequestHandle() {
                       value={newCompletedReason}
                       onChange={handleCompletedReasonChange}
                       fullWidth
-                      placeholder="Enter completed notes"
+                      placeholder="Enter completed note"
                       multiline
                       minRows={2}
                       sx={{
