@@ -291,12 +291,29 @@ function RequestHandle() {
 
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
+    const nextDelayReason =
+      newStatus === "Waiting" && selectedTask?.status !== "Waiting" ? newDelayReason.trim() : "";
     const nextCompletedNote =
       newStatus === "Completed" && !hasCompletedNote(selectedTask?.completed_note)
         ? completionRemark.trim()
         : "";
 
+    if (newStatus === "Waiting" && selectedTask?.status !== "Waiting" && !nextDelayReason) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
+
     try {
+      const delayReasonResponse = nextDelayReason
+        ? await axios.patch(`${BASE_URL}/api/request/${selectedTask.id}/update-delay-reason/`, {
+            delay_reason: nextDelayReason,
+            staff_id: staffId,
+          })
+        : null;
+      const updatedDelayReasons = delayReasonResponse
+        ? normalizeList(delayReasonResponse.data.delay_reason)
+        : delayReasons;
+
       await axios.patch(`${BASE_URL}/api/request/${selectedTask.id}/update-status/`, {
         status: newStatus,
         staff_id: staffId,
@@ -307,6 +324,7 @@ function RequestHandle() {
         currentTask
           ? {
               ...currentTask,
+              ...(nextDelayReason ? { delay_reason: updatedDelayReasons } : {}),
               ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
               status: newStatus,
             }
@@ -317,12 +335,17 @@ function RequestHandle() {
           task.id === selectedTask.id
             ? {
                 ...task,
+                ...(nextDelayReason ? { delay_reason: updatedDelayReasons } : {}),
                 ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
                 status: newStatus,
               }
             : task,
         ),
       );
+      if (nextDelayReason) {
+        setDelayReasons(updatedDelayReasons);
+        setNewDelayReason("");
+      }
       setStatusValue(newStatus);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -354,6 +377,11 @@ function RequestHandle() {
       return;
     }
 
+    if (newStatus === "Waiting" && selectedTask?.status !== "Waiting") {
+      setNewDelayReason("");
+      return;
+    }
+
     setConfirmDialog({
       open: true,
       action: () => handleStatusChange(newStatus),
@@ -377,11 +405,26 @@ function RequestHandle() {
     });
   };
 
+  const handleWaitingStatusUpdate = () => {
+    if (!newDelayReason.trim()) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
+
+    setConfirmDialog({
+      open: true,
+      action: () => handleStatusChange("Waiting"),
+    });
+  };
+
   const handleDialogClose = (confirm) => {
     setConfirmDialog({ open: false, action: null });
 
     if (!confirm) {
       setStatusValue(selectedTask?.status || "");
+      if (selectedTask?.status !== "Waiting") {
+        setNewDelayReason("");
+      }
       return;
     }
 
@@ -400,12 +443,18 @@ function RequestHandle() {
 
   const handleSubmitDelayReason = async () => {
     const staffId = localStorage.getItem("staff_id");
+    const nextDelayReason = newDelayReason.trim();
+
+    if (!nextDelayReason) {
+      toast.warn("Please enter a delay reason.");
+      return;
+    }
 
     try {
       const response = await axios.patch(
         `${BASE_URL}/api/request/${selectedTask.id}/update-delay-reason/`,
         {
-          delay_reason: newDelayReason,
+          delay_reason: nextDelayReason,
           staff_id: staffId,
         },
       );
@@ -880,7 +929,7 @@ function RequestHandle() {
               </Box>
             )}
 
-            {selectedTask.status === "Waiting" && (
+            {(selectedTask.status === "Waiting" || statusValue === "Waiting") && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography
                   variant="subtitle2"
@@ -907,7 +956,7 @@ function RequestHandle() {
                     },
                   }}
                 />
-                {newDelayReason.trim().length > 0 && (
+                {selectedTask.status === "Waiting" && newDelayReason.trim().length > 0 && (
                   <Button
                     variant="contained"
                     fullWidth
@@ -927,6 +976,27 @@ function RequestHandle() {
                   </Button>
                 )}
               </Box>
+            )}
+
+            {statusValue === "Waiting" && selectedTask.status !== "Waiting" && (
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleWaitingStatusUpdate}
+                disabled={!newDelayReason.trim()}
+                sx={{
+                  mt: 1,
+                  minHeight: 46,
+                  borderRadius: 2,
+                  bgcolor: "#0f766e",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                }}
+              >
+                Update Status
+              </Button>
             )}
 
             {selectedTask.status === "Completed" && (

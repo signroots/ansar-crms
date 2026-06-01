@@ -296,6 +296,8 @@ function StaffHome() {
   const handleStatusChange = async (newStatus) => {
     const staffId = localStorage.getItem("staff_id");
     const isComplaint = selectedTask.type === "complaint";
+    const nextDelayReason =
+      newStatus === "Waiting" && selectedTask?.status !== "Waiting" ? newDelayReason.trim() : "";
     const nextCompletedNote =
       newStatus === "Completed" && !hasCompletedNote(selectedTask?.completed_note)
         ? completionRemark.trim()
@@ -303,8 +305,26 @@ function StaffHome() {
     const endpoint = isComplaint
       ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-status/`
       : `${BASE_URL}/api/request/${selectedTask.id}/update-status/`;
+    const delayReasonEndpoint = isComplaint
+      ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-delay-reason/`
+      : `${BASE_URL}/api/request/${selectedTask.id}/update-delay-reason/`;
+
+    if (newStatus === "Waiting" && selectedTask?.status !== "Waiting" && !nextDelayReason) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
 
     try {
+      const delayReasonResponse = nextDelayReason
+        ? await axios.patch(delayReasonEndpoint, {
+            delay_reason: nextDelayReason,
+            staff_id: staffId,
+          })
+        : null;
+      const updatedDelayReasons = Array.isArray(delayReasonResponse?.data?.delay_reason)
+        ? delayReasonResponse.data.delay_reason
+        : delayReasons;
+
       await axios.patch(endpoint, {
         status: newStatus,
         staff_id: staffId,
@@ -313,24 +333,31 @@ function StaffHome() {
 
       setSelectedTask((currentTask) =>
         currentTask
-          ? {
-              ...currentTask,
-              ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
-              status: newStatus,
-            }
-          : currentTask,
+            ? {
+                ...currentTask,
+                ...(nextDelayReason ? { delay_reason: updatedDelayReasons } : {}),
+                ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
+                status: newStatus,
+              }
+            : currentTask,
       );
       setServiceRequests((prevRequests) =>
         prevRequests.map((task) =>
           isSameTask(task, selectedTask)
             ? {
                 ...task,
+                ...(nextDelayReason ? { delay_reason: updatedDelayReasons } : {}),
                 ...(nextCompletedNote ? { completed_note: nextCompletedNote } : {}),
                 status: newStatus,
               }
             : task,
         ),
       );
+      if (nextDelayReason) {
+        setDelayReasons(updatedDelayReasons);
+        setNewDelayReason("");
+        setShowSubmitButton(false);
+      }
       setStatusValue(newStatus);
     } catch (error) {
       console.error("Error updating status:", error);
@@ -362,6 +389,12 @@ function StaffHome() {
       return;
     }
 
+    if (newStatus === "Waiting" && selectedTask?.status !== "Waiting") {
+      setNewDelayReason("");
+      setShowSubmitButton(false);
+      return;
+    }
+
     if (newStatus === "In Progress" || newStatus === "Completed" || newStatus === "Waiting") {
       setConfirmDialog({
         open: true,
@@ -390,11 +423,27 @@ function StaffHome() {
     });
   };
 
+  const handleWaitingStatusUpdate = () => {
+    if (!newDelayReason.trim()) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
+
+    setConfirmDialog({
+      open: true,
+      action: () => handleStatusChange("Waiting"),
+    });
+  };
+
   const handleDialogClose = (confirm) => {
     setConfirmDialog({ open: false, action: null });
 
     if (!confirm) {
       setStatusValue(selectedTask?.status || "");
+      if (selectedTask?.status !== "Waiting") {
+        setNewDelayReason("");
+        setShowSubmitButton(false);
+      }
       return;
     }
 
@@ -406,13 +455,19 @@ function StaffHome() {
   const handleSubmit = async () => {
     const staffId = localStorage.getItem("staff_id");
     const isComplaint = selectedTask.type === "complaint";
+    const nextDelayReason = newDelayReason.trim();
     const endpoint = isComplaint
       ? `${BASE_URL}/api/complaint/${selectedTask.id}/update-delay-reason/`
       : `${BASE_URL}/api/request/${selectedTask.id}/update-delay-reason/`;
 
+    if (!nextDelayReason) {
+      toast.warn("Please enter a delay reason.");
+      return;
+    }
+
     try {
       const response = await axios.patch(endpoint, {
-        delay_reason: newDelayReason,
+        delay_reason: nextDelayReason,
         staff_id: staffId,
       });
 
@@ -811,7 +866,7 @@ function StaffHome() {
               </Box>
             )}
 
-            {selectedTask?.status === "Waiting" && (
+            {(selectedTask?.status === "Waiting" || statusValue === "Waiting") && (
               <Box sx={{ mt: 1.5 }}>
                 <Typography
                   variant="subtitle2"
@@ -888,6 +943,27 @@ function StaffHome() {
                 }}
               >
                 Submit Delay Reason
+              </Button>
+            )}
+
+            {statusValue === "Waiting" && selectedTask?.status !== "Waiting" && (
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={handleWaitingStatusUpdate}
+                disabled={!newDelayReason.trim()}
+                sx={{
+                  mt: 1,
+                  minHeight: 46,
+                  borderRadius: 2,
+                  bgcolor: "#0f766e",
+                  fontWeight: 700,
+                  textTransform: "none",
+                  boxShadow: "none",
+                  "&:hover": { bgcolor: "#115e59", boxShadow: "none" },
+                }}
+              >
+                Update Status
               </Button>
             )}
 
