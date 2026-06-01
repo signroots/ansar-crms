@@ -6,7 +6,6 @@ import {
   Empty,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Table,
   Tag,
@@ -537,6 +536,7 @@ function RequestsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusDelayReason, setStatusDelayReason] = useState("");
   const [statusRemark, setStatusRemark] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
@@ -549,7 +549,7 @@ function RequestsList() {
   });
   const [totalCount, setTotalCount] = useState(0);
 
-  const { isAdmin, role } = useMemo(() => getAuthSession(), []);
+  const { isAdmin, role, staffId } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus =
     ROLE_GROUPS.DEPARTMENT_ADMIN.includes(role) ||
     (role === USER_ROLES.TECHNICAL_STAFF && isAdmin);
@@ -716,12 +716,14 @@ function RequestsList() {
   const openRequestDetails = (request) => {
     markAsViewed(request);
     setSelectedRequest(request);
+    setStatusDelayReason("");
     setStatusRemark("");
     setStatusValue(request.status || "");
   };
 
   const closeRequestDetails = () => {
     setSelectedRequest(null);
+    setStatusDelayReason("");
     setStatusRemark("");
     setStatusValue("");
   };
@@ -732,7 +734,14 @@ function RequestsList() {
     }
 
     const hasExistingCompletedNote = hasCompletedNote(selectedRequest.completed_note);
+    const isMovingToWaiting = statusValue === "Waiting" && selectedRequest.status !== "Waiting";
+    const nextDelayReason = statusDelayReason.trim();
     const nextCompletedNote = statusRemark.trim();
+
+    if (isMovingToWaiting && !nextDelayReason) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
 
     if (statusValue === "Completed" && !hasExistingCompletedNote && !nextCompletedNote) {
       toast.warn("Please enter a completed note before completing the request.");
@@ -742,6 +751,16 @@ function RequestsList() {
     setStatusUpdating(true);
 
     try {
+      const delayReasonResponse = isMovingToWaiting
+        ? await apiService.patch(`/api/api/request/${selectedRequest.id}/update-delay-reason/`, {
+            delay_reason: nextDelayReason,
+            staff_id: staffId,
+          })
+        : null;
+      const updatedDelayReasons = delayReasonResponse
+        ? normalizeDelayReasons(delayReasonResponse.delay_reason)
+        : normalizeDelayReasons(selectedRequest.delay_reason);
+
       await apiService.patch(`/api/api/request/${selectedRequest.id}/update-status-admin/`, {
         ...(statusValue === "Completed" && !hasExistingCompletedNote
           ? { completed_note: nextCompletedNote }
@@ -754,6 +773,7 @@ function RequestsList() {
           request.id === selectedRequest.id
             ? {
                 ...request,
+                ...(isMovingToWaiting ? { delay_reason: updatedDelayReasons } : {}),
                 ...(statusValue === "Completed" && !hasExistingCompletedNote
                   ? { completed_note: nextCompletedNote }
                   : {}),
@@ -764,11 +784,13 @@ function RequestsList() {
       );
       setSelectedRequest((currentRequest) => ({
         ...currentRequest,
+        ...(isMovingToWaiting ? { delay_reason: updatedDelayReasons } : {}),
         ...(statusValue === "Completed" && !hasExistingCompletedNote
           ? { completed_note: nextCompletedNote }
           : {}),
         status: statusValue,
       }));
+      setStatusDelayReason("");
       setSummaryCounts((currentCounts) =>
         updateCountForStatusChange(currentCounts, selectedRequest.status, statusValue),
       );
@@ -1047,32 +1069,31 @@ function RequestsList() {
                     value={statusValue || undefined}
                     onChange={(value) => {
                       setStatusValue(value);
+                      if (value !== "Waiting") {
+                        setStatusDelayReason("");
+                      }
                       if (value !== "Completed") {
                         setStatusRemark("");
                       }
                     }}
                   />
-                  <Popconfirm
-                    cancelText="Cancel"
-                    description="This will update the request status."
-                    okText="Update"
-                    onConfirm={updateRequestStatus}
-                    title="Update status?"
+                  <Button
+                    disabled={
+                      !statusValue ||
+                      statusValue === selectedRequest.status ||
+                      (statusValue === "Waiting" &&
+                        selectedRequest.status !== "Waiting" &&
+                        !statusDelayReason.trim()) ||
+                      (statusValue === "Completed" &&
+                        !selectedRequestHasCompletedNote &&
+                        !statusRemark.trim())
+                    }
+                    loading={statusUpdating}
+                    onClick={updateRequestStatus}
+                    type="primary"
                   >
-                    <Button
-                      disabled={
-                        !statusValue ||
-                        statusValue === selectedRequest.status ||
-                        (statusValue === "Completed" &&
-                          !selectedRequestHasCompletedNote &&
-                          !statusRemark.trim())
-                      }
-                      loading={statusUpdating}
-                      type="primary"
-                    >
-                      Update
-                    </Button>
-                  </Popconfirm>
+                    Update
+                  </Button>
                 </div>
                 {statusValue === "Completed" && !selectedRequestHasCompletedNote ? (
                   <Input.TextArea
@@ -1080,6 +1101,14 @@ function RequestsList() {
                     rows={3}
                     value={statusRemark}
                     onChange={(event) => setStatusRemark(event.target.value)}
+                  />
+                ) : null}
+                {statusValue === "Waiting" && selectedRequest.status !== "Waiting" ? (
+                  <Input.TextArea
+                    placeholder="Enter delay reason"
+                    rows={3}
+                    value={statusDelayReason}
+                    onChange={(event) => setStatusDelayReason(event.target.value)}
                   />
                 ) : null}
               </div>

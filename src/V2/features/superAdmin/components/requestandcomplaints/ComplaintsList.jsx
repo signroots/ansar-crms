@@ -6,7 +6,6 @@ import {
   Empty,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Table,
   Tag,
@@ -625,6 +624,7 @@ function ComplaintsList() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedComplaint, setSelectedComplaint] = useState(null);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [statusDelayReason, setStatusDelayReason] = useState("");
   const [statusRemark, setStatusRemark] = useState("");
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusValue, setStatusValue] = useState("");
@@ -637,7 +637,7 @@ function ComplaintsList() {
   });
   const [totalCount, setTotalCount] = useState(0);
 
-  const { role } = useMemo(() => getAuthSession(), []);
+  const { role, staffId } = useMemo(() => getAuthSession(), []);
   const canUpdateStatus = ROLE_GROUPS.SUPER_ADMIN.includes(role);
 
   const fetchComplaints = useCallback(async () => {
@@ -789,12 +789,14 @@ function ComplaintsList() {
 
   const openComplaintDetails = (complaint) => {
     setSelectedComplaint(complaint);
+    setStatusDelayReason("");
     setStatusValue(complaint.status || "");
     setStatusRemark("");
   };
 
   const closeComplaintDetails = () => {
     setSelectedComplaint(null);
+    setStatusDelayReason("");
     setStatusRemark("");
     setStatusValue("");
   };
@@ -805,7 +807,14 @@ function ComplaintsList() {
     }
 
     const hasExistingCompletedNote = hasCompletedNote(selectedComplaint.completed_note);
+    const isMovingToWaiting = statusValue === "Waiting" && selectedComplaint.status !== "Waiting";
+    const nextDelayReason = statusDelayReason.trim();
     const nextCompletedNote = statusRemark.trim();
+
+    if (isMovingToWaiting && !nextDelayReason) {
+      toast.warn("Please enter a delay reason before moving to waiting.");
+      return;
+    }
 
     if (statusValue === "Completed" && !hasExistingCompletedNote && !nextCompletedNote) {
       toast.warn("Please enter a completed note before completing the complaint.");
@@ -815,6 +824,16 @@ function ComplaintsList() {
     setStatusUpdating(true);
 
     try {
+      const delayReasonResponse = isMovingToWaiting
+        ? await apiService.patch(`/api/api/complaint/${selectedComplaint.id}/update-delay-reason/`, {
+            delay_reason: nextDelayReason,
+            staff_id: staffId,
+          })
+        : null;
+      const updatedDelayReasons = delayReasonResponse
+        ? normalizeDelayReasons(delayReasonResponse.delay_reason)
+        : normalizeDelayReasons(selectedComplaint.delay_reason);
+
       await apiService.patch(`/api/api/complaint/${selectedComplaint.id}/update-status-admin/`, {
         ...(statusValue === "Completed" && !hasExistingCompletedNote
           ? { completed_note: nextCompletedNote }
@@ -827,6 +846,7 @@ function ComplaintsList() {
           complaint.id === selectedComplaint.id
             ? {
                 ...complaint,
+                ...(isMovingToWaiting ? { delay_reason: updatedDelayReasons } : {}),
                 ...(statusValue === "Completed" && !hasExistingCompletedNote
                   ? { completed_note: nextCompletedNote }
                   : {}),
@@ -837,11 +857,13 @@ function ComplaintsList() {
       );
       setSelectedComplaint((currentComplaint) => ({
         ...currentComplaint,
+        ...(isMovingToWaiting ? { delay_reason: updatedDelayReasons } : {}),
         ...(statusValue === "Completed" && !hasExistingCompletedNote
           ? { completed_note: nextCompletedNote }
           : {}),
         status: statusValue,
       }));
+      setStatusDelayReason("");
       setSummaryCounts((currentCounts) =>
         updateCountForStatusChange(currentCounts, selectedComplaint.status, statusValue),
       );
@@ -1124,32 +1146,31 @@ function ComplaintsList() {
                     value={statusValue || undefined}
                     onChange={(value) => {
                       setStatusValue(value);
+                      if (value !== "Waiting") {
+                        setStatusDelayReason("");
+                      }
                       if (value !== "Completed") {
                         setStatusRemark("");
                       }
                     }}
                   />
-                  <Popconfirm
-                    cancelText="Cancel"
-                    description="This will update the complaint status."
-                    okText="Update"
-                    onConfirm={updateComplaintStatus}
-                    title="Update status?"
+                  <Button
+                    disabled={
+                      !statusValue ||
+                      statusValue === selectedComplaint.status ||
+                      (statusValue === "Waiting" &&
+                        selectedComplaint.status !== "Waiting" &&
+                        !statusDelayReason.trim()) ||
+                      (statusValue === "Completed" &&
+                        !selectedComplaintHasCompletedNote &&
+                        !statusRemark.trim())
+                    }
+                    loading={statusUpdating}
+                    onClick={updateComplaintStatus}
+                    type="primary"
                   >
-                    <Button
-                      disabled={
-                        !statusValue ||
-                        statusValue === selectedComplaint.status ||
-                        (statusValue === "Completed" &&
-                          !selectedComplaintHasCompletedNote &&
-                          !statusRemark.trim())
-                      }
-                      loading={statusUpdating}
-                      type="primary"
-                    >
-                      Update
-                    </Button>
-                  </Popconfirm>
+                    Update
+                  </Button>
                 </div>
                 {statusValue === "Completed" && !selectedComplaintHasCompletedNote ? (
                   <Input.TextArea
@@ -1157,6 +1178,14 @@ function ComplaintsList() {
                     rows={3}
                     value={statusRemark}
                     onChange={(event) => setStatusRemark(event.target.value)}
+                  />
+                ) : null}
+                {statusValue === "Waiting" && selectedComplaint.status !== "Waiting" ? (
+                  <Input.TextArea
+                    placeholder="Enter delay reason"
+                    rows={3}
+                    value={statusDelayReason}
+                    onChange={(event) => setStatusDelayReason(event.target.value)}
                   />
                 ) : null}
               </div>
