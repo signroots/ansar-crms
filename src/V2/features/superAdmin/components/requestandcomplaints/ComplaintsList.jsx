@@ -15,7 +15,14 @@ import {
 import * as XLSX from "xlsx";
 import { BiExport, BiRefresh } from "react-icons/bi";
 import { FaCheckCircle } from "react-icons/fa";
-import { FiAlertTriangle, FiEye, FiSearch } from "react-icons/fi";
+import {
+  FiAlertOctagon,
+  FiAlertTriangle,
+  FiArrowDownCircle,
+  FiEye,
+  FiMinusCircle,
+  FiSearch,
+} from "react-icons/fi";
 import { LuBuilding2, LuClock3, LuListChecks } from "react-icons/lu";
 import { toast } from "react-toastify";
 
@@ -326,6 +333,55 @@ const hasCompletedNote = (value) => {
   }
 
   return value !== null && value !== undefined && String(value).trim() !== "";
+};
+
+const priorityMeta = {
+  emergency: {
+    color: "#dc2626",
+    Icon: FiAlertOctagon,
+    label: "Emergency",
+  },
+  medium: {
+    color: "#d97706",
+    Icon: FiMinusCircle,
+    label: "Medium",
+  },
+  low: {
+    color: "#16a34a",
+    Icon: FiArrowDownCircle,
+    label: "Low",
+  },
+};
+
+const getPriorityMeta = (priority) => {
+  const normalizedPriority = normalizeKey(priority);
+
+  return priorityMeta[normalizedPriority];
+};
+
+const renderPriorityIcon = (priority) => {
+  const priorityText = String(priority || "").trim();
+  const meta = getPriorityMeta(priorityText);
+
+  if (!priorityText || !meta) {
+    return null;
+  }
+
+  const PriorityIcon = meta.Icon;
+
+  return (
+    <Tooltip title={`Priority: ${meta.label}`}>
+      <PriorityIcon
+        aria-label={`Priority: ${meta.label}`}
+        style={{
+          color: meta.color,
+          marginLeft: 6,
+          position: "relative",
+          top: 2,
+        }}
+      />
+    </Tooltip>
+  );
 };
 
 const getNamedText = (value, fallback = "N/A") => {
@@ -828,7 +884,10 @@ function ComplaintsList() {
       key: "issue",
       render: (_, complaint) => (
         <div>
-          <strong>{getText(complaint.issue_complaint?.name)}</strong>
+          <strong>
+            {getText(complaint.issue_complaint?.name)}
+            {renderPriorityIcon(complaint.priority)}
+          </strong>
           <div style={styles.muted}>{getText(complaint.type_of_issue?.name)}</div>
         </div>
       ),
