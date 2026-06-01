@@ -411,7 +411,7 @@ function CreateComplaints({ onCreated }) {
 
     const payload = {
       category: formData.category,
-      complaint_type: formData.complaintType,
+      type_of_issue: formData.complaintType,
       issue_complaint: formData.issue,
       location: formData.location,
       notes: formData.notes,
