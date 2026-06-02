@@ -877,6 +877,54 @@ function ComplaintsList() {
     }
   };
 
+  const submitComplaintDelayReason = async () => {
+    if (!selectedComplaint?.id || selectedComplaint.status !== "Waiting") {
+      return;
+    }
+
+    const nextDelayReason = statusDelayReason.trim();
+
+    if (!nextDelayReason) {
+      toast.warn("Please enter a delay reason.");
+      return;
+    }
+
+    setStatusUpdating(true);
+
+    try {
+      const delayReasonResponse = await apiService.patch(
+        `/api/api/complaint/${selectedComplaint.id}/update-delay-reason/`,
+        {
+          delay_reason: nextDelayReason,
+          staff_id: staffId,
+        },
+      );
+      const updatedDelayReasons = normalizeDelayReasons(delayReasonResponse.delay_reason);
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === selectedComplaint.id
+            ? {
+                ...complaint,
+                delay_reason: updatedDelayReasons,
+              }
+            : complaint,
+        ),
+      );
+      setSelectedComplaint((currentComplaint) => ({
+        ...currentComplaint,
+        delay_reason: updatedDelayReasons,
+      }));
+      setStatusDelayReason("");
+      toast.success("Reason updated successfully");
+    } catch (reasonError) {
+      console.error("Error submitting delay reason:", reasonError);
+      toast.error("Unable to update delay reason");
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   const columns = [
     {
       dataIndex: "date_id",
@@ -1176,13 +1224,23 @@ function ComplaintsList() {
                     onChange={(event) => setStatusRemark(event.target.value)}
                   />
                 ) : null}
-                {statusValue === "Waiting" && selectedComplaint.status !== "Waiting" ? (
+                {statusValue === "Waiting" ? (
                   <Input.TextArea
                     placeholder="Enter delay reason"
                     rows={3}
                     value={statusDelayReason}
                     onChange={(event) => setStatusDelayReason(event.target.value)}
                   />
+                ) : null}
+                {statusValue === "Waiting" && selectedComplaint.status === "Waiting" ? (
+                  <Button
+                    disabled={!statusDelayReason.trim()}
+                    loading={statusUpdating}
+                    onClick={submitComplaintDelayReason}
+                    type="primary"
+                  >
+                    Submit Delay Reason
+                  </Button>
                 ) : null}
               </div>
             ) : null}
