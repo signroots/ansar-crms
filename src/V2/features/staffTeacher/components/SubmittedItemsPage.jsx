@@ -219,6 +219,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
 
   const selectedStatusIndex = getStatusIndex(selectedItem?.status);
   const selectedReasons = normalizeReasons(selectedItem?.delay_reason);
+  const selectedCompletedNote = selectedItem?.completed_note?.trim();
   const progressValue = selectedItem ? (selectedStatusIndex / (STATUS_STEPS.length - 1)) * 100 : 0;
   const focusedStatusStyle = getStatusStyle(focusedStep);
   const showMaintenanceDetails = selectedItem && isMaintenanceItem(selectedItem);
@@ -606,6 +607,17 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
               </Box>
             ))}
           </Stack>
+        )}
+
+        {focusedStep === "Completed" && selectedCompletedNote && (
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="caption" sx={{ color: "#64748b", fontWeight: 400 }}>
+              Completed Note
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 700 }}>
+              {selectedCompletedNote}
+            </Typography>
+          </Box>
         )}
       </Box>
     </Box>

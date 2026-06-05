@@ -500,6 +500,7 @@ function Home() {
   const renderDetails = () => {
     const TypeIcon = getTypeStyle(selectedItem).icon;
     const delayReasonText = getDelayReasonText(delayReason);
+    const selectedCompletedNote = selectedItem?.completed_note?.trim();
 
     return (
       <Card
@@ -566,6 +567,8 @@ function Home() {
             {renderDetailRow("Type", getTypeStyle(selectedItem).label, TypeIcon)}
             {renderDetailRow("Issue", getIssueName(selectedItem), EventNote)}
             {renderDetailRow("Notes", selectedItem?.notes, Notes)}
+            {selectedCompletedNote &&
+              renderDetailRow("Completed Note", selectedCompletedNote, Notes)}
             {renderDetailRow("Institution", selectedItem?.institution?.name, Business)}
             {isMaintenanceItem(selectedItem) &&
               renderDetailRow("Department Admin", getItemSubLocation(selectedItem), Business)}
