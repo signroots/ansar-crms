@@ -68,7 +68,7 @@ const normalizeStats = (data = {}) => ({
     completed: toNumber(data.complaints_completed),
     pending: toNumber(data.complaints_pending),
     waiting: toNumber(data.complaints_waiting),
-    inProgress: toNumber(data.complaints_in_progress),
+    inProgress: toNumber(data.complaints_inprogress),
   },
   requests: {
     total: toNumber(data.requests_count),
