@@ -11,7 +11,6 @@ import {
   Tag,
   Tooltip,
 } from "antd";
-import * as XLSX from "xlsx";
 import { BiExport, BiRefresh } from "react-icons/bi";
 import { FaCheckCircle } from "react-icons/fa";
 import { FiAlertOctagon, FiArrowDownCircle, FiEye, FiMinusCircle, FiSearch } from "react-icons/fi";
@@ -19,6 +18,7 @@ import { LuCalendarClock, LuClock3, LuFileSymlink, LuListChecks } from "react-ic
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
+import { httpClient } from "../../../../services/api/httpClient";
 import { ROLE_GROUPS } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateRequests from "./CreateRequests";
@@ -29,6 +29,9 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const SEARCH_DEBOUNCE_DELAY = 500;
 const REQUESTS_LIST_ENDPOINT = "/api/api/requests-list/";
 const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
+const EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+const disableFutureDates = (current) => current && current.valueOf() > Date.now();
 
 const statusMeta = {
   Completed: {
@@ -411,24 +414,6 @@ const normalizeDelayReasons = (value) => {
   return [{ reason: value }];
 };
 
-const formatDelayReasonsText = (value) => {
-  const reasons = normalizeDelayReasons(value);
-
-  if (!reasons.length) {
-    return "N/A";
-  }
-
-  return reasons
-    .map((item) => {
-      const reason = getText(item?.reason || item, "");
-      const timestamp = item?.created_at ? ` (${formatDate(item.created_at, true)})` : "";
-
-      return `${reason}${timestamp}`;
-    })
-    .filter(Boolean)
-    .join("; ");
-};
-
 const normalizeListResponse = (data) => {
   if (Array.isArray(data)) {
     return {
@@ -502,27 +487,35 @@ const updateCountForStatusChange = (currentCounts, previousStatus, nextStatus) =
   return nextCounts;
 };
 
-const mapRequestForExport = (request) => ({
-  "Request ID": getText(request.request_id || request.id),
-  Date: formatDate(request.date, true),
-  Institution: getText(request.institution?.name),
-  Department: getText(request.department?.name),
-  Request: getText(request.issue_request?.name),
-  Location: getRequestLocation(request),
-  "Sub Location": getRequestSubLocation(request),
-  Priority: getText(request.priority),
-  Status: getText(request.status),
-  "Requested By": getText(request.requested_by?.name),
-  "Mobile Number": getText(request.requested_by?.mobile_number),
-  "Program Name": getText(request.program_name),
-  "Program Date": getText(request.program_date),
-  "Program Time": getText(request.program_time),
-  "Resolved By": getText(request.resolved_by?.name),
-  "Resolved Date": formatDate(request.resolved_date, true),
-  "Delay Reason": formatDelayReasonsText(request.delay_reason),
-  Notes: getText(request.notes),
-  "Completed Note": getText(request.completed_note),
-});
+const getExportFilename = (contentDisposition, startLabel, endLabel) => {
+  const fallback = `requests_${startLabel}_to_${endLabel}.xlsx`;
+
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1].replace(/"/g, ""));
+  }
+
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+
+  return filenameMatch?.[1] || fallback;
+};
+
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 function RequestsList() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -659,26 +652,26 @@ function RequestsList() {
     setExporting(true);
 
     try {
-      const startDate = exportRange[0].startOf("day").toDate();
-      const endDate = exportRange[1].endOf("day").toDate();
-      const filteredExportRows = requests.filter((request) => {
-        const requestDate = new Date(request.date || request.created_at);
-
-        return requestDate >= startDate && requestDate <= endDate;
-      });
-
-      if (!filteredExportRows.length) {
-        toast.warning("No requests found in the selected date range");
-        return;
-      }
-
-      const worksheet = XLSX.utils.json_to_sheet(filteredExportRows.map(mapRequestForExport));
-      const workbook = XLSX.utils.book_new();
       const startLabel = exportRange[0].format("YYYY-MM-DD");
       const endLabel = exportRange[1].format("YYYY-MM-DD");
+      const response = await httpClient.get(REQUESTS_LIST_ENDPOINT, {
+        params: {
+          start_date: startLabel,
+          end_date: endLabel,
+          export: true,
+        },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type: response.headers["content-type"] || EXCEL_CONTENT_TYPE,
+      });
+      const filename = getExportFilename(
+        response.headers["content-disposition"],
+        startLabel,
+        endLabel,
+      );
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Requests");
-      XLSX.writeFile(workbook, `requests_${startLabel}_to_${endLabel}.xlsx`);
+      downloadBlob(blob, filename);
       toast.success("Requests exported successfully");
       setIsExportModalOpen(false);
       setExportRange(null);
@@ -1205,6 +1198,7 @@ function RequestsList() {
           Select a created-date range. The export uses the loaded requests and writes an Excel file.
         </p>
         <RangePicker
+          disabledDate={disableFutureDates}
           onChange={setExportRange}
           style={{ width: "100%", height: "50px" }}
           value={exportRange}

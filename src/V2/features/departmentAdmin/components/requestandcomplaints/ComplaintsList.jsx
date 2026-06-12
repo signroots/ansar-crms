@@ -11,7 +11,6 @@ import {
   Tag,
   Tooltip,
 } from "antd";
-import * as XLSX from "xlsx";
 import { BiExport, BiRefresh } from "react-icons/bi";
 import { FaCheckCircle } from "react-icons/fa";
 import {
@@ -26,6 +25,7 @@ import { LuBuilding2, LuClock3, LuListChecks } from "react-icons/lu";
 import { toast } from "react-toastify";
 
 import { apiService } from "../../../../services/api/Api.service";
+import { httpClient } from "../../../../services/api/httpClient";
 import { ROLE_GROUPS, USER_ROLES } from "../../../../shared/constants/roles";
 import { getAuthSession } from "../../../../shared/utils/authSession";
 import CreateComplaints from "./CreateComplaints";
@@ -36,6 +36,9 @@ const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const SEARCH_DEBOUNCE_DELAY = 500;
 const COMPLAINTS_LIST_ENDPOINT = "/api/api/complaints-list/";
 const STATUS_OPTIONS = ["Pending", "In Progress", "Waiting", "Completed"];
+const EXCEL_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+const disableFutureDates = (current) => current && current.valueOf() > Date.now();
 
 const statusMeta = {
   Completed: {
@@ -415,27 +418,6 @@ const getComplaintSubLocation = (complaint) =>
       complaint?.subLocationName,
   );
 
-const formatDate = (value, withTime = false) => {
-  if (!value) {
-    return "N/A";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "2-digit",
-    hour12: true,
-    hour: withTime ? "2-digit" : undefined,
-    minute: withTime ? "2-digit" : undefined,
-    month: "short",
-    year: "numeric",
-  }).format(date);
-};
-
 const formatDateTimeParts = (value) => {
   if (!value) {
     return null;
@@ -481,24 +463,6 @@ const normalizeDelayReasons = (value) => {
   }
 
   return [{ reason: value }];
-};
-
-const formatDelayReasonsText = (value) => {
-  const reasons = normalizeDelayReasons(value);
-
-  if (!reasons.length) {
-    return "N/A";
-  }
-
-  return reasons
-    .map((item) => {
-      const reason = getText(item?.reason || item, "");
-      const timestamp = item?.created_at ? ` (${formatDateTimeText(item.created_at)})` : "";
-
-      return `${reason}${timestamp}`;
-    })
-    .filter(Boolean)
-    .join("; ");
 };
 
 const renderDateTimeCell = (value, label, emptyText = "N/A") => {
@@ -590,25 +554,35 @@ const updateCountForStatusChange = (currentCounts, previousStatus, nextStatus) =
   return nextCounts;
 };
 
-const mapComplaintForExport = (complaint) => ({
-  "Complaint ID": getText(complaint.complaint_id || complaint.id),
-  Date: formatDate(complaint.date, true),
-  Institution: getText(complaint.institution?.name),
-  Complaint: getText(complaint.issue_complaint?.name),
-  "Type of Issue": getText(complaint.type_of_issue?.name),
-  Location: getComplaintLocation(complaint),
-  "Sub Location": getComplaintSubLocation(complaint),
-  Priority: getText(complaint.priority),
-  Status: getText(complaint.status),
-  "Complained By": getText(complaint.complainted_by?.name),
-  "Mobile Number": getText(complaint.complainted_by?.mobile_number),
-  "Attended By": getText(complaint.resolved_by?.name),
-  "Resolved Date": formatDate(complaint.resolved_date, true),
-  "Delay Reason": formatDelayReasonsText(complaint.delay_reason),
-  Remark: getText(complaint.remark),
-  Notes: getText(complaint.notes),
-  "Completed Note": getText(complaint.completed_note),
-});
+const getExportFilename = (contentDisposition, startLabel, endLabel) => {
+  const fallback = `complaints_${startLabel}_to_${endLabel}.xlsx`;
+
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1].replace(/"/g, ""));
+  }
+
+  const filenameMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+
+  return filenameMatch?.[1] || fallback;
+};
+
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 function ComplaintsList() {
   const [complaints, setComplaints] = useState([]);
@@ -748,26 +722,26 @@ function ComplaintsList() {
     setExporting(true);
 
     try {
-      const startDate = exportRange[0].startOf("day").toDate();
-      const endDate = exportRange[1].endOf("day").toDate();
-      const filteredExportRows = complaints.filter((complaint) => {
-        const complaintDate = new Date(complaint.date || complaint.created_at);
-
-        return complaintDate >= startDate && complaintDate <= endDate;
-      });
-
-      if (!filteredExportRows.length) {
-        toast.warning("No complaints found in the selected date range");
-        return;
-      }
-
-      const worksheet = XLSX.utils.json_to_sheet(filteredExportRows.map(mapComplaintForExport));
-      const workbook = XLSX.utils.book_new();
       const startLabel = exportRange[0].format("YYYY-MM-DD");
       const endLabel = exportRange[1].format("YYYY-MM-DD");
+      const response = await httpClient.get(COMPLAINTS_LIST_ENDPOINT, {
+        params: {
+          start_date: startLabel,
+          end_date: endLabel,
+          export: true,
+        },
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], {
+        type: response.headers["content-type"] || EXCEL_CONTENT_TYPE,
+      });
+      const filename = getExportFilename(
+        response.headers["content-disposition"],
+        startLabel,
+        endLabel,
+      );
 
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
-      XLSX.writeFile(workbook, `complaints_${startLabel}_to_${endLabel}.xlsx`);
+      downloadBlob(blob, filename);
       toast.success("Complaints exported successfully");
       setIsExportModalOpen(false);
       setExportRange(null);
@@ -1275,6 +1249,7 @@ function ComplaintsList() {
           Select a created-date range. The export uses the complaints API and writes an Excel file.
         </p>
         <RangePicker
+          disabledDate={disableFutureDates}
           onChange={setExportRange}
           style={{ width: "100%", height: "50px" }}
           value={exportRange}
