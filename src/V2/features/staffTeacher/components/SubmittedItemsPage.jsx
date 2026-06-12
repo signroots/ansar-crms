@@ -314,7 +314,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
         alignItems: "flex-start",
         borderRadius: 2,
         bgcolor: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         px: 1.5,
         py: 1.25,
       }}
@@ -348,7 +348,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         bgcolor: "#ffffff",
         overflow: "hidden",
         boxShadow: "0 12px 28px rgba(15, 118, 110, 0.08)",
@@ -446,7 +446,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px dashed #cbd5e1",
+        border: "1px dashed #94a3b8",
         bgcolor: "#ffffff",
       }}
     >
@@ -468,7 +468,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
     <Box
       sx={{
         mt: 1.5,
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         borderRadius: 3,
         bgcolor: "#f8fafc",
         p: 1.5,
@@ -491,7 +491,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
             minWidth: 52,
             borderRadius: 1.5,
             bgcolor: "#ecfeff",
-            border: "1px solid #bae6fd",
+            border: "1px solid #7dd3fc",
             color: "#0f766e",
             fontWeight: 800,
           }}
@@ -532,7 +532,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
               sx={{
                 minHeight: 78,
                 borderRadius: 2,
-                border: `1px solid ${isFocused ? statusStyle.border : "#e2e8f0"}`,
+                border: `1px solid ${isFocused ? statusStyle.border : "#cbd5e1"}`,
                 bgcolor: isReached ? statusStyle.bg : "#ffffff",
                 color: isReached ? statusStyle.color : "#94a3b8",
                 p: 0.75,
@@ -630,7 +630,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
             overflow: "hidden",
             boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
@@ -647,7 +647,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
                   color: "#334155",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   "&:hover": { bgcolor: "#ecfeff" },
                 }}
               >
@@ -727,7 +727,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
         elevation={0}
         sx={{
           borderRadius: 3,
-          border: "1px solid #e2e8f0",
+          border: "1px solid #cbd5e1",
           bgcolor: "#ffffff",
           boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
           mb: 1.5,
@@ -764,7 +764,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
                 bgcolor: "#f0fdfa",
                 color: "#0f766e",
                 fontWeight: 700,
-                border: "1px solid #ccfbf1",
+                border: "1px solid #5eead4",
               }}
             />
           </Stack>
@@ -788,7 +788,7 @@ function SubmittedItemsPage({ endpoint, itemKind, itemLabel, getIssueName, typeC
                 sx={{
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   p: 1,
                 }}
               >

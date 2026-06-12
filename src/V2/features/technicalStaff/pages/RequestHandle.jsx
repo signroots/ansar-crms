@@ -63,7 +63,7 @@ const STATUS_STYLES = {
   Cancelled: {
     color: "#64748b",
     bg: "#f8fafc",
-    border: "#e2e8f0",
+    border: "#cbd5e1",
   },
 };
 
@@ -543,7 +543,7 @@ function RequestHandle() {
         height: 28,
         borderRadius: 1.5,
         bgcolor: "#ecfeff",
-        border: "1px solid #bae6fd",
+        border: "1px solid #7dd3fc",
         color: "#0f766e",
         fontSize: 11,
         fontWeight: 700,
@@ -560,7 +560,7 @@ function RequestHandle() {
         alignItems: "flex-start",
         borderRadius: 2,
         bgcolor: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         px: 1.5,
         py: 1.25,
       }}
@@ -657,7 +657,7 @@ function RequestHandle() {
       sx={{
         maxHeight: 190,
         overflowY: "auto",
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         borderRadius: 2,
         bgcolor: "#f8fafc",
         mb: 1,
@@ -669,7 +669,7 @@ function RequestHandle() {
             key={`${item?.created_at || "history"}-${index}`}
             sx={{
               p: 1.25,
-              borderBottom: index === items.length - 1 ? "none" : "1px solid #e2e8f0",
+              borderBottom: index === items.length - 1 ? "none" : "1px solid #cbd5e1",
             }}
           >
             <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>
@@ -696,7 +696,7 @@ function RequestHandle() {
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         bgcolor: "#ffffff",
         overflow: "hidden",
         boxShadow: "0 12px 28px rgba(15, 118, 110, 0.08)",
@@ -782,7 +782,7 @@ function RequestHandle() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
             overflow: "hidden",
             boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
@@ -799,7 +799,7 @@ function RequestHandle() {
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
                   color: "#334155",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   "&:hover": { bgcolor: "#ecfeff" },
                 }}
               >
@@ -865,7 +865,7 @@ function RequestHandle() {
                   minHeight: 112,
                   maxHeight: 180,
                   overflowY: "auto",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
                   p: 1.5,
@@ -1207,7 +1207,7 @@ function RequestHandle() {
         elevation={0}
         sx={{
           borderRadius: 3,
-          border: "1px solid #e2e8f0",
+          border: "1px solid #cbd5e1",
           bgcolor: "#ffffff",
           boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
           mb: 1.5,
@@ -1244,7 +1244,7 @@ function RequestHandle() {
                 bgcolor: "#ecfeff",
                 color: "#0f766e",
                 fontWeight: 700,
-                border: "1px solid #bae6fd",
+                border: "1px solid #7dd3fc",
               }}
             />
           </Stack>
@@ -1268,7 +1268,7 @@ function RequestHandle() {
                 sx={{
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   p: 1,
                 }}
               >
@@ -1289,7 +1289,7 @@ function RequestHandle() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
           }}
         >
@@ -1310,7 +1310,7 @@ function RequestHandle() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px dashed #cbd5e1",
+            border: "1px dashed #94a3b8",
             bgcolor: "#ffffff",
           }}
         >

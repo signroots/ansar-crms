@@ -71,7 +71,7 @@ const TASK_TYPE_STYLES = {
     label: "Request",
     color: "#0f766e",
     bg: "#ecfeff",
-    border: "#bae6fd",
+    border: "#7dd3fc",
     icon: Article,
   },
 };
@@ -361,7 +361,7 @@ function Home() {
         alignItems: "flex-start",
         borderRadius: 2,
         bgcolor: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         px: 1.5,
         py: 1.25,
       }}
@@ -395,7 +395,7 @@ function Home() {
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         bgcolor: "#ffffff",
         overflow: "hidden",
         boxShadow: "0 12px 28px rgba(15, 118, 110, 0.08)",
@@ -479,7 +479,7 @@ function Home() {
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px dashed #cbd5e1",
+        border: "1px dashed #94a3b8",
         bgcolor: "#ffffff",
       }}
     >
@@ -507,7 +507,7 @@ function Home() {
         elevation={0}
         sx={{
           borderRadius: 3,
-          border: "1px solid #e2e8f0",
+          border: "1px solid #cbd5e1",
           bgcolor: "#ffffff",
           overflow: "hidden",
           boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
@@ -524,7 +524,7 @@ function Home() {
                 borderRadius: 2,
                 bgcolor: "#f8fafc",
                 color: "#334155",
-                border: "1px solid #e2e8f0",
+                border: "1px solid #cbd5e1",
                 "&:hover": { bgcolor: "#ecfeff" },
               }}
             >
@@ -582,7 +582,7 @@ function Home() {
               activeStep={selectedItem.stepIndex}
               orientation="vertical"
               sx={{
-                border: "1px solid #e2e8f0",
+                border: "1px solid #cbd5e1",
                 borderRadius: 2,
                 bgcolor: "#f8fafc",
                 px: 1.5,
@@ -625,7 +625,7 @@ function Home() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
             boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
             mb: 1.5,
@@ -662,7 +662,7 @@ function Home() {
                   bgcolor: "#f0fdfa",
                   color: "#0f766e",
                   fontWeight: 700,
-                  border: "1px solid #ccfbf1",
+                  border: "1px solid #5eead4",
                 }}
               /> */}
             </Stack>
@@ -685,7 +685,7 @@ function Home() {
                   sx={{
                     borderRadius: 2,
                     bgcolor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid #cbd5e1",
                     p: 1,
                   }}
                 >
@@ -767,7 +767,7 @@ function Home() {
             height: 44,
             bgcolor: "#ffffff",
             color: "#0f766e",
-            border: "1px solid #ccfbf1",
+            border: "1px solid #5eead4",
             boxShadow: "0 12px 28px rgba(15, 23, 42, 0.14)",
             transition: "transform 160ms ease, background-color 160ms ease, color 160ms ease",
             "&:hover": {
@@ -778,7 +778,7 @@ function Home() {
           },
           "& .MuiSpeedDialAction-staticTooltipLabel": {
             borderRadius: 2,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             color: "#0f172a",
             fontSize: 12,
             fontWeight: 700,

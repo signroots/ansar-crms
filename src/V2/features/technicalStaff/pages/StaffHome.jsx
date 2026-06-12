@@ -49,7 +49,7 @@ const TASK_TYPE_STYLES = {
     label: "Request",
     color: "#0f766e",
     bg: "#ecfeff",
-    border: "#bae6fd",
+    border: "#7dd3fc",
     icon: Assignment,
   },
 };
@@ -547,7 +547,7 @@ function StaffHome() {
         alignItems: "flex-start",
         borderRadius: 2,
         bgcolor: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         px: 1.5,
         py: 1.25,
       }}
@@ -641,7 +641,7 @@ function StaffHome() {
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: "1px solid #e2e8f0",
+        border: "1px solid #cbd5e1",
         bgcolor: "#ffffff",
         overflow: "hidden",
         boxShadow: "0 12px 28px rgba(15, 118, 110, 0.08)",
@@ -729,7 +729,7 @@ function StaffHome() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
             overflow: "hidden",
             boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
@@ -746,7 +746,7 @@ function StaffHome() {
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
                   color: "#334155",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   "&:hover": { bgcolor: "#ecfeff" },
                 }}
               >
@@ -802,7 +802,7 @@ function StaffHome() {
                   minHeight: 112,
                   maxHeight: 180,
                   overflowY: "auto",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
                   p: 1.5,
@@ -879,7 +879,7 @@ function StaffHome() {
                   sx={{
                     maxHeight: 190,
                     overflowY: "auto",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid #cbd5e1",
                     borderRadius: 2,
                     bgcolor: "#f8fafc",
                     mb: 1,
@@ -892,7 +892,7 @@ function StaffHome() {
                         sx={{
                           p: 1.25,
                           borderBottom:
-                            index === delayReasons.length - 1 ? "none" : "1px solid #e2e8f0",
+                            index === delayReasons.length - 1 ? "none" : "1px solid #cbd5e1",
                         }}
                       >
                         <Typography variant="body2" sx={{ color: "#0f172a", fontWeight: 600 }}>
@@ -1121,7 +1121,7 @@ function StaffHome() {
         elevation={0}
         sx={{
           borderRadius: 3,
-          border: "1px solid #e2e8f0",
+          border: "1px solid #cbd5e1",
           bgcolor: "#ffffff",
           boxShadow: "0 14px 36px rgba(15, 118, 110, 0.08)",
           mb: 1.5,
@@ -1188,7 +1188,7 @@ function StaffHome() {
                 sx={{
                   borderRadius: 2,
                   bgcolor: "#f8fafc",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #cbd5e1",
                   p: 1,
                 }}
               >
@@ -1209,7 +1209,7 @@ function StaffHome() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px solid #e2e8f0",
+            border: "1px solid #cbd5e1",
             bgcolor: "#ffffff",
           }}
         >
@@ -1230,7 +1230,7 @@ function StaffHome() {
           elevation={0}
           sx={{
             borderRadius: 3,
-            border: "1px dashed #cbd5e1",
+            border: "1px dashed #94a3b8",
             bgcolor: "#ffffff",
           }}
         >
